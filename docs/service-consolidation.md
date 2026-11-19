@@ -27,6 +27,27 @@ run 5 イメージの実測 (INVENTORY) に基づく統廃合。方針は
 | e2scrub_reap | 既定 off | 自前の timer がある。SD/eMMC での常駐スクラブ監視は不要 |
 | triggerhappy | 既定 off | triggers.d が空 = 何も処理していない。電源キーは logind/braindesk の担当 |
 
+## 第2弾: IM と端末の統廃合 (パッケージ層)
+
+run 5 の rootfs 実測に基づく判断:
+
+- **入力メソッド**: fcitx4 と uim の2系統が両方入っていた。
+  セッションの設定 (`~/.xprofile`) は GTK/Qt/XMODIFIERS とも
+  fcitx を指しており、uim は誰からも使われていない。
+  → uim 一式 (uim-fep/uim-anthy 経由で入る uim スタック、
+  Installed-Size 約7.2MB) をパッケージリストから除去。
+  なお libpresage (約35MB) は fcitx-modules も Depends して
+  いるため残る (uim 専用ではない)。
+- **端末**: gnome-terminal / lxterminal / xterm の3つ (+fbterm)。
+  JWM のメニューは最初から lxterminal を指している。
+  jwm の端末依存は代替チェーンで、lxterminal が
+  x-terminal-emulator を Provides するため除去しても満たせる。
+  → gnome-terminal (約9.2MB) と xterm (約2.4MB) を除去し、
+  X 用は lxterminal、コンソール用は fbterm (約0.1MB) に統一。
+
+合計で約19MB (Installed-Size 基準) + 除去に伴って入らなくなる
+固有依存分。実測は次回イメージで。
+
 ## 次回イメージでの検証項目
 
 - 起動後の常駐 PSS 合計と NetworkManager 分の消失 (brain-measure)
