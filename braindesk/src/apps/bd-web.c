@@ -15,7 +15,9 @@
 #include "bd_js.h"
 #include "../bui_osk.h"
 #include <ctype.h>
+#include <dirent.h>
 #include <strings.h>
+#include <sys/stat.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "../../third_party/stb_image.h"
@@ -25,6 +27,9 @@
 #define MAXLINKS 512
 #define MAXIMGS 64
 #define BODYMAX (2 * 1024 * 1024)
+/* content column (the window is 864 wide; 32px side margins) */
+#define PAGE_W 800
+#define PAGE_X 32
 
 enum { B_PARA, B_HEAD, B_ITEM, B_PRE, B_IMG, B_HR, B_INPUT, B_SUBMIT, B_SELECT, B_TEXTAREA };
 
@@ -35,6 +40,7 @@ struct run {
 	char href[512];		/* empty = not a link */
 	bool bold;
 	int color;		/* 0xRRGGBB from CSS, -1 = default */
+	bool download;		/* <a download> (or a download-type URL) */
 };
 
 struct lineseg {
@@ -65,8 +71,19 @@ struct block {
 	int form;		/* form index, -1 none */
 	int field;		/* field index in the form, -1 none */
 	int rows;		/* B_TEXTAREA: rows attribute (default 3) */
+	/* flexbox (CSS display:flex): a block whose style says so is a
+	 * container; blocks created while it is open record it as parent.
+	 * Children are laid out by layout_flex(), not the main loop. */
+	bool flex;
+	int flex_dir;		/* 0 row, 1 column */
+	int justify;		/* 0 flex-start, 1 center, 2 flex-end, 3 space-between, 4 space-around */
+	int flex_align;		/* 0 stretch, 1 flex-start, 2 center, 3 flex-end */
+	int gap;		/* px between items */
+	float flex_grow;	/* item growth factor (from its own style) */
+	int parent;		/* enclosing flex container block, -1 none */
+	bool in_flex;		/* laid out by a container this pass */
 	/* layout results */
-	int y, h;
+	int x, y, w, h;
 	struct wline *lines;
 	int nlines;
 	unsigned char *img_px;	/* decoded RGBA (scaled) */
@@ -77,6 +94,7 @@ struct block {
 struct linkregion {
 	int x, y, w, h;
 	char href[512];
+	bool download;
 };
 
 struct tapregion {
@@ -113,6 +131,22 @@ struct cssrule {
 	int align;		/* -1 = unset */
 	int bold;		/* -1 unset, 0 normal, 1 bold */
 	bool hide;
+	/* flexbox (display:flex and friends; -1 = unset) */
+	int display;		/* 0 block/other, 1 flex */
+	int flex_dir;		/* 0 row, 1 column */
+	float flex_grow;	/* -1 = unset */
+	int justify;		/* 0 flex-start, 1 center, 2 flex-end, 3 space-between, 4 space-around */
+	int flex_align;		/* 0 stretch, 1 flex-start, 2 center, 3 flex-end */
+	int gap;		/* px, -1 = unset */
+};
+
+/* CSS custom properties (--name: value), collected from stylesheet
+ * rules (usually :root). Stored raw; var() is expanded when a
+ * declaration value is read. Scoping is global (a v1 approximation:
+ * real sites define them on :root). */
+struct cssvar {
+	char name[48];
+	char value[256];
 };
 
 struct web {
@@ -141,11 +175,23 @@ struct web {
 	int edit_field;		/* block index being edited, -1 = URL bar */
 	struct cssrule rules[64];
 	int nrules;
+	struct cssvar vars[32];
+	int nvars;
+	/* page find (find-in-page): query + match list */
+	bool finding;
+	char find_query[256];
+	struct { int block; int off; int len; } find_hits[256];
+	int nfind_hits, find_cur;
+	bool find_scroll_pending;	/* jump after the next layout() */
 	/* inline scripts, collected at parse time (M3) */
 	char js_src[65536];
 	int js_len;
 	int js_ext;		/* external <script src> count, skipped */
 };
+
+/* Viewport for media queries: the device display is 854x480. */
+#define VIEWPORT_W 854
+#define VIEWPORT_H 480
 
 static char *body_buf;
 static int body_len;
@@ -315,6 +361,12 @@ static void sanitize_text(char *s, bool pre)
 	*w = 0;
 }
 
+/* Innermost enclosing flex container while parsing (block index,
+ * -1 none). Set by the open-tag stack in parse(); new_block() reads
+ * it. parse() is single-threaded (one page at a time), like the
+ * other file-scope parser state. */
+static int flex_parent = -1;
+
 static struct block *new_block(struct web *w, int type, int level)
 {
 	if (w->nblocks >= MAXBLOCKS)
@@ -329,6 +381,14 @@ static struct block *new_block(struct web *w, int type, int level)
 	b->font_scale = 1.0f;
 	b->form = -1;
 	b->field = -1;
+	b->x = PAGE_X;
+	b->w = PAGE_W;
+	b->parent = flex_parent;
+	b->flex_dir = 0;
+	b->justify = 0;
+	b->flex_align = 0;
+	b->gap = 6;
+	b->flex_grow = 0;
 	return b;
 }
 
@@ -378,6 +438,24 @@ static void get_attr(const char *tag, const char *name, char *out, size_t n)
 			e++;
 		snprintf(out, n, "%.*s", (int)(e - p), p);
 	}
+}
+
+/* Boolean attribute presence (e.g. <a download>): the name must
+ * appear as an attribute, not inside another word or a value. */
+static bool has_attr(const char *tag, const char *name)
+{
+	size_t nl = strlen(name);
+	const char *p = tag;
+	while ((p = strcasestr(p, name)) != NULL) {
+		char before = p == tag ? ' ' : p[-1];
+		char after = p[nl];
+		if ((before == ' ' || before == '\t' || before == '/' || before == '\n') &&
+		    (after == ' ' || after == '\t' || after == '=' || after == '>' ||
+		     after == '/' || after == 0))
+			return true;
+		p += nl;
+	}
+	return false;
 }
 
 /* ---------- CSS subset ---------- */
@@ -440,11 +518,164 @@ static void css_init_rule(struct cssrule *r)
 	r->bg = -1;
 	r->align = -1;
 	r->bold = -1;
+	r->display = -1;
+	r->flex_dir = -1;
+	r->flex_grow = -1;
+	r->justify = -1;
+	r->flex_align = -1;
+	r->gap = -1;
+}
+
+/* Whole-value comparison ignoring surrounding whitespace. */
+static bool val_is(const char *val, const char *word)
+{
+	while (isspace((unsigned char)*val))
+		val++;
+	size_t n = strlen(word);
+	if (strncasecmp(val, word, n) != 0)
+		return false;
+	const char *e = val + n;
+	while (isspace((unsigned char)*e))
+		e++;
+	return *e == 0;
+}
+
+/* Expand var(--name) and var(--name, fallback) in a declaration
+ * value, using the collected custom properties. depth caps
+ * self-referential chains. */
+static void css_expand_vars(struct web *w, const char *val, char *out,
+			    size_t n, int depth)
+{
+	size_t o = 0;
+	const char *p = val;
+	while (*p && o + 1 < n) {
+		if (strncmp(p, "var(", 4) == 0) {
+			const char *q = p + 4;
+			while (isspace((unsigned char)*q))
+				q++;
+			char name[48];
+			int ni = 0;
+			while (*q && *q != ',' && *q != ')' && ni < 47)
+				name[ni++] = *q++;
+			name[ni] = 0;
+			while (ni > 0 && isspace((unsigned char)name[ni - 1]))
+				name[--ni] = 0;
+			const char *fb = NULL;
+			if (*q == ',') {
+				q++;
+				while (isspace((unsigned char)*q))
+					q++;
+				fb = q;
+			}
+			/* find the matching close paren (depth 1 at "var(") */
+			const char *close = q;
+			int d = 1;
+			while (*close) {
+				if (*close == '(')
+					d++;
+				else if (*close == ')') {
+					if (--d == 0)
+						break;
+				}
+				close++;
+			}
+			const char *rep = NULL;
+			char repbuf[256];
+			repbuf[0] = 0;
+			for (int i = 0; i < w->nvars; i++)
+				if (strcmp(w->vars[i].name, name) == 0) {
+					rep = w->vars[i].value;
+					break;
+				}
+			if (rep) {
+				if (depth < 4)
+					css_expand_vars(w, rep, repbuf, sizeof(repbuf), depth + 1);
+				else
+					snprintf(repbuf, sizeof(repbuf), "%s", rep);
+				rep = repbuf;
+			} else if (fb) {
+				char fbt[256];
+				int fl = (int)(close - fb);
+				if (fl > 255)
+					fl = 255;
+				snprintf(fbt, sizeof(fbt), "%.*s", fl, fb);
+				if (depth < 4)
+					css_expand_vars(w, fbt, repbuf, sizeof(repbuf), depth + 1);
+				else
+					snprintf(repbuf, sizeof(repbuf), "%s", fbt);
+				rep = repbuf;
+			}
+			if (rep) {
+				size_t rl = strlen(rep);
+				if (o + rl >= n)
+					rl = n - o - 1;
+				memcpy(out + o, rep, rl);
+				o += rl;
+			}
+			p = *close ? close + 1 : close;
+		} else {
+			out[o++] = *p++;
+		}
+	}
+	out[o] = 0;
+}
+
+/* Collect "--name: value" declarations into w->vars (later
+ * definitions win). Called before the declarations are applied, so
+ * var() works even when the definition follows its use in the
+ * same rule. */
+static void css_collect_vars(struct web *w, const char *decls)
+{
+	const char *p = decls;
+	while (*p) {
+		while (isspace((unsigned char)*p))
+			p++;
+		if (strncmp(p, "--", 2) != 0) {
+			const char *s = strchr(p, ';');
+			p = s ? s + 1 : p + strlen(p);
+			continue;
+		}
+		const char *colon = strchr(p, ':');
+		if (!colon)
+			break;
+		int nl = (int)(colon - p);
+		if (nl > 47)
+			nl = 47;
+		char name[48];
+		snprintf(name, sizeof(name), "%.*s", nl, p);
+		while (nl > 0 && isspace((unsigned char)name[nl - 1]))
+			name[--nl] = 0;
+		const char *v = colon + 1;
+		while (isspace((unsigned char)*v))
+			v++;
+		const char *e = strchr(v, ';');
+		if (!e)
+			e = v + strlen(v);
+		int vl = (int)(e - v);
+		while (vl > 0 && isspace((unsigned char)v[vl - 1]))
+			vl--;
+		if (vl > 255)
+			vl = 255;
+		char value[256];
+		snprintf(value, sizeof(value), "%.*s", vl, v);
+		int i;
+		for (i = 0; i < w->nvars; i++)
+			if (strcmp(w->vars[i].name, name) == 0)
+				break;
+		if (i >= w->nvars && w->nvars < 32)
+			i = w->nvars++;
+		if (i < 32) {
+			snprintf(w->vars[i].name, sizeof(w->vars[i].name), "%s", name);
+			snprintf(w->vars[i].value, sizeof(w->vars[i].value), "%s", value);
+		}
+		p = *e ? e + 1 : e;
+	}
 }
 
 /* Parse a declaration list ("color: red; font-size: 20px") into r. */
-static void css_decls(struct cssrule *r, const char *decls)
+static void css_decls(struct web *w, struct cssrule *r, const char *decls)
 {
+	css_collect_vars(w, decls);
 	char buf[1024];
 	snprintf(buf, sizeof(buf), "%s", decls);
 	char *save = NULL;
@@ -458,6 +689,12 @@ static void css_decls(struct cssrule *r, const char *decls)
 		while (isspace((unsigned char)*val)) val++;
 		char *pe = prop + strlen(prop);
 		while (pe > prop && isspace((unsigned char)pe[-1])) *--pe = 0;
+		/* var() substitution (custom properties + fallback) */
+		char valx[512];
+		css_expand_vars(w, val, valx, sizeof(valx), 0);
+		val = valx;
+		if (!strncasecmp(prop, "--", 2))
+			continue;	/* custom property: stored, not a style */
 		if (!strcasecmp(prop, "color")) {
 			int c;
 			if (parse_color(val, &c)) r->color = c;
@@ -485,15 +722,173 @@ static void css_decls(struct cssrule *r, const char *decls)
 			else if (!strncasecmp(val, "right", 5)) r->align = 2;
 			else if (!strncasecmp(val, "left", 4)) r->align = 0;
 		} else if (!strcasecmp(prop, "display")) {
-			if (!strncasecmp(val, "none", 4)) r->hide = true;
+			if (val_is(val, "none")) r->hide = true;
+			else if (val_is(val, "flex")) r->display = 1;
+			else r->display = 0;
+		} else if (!strcasecmp(prop, "flex-direction")) {
+			if (val_is(val, "column") || val_is(val, "column-reverse"))
+				r->flex_dir = 1;
+			else
+				r->flex_dir = 0;
+		} else if (!strcasecmp(prop, "flex-grow")) {
+			r->flex_grow = (float)atof(val);
+		} else if (!strcasecmp(prop, "flex")) {
+			/* shorthand: "flex: <grow> ..." — first number wins */
+			r->flex_grow = (float)atof(val);
+		} else if (!strcasecmp(prop, "justify-content")) {
+			if (val_is(val, "center")) r->justify = 1;
+			else if (val_is(val, "flex-end") || val_is(val, "end")) r->justify = 2;
+			else if (val_is(val, "space-between")) r->justify = 3;
+			else if (val_is(val, "space-around") || val_is(val, "space-evenly")) r->justify = 4;
+			else r->justify = 0;
+		} else if (!strcasecmp(prop, "align-items")) {
+			if (val_is(val, "flex-start") || val_is(val, "start")) r->flex_align = 1;
+			else if (val_is(val, "center")) r->flex_align = 2;
+			else if (val_is(val, "flex-end") || val_is(val, "end")) r->flex_align = 3;
+			else r->flex_align = 0;
+		} else if (!strcasecmp(prop, "gap")) {
+			int g = atoi(val);
+			if (g >= 0)
+				r->gap = g;
 		}
 	}
+}
+
+/* One media-query condition against the 854x480 viewport.
+ * Supported: min/max-width/height (px), orientation, screen/all,
+ * print (never matches), prefers-color-scheme (theme is dark).
+ * Unknown conditions fail closed (the block is skipped). */
+/* One media-query condition against the 854x480 viewport.
+ * The condition is split on the word "and" (parens may contain
+ * spaces, so plain whitespace tokenising would break them). */
+static bool media_one(const char *part)
+{
+	while (isspace((unsigned char)*part))
+		part++;
+	if (!strncasecmp(part, "only ", 5))
+		part += 5;
+	while (isspace((unsigned char)*part))
+		part++;
+	char *end = (char *)part + strlen(part);
+	while (end > part && isspace((unsigned char)end[-1]))
+		*--end = 0;
+	if (strcasecmp(part, "screen") == 0 || strcasecmp(part, "all") == 0)
+		return true;
+	if (strcasecmp(part, "print") == 0)
+		return false;
+	if (strncasecmp(part, "not ", 4) == 0)
+		return false;	/* "not screen" etc: unsupported */
+	char *lp = strchr(part, '(');
+	char *rp = strchr(part, ')');
+	if (!lp || !rp)
+		return false;
+	char inner[128];
+	snprintf(inner, sizeof(inner), "%.*s", (int)(rp - lp - 1), lp + 1);
+	char *colon = strchr(inner, ':');
+	if (!colon)
+		return false;
+	*colon = 0;
+	char *key = inner, *val = colon + 1;
+	while (isspace((unsigned char)*key)) key++;
+	while (isspace((unsigned char)*val)) val++;
+	int n = atoi(val);
+	if (strcasecmp(key, "min-width") == 0)
+		return VIEWPORT_W >= n;
+	if (strcasecmp(key, "max-width") == 0)
+		return VIEWPORT_W <= n;
+	if (strcasecmp(key, "min-height") == 0)
+		return VIEWPORT_H >= n;
+	if (strcasecmp(key, "max-height") == 0)
+		return VIEWPORT_H <= n;
+	if (strcasecmp(key, "orientation") == 0) {
+		bool land = VIEWPORT_W > VIEWPORT_H;
+		return (strcasecmp(val, "landscape") == 0) == land;
+	}
+	if (strcasecmp(key, "prefers-color-scheme") == 0)
+		/* the braindesk theme is always dark */
+		return strcasecmp(val, "dark") == 0;
+	return false;	/* unknown condition: fail closed */
+}
+
+static bool media_cond(const char *cond)
+{
+	char buf[256];
+	snprintf(buf, sizeof(buf), "%s", cond);
+	/* split on "and" (case-insensitive, word-boundary aware) */
+	char *p = buf;
+	while (*p) {
+		char *andp = NULL;
+		for (char *q = p; *q; q++) {
+			if ((q == p || isspace((unsigned char)q[-1])) &&
+			    strncasecmp(q, "and", 3) == 0 &&
+			    (q[3] == 0 || isspace((unsigned char)q[3]))) {
+				andp = q;
+				break;
+			}
+		}
+		char part[128];
+		if (andp) {
+			snprintf(part, sizeof(part), "%.*s", (int)(andp - p), p);
+			p = andp + 3;
+		} else {
+			snprintf(part, sizeof(part), "%s", p);
+			p += strlen(p);
+		}
+		if (!media_one(part))
+			return false;
+	}
+	return true;
 }
 
 static void css_parse(struct web *w, const char *css)
 {
 	const char *p = css;
 	while (*p && w->nrules < 64) {
+		const char *t = p;
+		while (isspace((unsigned char)*t))
+			t++;
+		/* @media <cond> { <rules> }: apply the inner rules only
+		 * when the condition matches the viewport. Other at-rules
+		 * (@import, @font-face, ...) are skipped gracefully. */
+		if (*t == '@') {
+			const char *ob = strchr(t, '{');
+			if (!ob) {
+				/* at-rule without a block: skip to ';' */
+				const char *sc = strchr(t, ';');
+				p = sc ? sc + 1 : t + strlen(t);
+				continue;
+			}
+			/* find the matching close brace (inner rules nest) */
+			int depth = 0;
+			const char *q = ob, *cb = NULL;
+			while (*q) {
+				if (*q == '{')
+					depth++;
+				else if (*q == '}') {
+					if (--depth == 0) {
+						cb = q;
+						break;
+					}
+				}
+				q++;
+			}
+			if (!cb)
+				break;
+			if (strncasecmp(t, "@media", 6) == 0) {
+				char cond[256];
+				snprintf(cond, sizeof(cond), "%.*s",
+					 (int)(ob - t - 6 > 255 ? 255 : (int)(ob - t - 6)), t + 6);
+				if (media_cond(cond)) {
+					char inner[8192];
+					snprintf(inner, sizeof(inner), "%.*s",
+						 (int)(cb - ob - 1 > 8191 ? 8191 : (int)(cb - ob - 1)),
+						 ob + 1);
+					css_parse(w, inner);
+				}
+			}
+			p = cb + 1;
+			continue;
+		}
 		const char *ob = strchr(p, '{');
 		if (!ob)
 			break;
@@ -511,7 +906,17 @@ static void css_parse(struct web *w, const char *css)
 			while (isspace((unsigned char)*sel)) sel++;
 			char *se = sel + strlen(sel);
 			while (se > sel && isspace((unsigned char)se[-1])) *--se = 0;
-			if (!*sel || strchr(sel, ' ') || strchr(sel, '>') ||
+			if (!*sel)
+				continue;
+			/* :root holds custom properties; its other
+			 * declarations have no element to attach to. */
+			if (strcmp(sel, ":root") == 0) {
+				struct cssrule tmp;
+				css_init_rule(&tmp);
+				css_decls(w, &tmp, decls);
+				continue;
+			}
+			if (strchr(sel, ' ') || strchr(sel, '>') ||
 			    strchr(sel, ':') || strchr(sel, '*'))
 				continue;	/* combinators/pseudo: unsupported */
 			struct cssrule *r = &w->rules[w->nrules];
@@ -528,7 +933,7 @@ static void css_parse(struct web *w, const char *css)
 				for (char *q = r->sel; *q; q++)
 					*q = tolower((unsigned char)*q);
 			}
-			css_decls(r, decls);
+			css_decls(w, r, decls);
 			w->nrules++;
 		}
 		p = cb + 1;
@@ -543,6 +948,12 @@ static void css_merge(struct cssrule *dst, const struct cssrule *src)
 	if (src->align >= 0) dst->align = src->align;
 	if (src->bold >= 0) dst->bold = src->bold;
 	if (src->hide) dst->hide = true;
+	if (src->display >= 0) dst->display = src->display;
+	if (src->flex_dir >= 0) dst->flex_dir = src->flex_dir;
+	if (src->flex_grow >= 0) dst->flex_grow = src->flex_grow;
+	if (src->justify >= 0) dst->justify = src->justify;
+	if (src->flex_align >= 0) dst->flex_align = src->flex_align;
+	if (src->gap >= 0) dst->gap = src->gap;
 }
 
 /* Merged style for an element: tag rules, then class, id, inline. */
@@ -586,7 +997,7 @@ static void style_for(struct web *w, const char *tagname, const char *tag,
 	if (inl[0]) {
 		struct cssrule tmp;
 		css_init_rule(&tmp);
-		css_decls(&tmp, inl);
+		css_decls(w, &tmp, inl);
 		css_merge(out, &tmp);
 	}
 }
@@ -598,6 +1009,12 @@ static void block_apply_style(struct block *b, const struct cssrule *st)
 	b->font_scale = st->fscale > 0 ? st->fscale : 1.0f;
 	b->align = st->align >= 0 ? st->align : 0;
 	b->hidden = st->hide;
+	b->flex = st->display == 1;
+	b->flex_dir = st->flex_dir >= 0 ? st->flex_dir : 0;
+	b->justify = st->justify >= 0 ? st->justify : 0;
+	b->flex_align = st->flex_align >= 0 ? st->flex_align : 0;
+	b->gap = st->gap >= 0 ? st->gap : 6;
+	b->flex_grow = st->flex_grow >= 0 ? st->flex_grow : 0;
 }
 
 /* Append the option currently being collected to the <select>
@@ -666,10 +1083,21 @@ static void parse(struct web *w, const char *html, const char *page_url)
 	int tlen = 0;
 	w->nforms = 0;
 	w->nrules = 0;
+	w->nvars = 0;
+	w->nfind_hits = 0;
+	w->find_cur = 0;
 	w->js_len = 0;
 	w->js_ext = 0;
+	flex_parent = -1;
+	/* open div/section/article stack, for flex container nesting.
+	 * Only the nearest enclosing flex container matters for the
+	 * parent pointer (flex_parent), but every open element is
+	 * tracked so a closing tag pops the right entry. */
+	struct { char name[16]; int block; bool flex; } ostack[16];
+	int nstack = 0;
+	bool cur_download = false;	/* inside <a download> */
 	/* runs are recorded per block as (offset,len,href,bold) using a temp list */
-	static struct { int off, len; char href[512]; bool bold; int color; } truns[2048];
+	static struct { int off, len; char href[512]; bool bold; int color; bool download; } truns[2048];
 	int ntruns = 0;
 	struct block *run_block = NULL;
 
@@ -687,6 +1115,7 @@ static void parse(struct web *w, const char *html, const char *page_url)
 				snprintf(truns[ntruns].href, 512, "%s", cur_href); \
 				truns[ntruns].bold = cur_bold || block_bold; \
 				truns[ntruns].color = cur_color; \
+				truns[ntruns].download = cur_download; \
 				ntruns++; \
 			} \
 		} \
@@ -704,6 +1133,7 @@ static void parse(struct web *w, const char *html, const char *page_url)
 				snprintf(cur->runs[i].href, 512, "%s", truns[i].href); \
 				cur->runs[i].bold = truns[i].bold; \
 				cur->runs[i].color = truns[i].color; \
+				cur->runs[i].download = truns[i].download; \
 			} \
 		} \
 		ntruns = 0; \
@@ -833,6 +1263,16 @@ static void parse(struct web *w, const char *html, const char *page_url)
 				CLOSE_BLOCK();
 				cur = new_block(w, B_PARA, 0);
 				APPLY_STYLE(cur);
+				if (cur && (strcmp(name, "div") == 0 || strcmp(name, "section") == 0 ||
+					    strcmp(name, "article") == 0) && nstack < 16) {
+					/* track container nesting for flex parents */
+					snprintf(ostack[nstack].name, sizeof(ostack[nstack].name), "%s", name);
+					ostack[nstack].block = (int)(cur - w->blocks);
+					ostack[nstack].flex = cur->flex;
+					nstack++;
+					if (cur->flex)
+						flex_parent = (int)(cur - w->blocks);
+				}
 			} else if (!closing && name[0] == 'h' && name[1] >= '1' && name[1] <= '6' && name[2] == 0) {
 				CLOSE_BLOCK();
 				cur = new_block(w, B_HEAD, name[1] - '0');
@@ -1079,7 +1519,7 @@ static void parse(struct web *w, const char *html, const char *page_url)
 				inl[0] = 0;
 				get_attr(tag, "style", inl, sizeof(inl));
 				if (inl[0])
-					css_decls(&st, inl);
+					css_decls(w, &st, inl);
 				if (st.color >= 0) {
 					if (csp < 8)
 						color_stack[csp++] = cur_color;
@@ -1097,9 +1537,11 @@ static void parse(struct web *w, const char *html, const char *page_url)
 					resolve_url(page_url, href, cur_href, sizeof(cur_href));
 				else
 					cur_href[0] = 0;
+				cur_download = has_attr(tag, "download");
 			} else if (closing && strcmp(name, "a") == 0) {
 				FLUSH_TEXT();
 				cur_href[0] = 0;
+				cur_download = false;
 			} else if (!closing && (strcmp(name, "b") == 0 || strcmp(name, "strong") == 0)) {
 				FLUSH_TEXT();
 				cur_bold = true;
@@ -1111,6 +1553,16 @@ static void parse(struct web *w, const char *html, const char *page_url)
 						strcmp(name, "article") == 0 || strcmp(name, "tr") == 0)) {
 				CLOSE_BLOCK();
 				cur = NULL;
+				/* pop the open-tag stack when the tag matches */
+				if (nstack > 0 && strcmp(ostack[nstack - 1].name, name) == 0) {
+					nstack--;
+					flex_parent = -1;
+					for (int si = nstack - 1; si >= 0; si--)
+						if (ostack[si].flex) {
+							flex_parent = ostack[si].block;
+							break;
+						}
+				}
 			}
 			p = gt + 1;
 			continue;
@@ -1166,7 +1618,8 @@ static void parse(struct web *w, const char *html, const char *page_url)
 		for (int k = 0; k < b->text_len; k++)
 			if (b->text[k] != ' ' && b->text[k] != '\n' && b->text[k] != '\t' && b->text[k] != '\r')
 				ws_only = false;
-		if (b->type != B_IMG && b->type != B_HR && b->type != B_INPUT &&
+		/* flex containers carry no text of their own; keep them */
+		if (!b->flex && b->type != B_IMG && b->type != B_HR && b->type != B_INPUT &&
 		    b->type != B_SUBMIT && b->type != B_SELECT &&
 		    b->type != B_TEXTAREA && (b->text_len == 0 || ws_only)) {
 			free(b->text);
@@ -1180,11 +1633,15 @@ static void parse(struct web *w, const char *html, const char *page_url)
 		out++;
 	}
 	w->nblocks = out;
-	/* form fields point at blocks by index: remap after compaction */
+	/* form fields and flex parents point at blocks by index:
+	 * remap after compaction */
 	for (int fi = 0; fi < w->nforms; fi++)
 		for (int k = 0; k < w->forms[fi].nfields; k++)
 			if (w->forms[fi].fields[k].block >= 0)
 				w->forms[fi].fields[k].block = idxmap[w->forms[fi].fields[k].block];
+	for (int i = 0; i < w->nblocks; i++)
+		if (w->blocks[i].parent >= 0)
+			w->blocks[i].parent = idxmap[w->blocks[i].parent];
 #undef FLUSH_TEXT
 #undef CLOSE_BLOCK
 #undef APPLY_STYLE
@@ -1237,9 +1694,6 @@ static void load_image(struct web *w, struct block *b)
 }
 
 /* ---------- layout ---------- */
-#define PAGE_W 800
-#define PAGE_X 32
-
 static float block_font_size(const struct block *b)
 {
 	float base;
@@ -1254,22 +1708,73 @@ static float block_font_size(const struct block *b)
 	return base * (b->font_scale > 0 ? b->font_scale : 1.0f);
 }
 
+/* Preferred (unwrapped) width of a block, for flex row sizing.
+ * Text blocks measure their whole text; controls/images use their
+ * natural size; flex containers recurse into their children. */
+static int block_pref_width(struct web *w, bu_font *font, struct block *b)
+{
+	if (b->type == B_INPUT || b->type == B_SUBMIT || b->type == B_SELECT)
+		return 240;
+	if (b->type == B_TEXTAREA || b->type == B_HR)
+		return PAGE_W;
+	if (b->type == B_IMG)
+		return b->img_w > 0 ? b->img_w : 300;
+	if (b->flex) {
+		int ci = (int)(b - w->blocks);
+		int sum = 0, mx = 0, n = 0;
+		for (int i = 0; i < w->nblocks; i++) {
+			if (w->blocks[i].parent != ci)
+				continue;
+			int pw = block_pref_width(w, font, &w->blocks[i]);
+			sum += pw;
+			if (pw > mx)
+				mx = pw;
+			n++;
+		}
+		int tw = b->flex_dir == 0 ? sum + (n > 1 ? b->gap * (n - 1) : 0) : mx;
+		if (tw < 60)
+			tw = 60;
+		if (tw > PAGE_W)
+			tw = PAGE_W;
+		return tw;
+	}
+	float size = block_font_size(b);
+	int tw = bu_text_width(font, b->text ? b->text : "", size);
+	if (tw < 60)
+		tw = 60;
+	if (tw > PAGE_W)
+		tw = PAGE_W;
+	return tw;
+}
+
+static void layout_block_w(struct web *w, bu_font *font, struct block *b, int maxw_in);
+static void layout_flex(struct web *w, bu_font *font, struct block *c, int avail_w);
+static void layout_block_regions(struct web *w, bu_font *font, struct block *b);
+
 static void layout_block(struct web *w, bu_font *font, struct block *b)
 {
+	layout_block_w(w, font, b, PAGE_W);
+}
+
+static void layout_block_w(struct web *w, bu_font *font, struct block *b, int maxw_in)
+{
+	/* layout() runs on every draw: drop the previous wrap first
+	 * (the old code leaked one lines array per frame). */
+	free(b->lines);
+	b->lines = NULL;
+	b->nlines = 0;
+	b->w = maxw_in;
 	if (b->hidden) {
 		b->h = 0;
-		b->nlines = 0;
 		return;
 	}
 	if (b->type == B_INPUT || b->type == B_SUBMIT || b->type == B_SELECT) {
 		b->h = 44;
-		b->nlines = 0;
 		return;
 	}
 	if (b->type == B_TEXTAREA) {
 		int rows = b->rows > 0 ? b->rows : 3;
 		b->h = 12 + rows * 22;
-		b->nlines = 0;
 		return;
 	}
 	if (b->type == B_HR) {
@@ -1284,7 +1789,9 @@ static void layout_block(struct web *w, bu_font *font, struct block *b)
 	}
 	float size = block_font_size(b);
 	int indent = b->type == B_ITEM ? 22 : 0;
-	int maxw = PAGE_W - indent;
+	int maxw = maxw_in - indent;
+	if (maxw < 40)
+		maxw = 40;
 	/* build runs view: if no runs recorded, one plain run */
 	struct run plain;
 	struct run *runs = b->runs;
@@ -1363,6 +1870,179 @@ static void layout_block(struct web *w, bu_font *font, struct block *b)
 	b->h = (int)(b->nlines * size * 1.5f) + 8;
 }
 
+/* Tap + link regions for one laid-out block (shared by the main
+ * loop and layout_flex, which lays out children itself). */
+static void layout_block_regions(struct web *w, bu_font *font, struct block *b)
+{
+	if ((b->type == B_INPUT || b->type == B_SUBMIT ||
+	     b->type == B_SELECT || b->type == B_TEXTAREA) && !b->hidden &&
+	    w->ntaps < MAXLINKS) {
+		struct tapregion *tr = &w->taps[w->ntaps++];
+		tr->x = b->x;
+		tr->y = b->y;
+		tr->w = b->type == B_SUBMIT ? 240 : b->w;
+		tr->h = b->h;
+		tr->block = (int)(b - w->blocks);
+	}
+	/* link regions from lines */
+	if (b->lines && b->runs) {
+		float size = block_font_size(b);
+		int indent = b->type == B_ITEM ? 22 : 0;
+		for (int li = 0; li < b->nlines; li++) {
+			int x = b->x + indent;
+			struct wline *ln = &b->lines[li];
+			for (int si = 0; si < ln->nsegs; si++) {
+				struct lineseg *sg = &ln->segs[si];
+				struct run *r = &b->runs[sg->run];
+				char tmp[1024];
+				snprintf(tmp, sizeof(tmp), "%.*s", sg->len, b->text + sg->off);
+				int tw = bu_text_width(font, tmp, size);
+				if (r->href[0] && w->nlinks < MAXLINKS) {
+					struct linkregion *lr = &w->links[w->nlinks++];
+					lr->x = x;
+					lr->y = b->y + (int)(li * size * 1.5f);
+					lr->w = tw;
+					lr->h = (int)(size * 1.5f);
+					snprintf(lr->href, sizeof(lr->href), "%s", r->href);
+					lr->download = r->download;
+				}
+				x += tw;
+			}
+		}
+	}
+}
+
+/* Lay out a flex container's children (blocks whose parent is c).
+ * The container's own direct text, if any, is item 0. avail_w is
+ * the width the container may use (PAGE_W at top level, the item
+ * width when nested). */
+static void layout_flex(struct web *w, bu_font *font, struct block *c, int avail_w)
+{
+	int ci = (int)(c - w->blocks);
+	int kids[64];
+	int nk = 0;
+	bool own_text = false;
+	if (c->text_len > 0) {
+		bool ws = true;
+		for (int k = 0; k < c->text_len; k++)
+			if (c->text[k] != ' ' && c->text[k] != '\n' &&
+			    c->text[k] != '\t' && c->text[k] != '\r')
+				ws = false;
+		own_text = !ws;
+	}
+	for (int i = 0; i < w->nblocks && nk < 64; i++)
+		if (w->blocks[i].parent == ci)
+			kids[nk++] = i;
+	int n = nk + (own_text ? 1 : 0);
+	if (n == 0) {
+		c->h = 0;
+		return;
+	}
+	int gap = c->gap >= 0 ? c->gap : 6;
+	/* items: [0] is the container's own text (if any), the rest
+	 * are kids[] in document order. */
+	struct block *items[65];
+	for (int k = 0; k < n; k++)
+		items[k] = (k == 0 && own_text) ? c : &w->blocks[kids[k - (own_text ? 1 : 0)]];
+	if (c->flex_dir == 0) {
+		/* row: preferred widths, flex-grow distributes leftover */
+		int prefs[65], widths[65], xs[65];
+		long total = 0;
+		double grows = 0;
+		for (int k = 0; k < n; k++) {
+			prefs[k] = block_pref_width(w, font, items[k]);
+			total += prefs[k];
+			grows += items[k]->flex_grow;
+		}
+		total += (long)gap * (n - 1);
+		long left = avail_w - total;
+		for (int k = 0; k < n; k++) {
+			if (left > 0 && grows > 0)
+				widths[k] = prefs[k] + (int)(left * items[k]->flex_grow / grows);
+			else if (left < 0)
+				widths[k] = (int)(prefs[k] * (double)avail_w / (total > 0 ? total : 1));
+			else
+				widths[k] = prefs[k];
+			if (widths[k] < 60)
+				widths[k] = 60;
+		}
+		long used = 0;
+		for (int k = 0; k < n; k++)
+			used += widths[k];
+		used += (long)gap * (n - 1);
+		long slack = avail_w - used;
+		if (slack < 0)
+			slack = 0;
+		int x = c->x;
+		int egap = gap;
+		if (c->justify == 1)
+			x = c->x + (int)(slack / 2);
+		else if (c->justify == 2)
+			x = c->x + (int)slack;
+		else if (c->justify == 3 && n > 1)
+			egap = gap + (int)(slack / (n - 1));
+		else if (c->justify == 4 && n > 0) {
+			egap = gap + (int)(slack / n);
+			x = c->x + (int)(slack / (2 * n));
+		}
+		for (int k = 0; k < n; k++) {
+			xs[k] = x;
+			x += widths[k] + egap;
+		}
+		int hs[65];
+		int maxh = 0;
+		for (int k = 0; k < n; k++) {
+			struct block *it = items[k];
+			it->x = xs[k];	/* set before measuring: nested
+					 * containers lay out relative to it */
+			if (it->flex && it != c)
+				layout_flex(w, font, it, widths[k]);
+			else
+				layout_block_w(w, font, it, widths[k]);
+			hs[k] = it->h;
+			if (hs[k] > maxh)
+				maxh = hs[k];
+		}
+		for (int k = 0; k < n; k++) {
+			struct block *it = items[k];
+			if (c->flex_align == 2)
+				it->y = c->y + (maxh - hs[k]) / 2;
+			else if (c->flex_align == 3)
+				it->y = c->y + maxh - hs[k];
+			else
+				it->y = c->y;
+			if (c->flex_align == 0)
+				it->h = maxh;
+			if (it != c)	/* the container itself stays on the
+					 * main loop; only children are owned */
+				it->in_flex = true;
+			layout_block_regions(w, font, it);
+		}
+		c->h = maxh;
+	} else {
+		/* column: items stack vertically */
+		int y = c->y;
+		for (int k = 0; k < n; k++) {
+			struct block *it = items[k];
+			int iw = c->flex_align == 0 ? avail_w : block_pref_width(w, font, it);
+			it->x = c->flex_align == 2 ? c->x + (avail_w - iw) / 2
+				: c->flex_align == 3 ? c->x + avail_w - iw : c->x;
+			it->y = y;	/* set before measuring (nested flex) */
+			if (it->flex && it != c)
+				layout_flex(w, font, it, iw);
+			else
+				layout_block_w(w, font, it, iw);
+			if (it != c)
+				it->in_flex = true;
+			layout_block_regions(w, font, it);
+			y += it->h + gap;
+		}
+		c->h = y - c->y - gap;
+		if (c->h < 0)
+			c->h = 0;
+	}
+}
+
 static void layout(struct web *w, bu_font *font)
 {
 	int y = 8;
@@ -1370,44 +2050,19 @@ static void layout(struct web *w, bu_font *font)
 	w->ntaps = 0;
 	for (int i = 0; i < w->nblocks; i++) {
 		struct block *b = &w->blocks[i];
+		if (b->in_flex)
+			continue;	/* positioned by its container */
+		b->x = PAGE_X;
 		b->y = y;
-		layout_block(w, font, b);
+		if (b->flex && !b->hidden) {
+			/* layout_flex also registers the container's own
+			 * text regions (item 0), so no extra call here */
+			layout_flex(w, font, b, PAGE_W);
+		} else {
+			layout_block(w, font, b);
+			layout_block_regions(w, font, b);
+		}
 		y += b->h + 6;
-		if ((b->type == B_INPUT || b->type == B_SUBMIT ||
-		     b->type == B_SELECT || b->type == B_TEXTAREA) && !b->hidden &&
-		    w->ntaps < MAXLINKS) {
-			struct tapregion *tr = &w->taps[w->ntaps++];
-			tr->x = PAGE_X;
-			tr->y = b->y;
-			tr->w = b->type == B_SUBMIT ? 240 : PAGE_W;
-			tr->h = b->h;
-			tr->block = i;
-		}
-		/* link regions from lines */
-		if (b->lines && b->runs) {
-			float size = block_font_size(b);
-			int indent = b->type == B_ITEM ? 22 : 0;
-			for (int li = 0; li < b->nlines; li++) {
-				int x = PAGE_X + indent;
-				struct wline *ln = &b->lines[li];
-				for (int si = 0; si < ln->nsegs; si++) {
-					struct lineseg *sg = &ln->segs[si];
-					struct run *r = &b->runs[sg->run];
-					char tmp[1024];
-					snprintf(tmp, sizeof(tmp), "%.*s", sg->len, b->text + sg->off);
-					int tw = bu_text_width(font, tmp, size);
-					if (r->href[0] && w->nlinks < MAXLINKS) {
-						struct linkregion *lr = &w->links[w->nlinks++];
-						lr->x = x;
-						lr->y = b->y + (int)(li * size * 1.5f);
-						lr->w = tw;
-						lr->h = (int)(size * 1.5f);
-						snprintf(lr->href, sizeof(lr->href), "%s", r->href);
-					}
-					x += tw;
-				}
-			}
-		}
 	}
 	w->content_h = y;
 }
@@ -1464,6 +2119,8 @@ static void run_scripts(struct web *w)
 static void navigate_impl(struct web *w, const char *url, const char *post_body, bool push)
 {
 	char eff[1024];
+	w->finding = false;
+	w->nfind_hits = 0;
 	snprintf(w->status, sizeof(w->status), "読み込み中… %s", url);
 	int rc = post_body ? fetch_post(w, url, post_body, eff, sizeof(eff))
 			    : fetch(w, url, eff, sizeof(eff));
@@ -1532,6 +2189,147 @@ static void add_bookmark(struct web *w)
 	}
 }
 
+/* ---------- downloads ---------- */
+static void downloads_dir(char *out, size_t n)
+{
+	const char *home = getenv("HOME");
+	snprintf(out, n, "%s/Downloads", home ? home : "/home/user");
+}
+
+/* Binary-ish suffixes that are downloaded instead of rendered. */
+static bool is_download_url(const char *url)
+{
+	/* strip query/fragment, then look at the last path segment */
+	const char *p = url;
+	const char *q = strchr(p, '?');
+	const char *f = strchr(p, '#');
+	size_t len = strlen(p);
+	if (q && (size_t)(q - p) < len)
+		len = (size_t)(q - p);
+	if (f && (size_t)(f - p) < len)
+		len = (size_t)(f - p);
+	const char *slash = NULL;
+	for (size_t i = 0; i < len; i++)
+		if (p[i] == '/')
+			slash = p + i;
+	const char *base = slash ? slash + 1 : p;
+	const char *dot = NULL;
+	for (const char *s = base; s < p + len; s++)
+		if (*s == '.')
+			dot = s;
+	if (!dot || dot == base)
+		return false;
+	static const char *exts[] = {
+		"pdf", "zip", "gz", "tgz", "bz2", "xz", "7z", "apk",
+		"mp3", "ogg", "wav", "flac", "mp4", "webm", "mkv",
+		"epub", "mobi", "doc", "docx", "xls", "xlsx", "ppt",
+		"pptx", "deb", "rpm", "iso", "img", "bin", "exe", "dmg",
+		"torrent", NULL
+	};
+	size_t elen = (p + len) - dot - 1;
+	for (int i = 0; exts[i]; i++)
+		if (strlen(exts[i]) == elen && strncasecmp(dot + 1, exts[i], elen) == 0)
+			return true;
+	return false;
+}
+
+static void download_file(struct web *w, const char *url)
+{
+	char dir[600];
+	downloads_dir(dir, sizeof(dir));
+	char cmd[700];
+	snprintf(cmd, sizeof(cmd), "mkdir -p '%s'", dir);
+	if (system(cmd) != 0)
+		return;
+	/* file name = last path segment, sanitised */
+	const char *base = strrchr(url, '/');
+	base = base ? base + 1 : url;
+	char name[256];
+	int ni = 0;
+	for (const char *p = base; *p && *p != '?' && *p != '#' && ni < 255; p++) {
+		char ch = *p;
+		if (ch == '/' || ch == '\\' || ch == ':' || ch == '*' || ch == '"' ||
+		    ch == '<' || ch == '>' || ch == '|')
+			ch = '_';
+		name[ni++] = ch;
+	}
+	name[ni] = 0;
+	if (ni == 0)
+		snprintf(name, sizeof(name), "download");
+	char path[900];
+	snprintf(path, sizeof(path), "%s/%s", dir, name);
+	snprintf(cmd, sizeof(cmd),
+		 "curl -sL --max-time 60 -A 'Mozilla/5.0 (X11; Linux) bd-web' -o '%s' '%s' 2>/dev/null",
+		 path, url);
+	if (system(cmd) != 0) {
+		snprintf(w->status, sizeof(w->status), "ダウンロードできませんでした");
+		return;
+	}
+	struct stat st;
+	if (stat(path, &st) != 0 || st.st_size == 0) {
+		snprintf(w->status, sizeof(w->status), "ダウンロードできませんでした");
+		return;
+	}
+	snprintf(w->status, sizeof(w->status), "ダウンロードしました: %s (%lld KB)",
+		 name, (long long)(st.st_size / 1024));
+}
+
+/* ---------- page find ---------- */
+/* Case-insensitive substring search over the parsed blocks.
+ * (ASCII case folding; multibyte text matches byte-exactly.) */
+static int find_run(struct web *w, const char *query)
+{
+	w->nfind_hits = 0;
+	w->find_cur = 0;
+	snprintf(w->find_query, sizeof(w->find_query), "%s", query);
+	if (!query[0])
+		return 0;
+	size_t qlen = strlen(query);
+	for (int i = 0; i < w->nblocks && w->nfind_hits < 256; i++) {
+		struct block *b = &w->blocks[i];
+		if (!b->text || b->text_len == 0)
+			continue;
+		const char *p = b->text;
+		const char *end = b->text + b->text_len;
+		while (p + qlen <= end && w->nfind_hits < 256) {
+			const char *m = strcasestr(p, query);
+			if (!m || m + qlen > end)
+				break;
+			w->find_hits[w->nfind_hits].block = i;
+			w->find_hits[w->nfind_hits].off = (int)(m - b->text);
+			w->find_hits[w->nfind_hits].len = (int)qlen;
+			w->nfind_hits++;
+			p = m + 1;
+		}
+	}
+	if (w->nfind_hits > 0)
+		snprintf(w->status, sizeof(w->status), "検索: %d 件中 1 番目", w->nfind_hits);
+	else
+		snprintf(w->status, sizeof(w->status), "検索: 見つかりませんでした");
+	return w->nfind_hits;
+}
+
+/* Scroll so the current match is visible (block y is from the
+ * last layout() pass, which draw() runs before presenting). */
+static void find_scroll(struct web *w)
+{
+	if (w->nfind_hits == 0)
+		return;
+	int bi = w->find_hits[w->find_cur].block;
+	int y = w->blocks[bi].y - 120;
+	w->scroll = y > 0 ? y : 0;
+	snprintf(w->status, sizeof(w->status), "検索: %d 件中 %d 番目",
+		 w->nfind_hits, w->find_cur + 1);
+}
+
+static void find_next(struct web *w)
+{
+	if (w->nfind_hits == 0)
+		return;
+	w->find_cur = (w->find_cur + 1) % w->nfind_hits;
+	find_scroll(w);
+}
+
 /* ---------- UI ---------- */
 #define TOOLBAR_H 92
 #define VIEW_H (480 - TOOLBAR_H)
@@ -1553,10 +2351,27 @@ static void draw(bdapp *a, void *ctx)
 	bu_button(c, t, (bu_rect){ 10, 50, 44, 38 }, "◀", BU_BTN_NORMAL, false);
 	bu_button(c, t, (bu_rect){ 60, 50, 44, 38 }, "▶", BU_BTN_NORMAL, false);
 	bu_button(c, t, (bu_rect){ 110, 50, 44, 38 }, "更新", BU_BTN_NORMAL, false);
-	bu_rect ub = { 162, 50, 520, 38 };
+	bu_rect ub = { 162, 50, 438, 38 };
 	bu_fill_round_rect(c, ub, 9, w->editing ? t->surface3 : t->surface);
-	const char *shown = w->editing ? w->edit : (w->url[0] ? w->url : "about:home");
+	/* while finding, the address bar shows the query + position */
+	char findbar[1100];
+	const char *shown;
+	if (w->finding && !w->editing) {
+		if (w->nfind_hits > 0)
+			snprintf(findbar, sizeof(findbar), "検索: %s  (%d/%d)",
+				 w->find_query, w->find_cur + 1, w->nfind_hits);
+		else if (w->find_query[0])
+			snprintf(findbar, sizeof(findbar), "検索: %s  (0件)",
+				 w->find_query);
+		else
+			snprintf(findbar, sizeof(findbar), "検索: ");
+		shown = findbar;
+	} else {
+		shown = w->editing ? w->edit : (w->url[0] ? w->url : "about:home");
+	}
 	bu_draw_text(c, t->font, ub.x + 12, ub.y + 9, shown, 13, w->editing ? t->text : t->text_dim);
+	bu_button(c, t, (bu_rect){ 608, 50, 74, 38 },
+		  w->finding ? "次へ" : "検索", BU_BTN_NORMAL, false);
 	bu_button(c, t, (bu_rect){ 690, 50, 52, 38 }, "★", BU_BTN_NORMAL, false);
 	bu_button(c, t, (bu_rect){ 750, 50, 104, 38 }, "ホーム", BU_BTN_NORMAL, false);
 	/* content */
@@ -1579,9 +2394,45 @@ static void draw(bdapp *a, void *ctx)
 		} else {
 			bu_draw_text(c, t->font, 48, y, "まだありません (★で追加)", 13, t->text_dim);
 		}
+		/* downloads (~/Downloads) */
+		y += 12;
+		bu_draw_text(c, t->font, 32, y, "ダウンロード", 17, t->text);
+		y += 34;
+		char dld[600];
+		downloads_dir(dld, sizeof(dld));
+		DIR *dd = opendir(dld);
+		if (dd) {
+			struct dirent *de;
+			int shown_dl = 0;
+			while ((de = readdir(dd)) != NULL && y < 452 && shown_dl < 8) {
+				if (de->d_name[0] == '.')
+					continue;
+				char fp2[700];
+				snprintf(fp2, sizeof(fp2), "%s/%s", dld, de->d_name);
+				struct stat st;
+				char line[1100];
+				if (stat(fp2, &st) == 0)
+					snprintf(line, sizeof(line), "%s  (%lld KB)",
+						 de->d_name, (long long)(st.st_size / 1024));
+				else
+					snprintf(line, sizeof(line), "%s", de->d_name);
+				bu_draw_text(c, t->font, 48, y, line, 13, t->accent);
+				y += 26;
+				shown_dl++;
+			}
+			closedir(dd);
+			if (shown_dl == 0)
+				bu_draw_text(c, t->font, 48, y, "まだありません", 13, t->text_dim);
+		} else {
+			bu_draw_text(c, t->font, 48, y, "まだありません", 13, t->text_dim);
+		}
 		bu_draw_text_right(c, t->font, (bu_rect){ 0, 452, 850, 18 }, w->status, 11.5, t->text_faint);
 	} else {
 		layout(w, t->font);
+		if (w->find_scroll_pending) {
+			w->find_scroll_pending = false;
+			find_scroll(w);
+		}
 		int maxscroll = w->content_h - VIEW_H + 20;
 		if (w->scroll > maxscroll)
 			w->scroll = maxscroll > 0 ? maxscroll : 0;
@@ -1591,7 +2442,7 @@ static void draw(bdapp *a, void *ctx)
 			if (by + b->h < top || by > 480)
 				continue;
 			if (b->type == B_HR) {
-				bu_fill_rect(c, (bu_rect){ PAGE_X, by + 8, PAGE_W, 1 }, t->line);
+				bu_fill_rect(c, (bu_rect){ b->x, by + 8, b->w, 1 }, t->line);
 				continue;
 			}
 			if (b->type == B_IMG) {
@@ -1603,19 +2454,19 @@ static void draw(bdapp *a, void *ctx)
 							continue;
 						for (int xx = 0; xx < b->img_w; xx++) {
 							const unsigned char *px = b->img_px + ((size_t)yy * b->img_w + xx) * 4;
-							c->px[cy * c->w + PAGE_X + xx] =
+							c->px[cy * c->w + b->x + xx] =
 								((uint32_t)px[3] << 24) | ((uint32_t)px[0] << 16) |
 								((uint32_t)px[1] << 8) | px[2];
 						}
 					}
 				} else {
-					bu_fill_round_rect(c, (bu_rect){ PAGE_X, by, 300, 26 }, 6, t->surface);
-					bu_draw_text(c, t->font, PAGE_X + 10, by + 4, "[画像]", 12, t->text_faint);
+					bu_fill_round_rect(c, (bu_rect){ b->x, by, 300, 26 }, 6, t->surface);
+					bu_draw_text(c, t->font, b->x + 10, by + 4, "[画像]", 12, t->text_faint);
 				}
 				continue;
 			}
 			if (b->bg >= 0)
-				bu_fill_rect(c, (bu_rect){ PAGE_X - 6, by - 2, PAGE_W + 12, b->h + 2 },
+				bu_fill_rect(c, (bu_rect){ b->x - 6, by - 2, b->w + 12, b->h + 2 },
 					     css_color(b->bg));
 			if (b->type == B_INPUT) {
 				const char *val = "", *nm = "";
@@ -1624,7 +2475,7 @@ static void draw(bdapp *a, void *ctx)
 					nm = w->forms[b->form].fields[b->field].name;
 				}
 				bool active = w->editing && w->edit_field == i;
-				bu_rect box = { PAGE_X, by, PAGE_W, 38 };
+				bu_rect box = { b->x, by, b->w, 38 };
 				bu_fill_round_rect(c, box, 8, active ? t->surface3 : t->surface);
 				bu_stroke_round_rect(c, box, 8, 1, active ? t->accent : t->line);
 				const char *show = active ? w->edit : val;
@@ -1638,13 +2489,13 @@ static void draw(bdapp *a, void *ctx)
 				continue;
 			}
 			if (b->type == B_SUBMIT) {
-				bu_button(c, t, (bu_rect){ PAGE_X, by, 240, 38 },
+				bu_button(c, t, (bu_rect){ b->x, by, 240, 38 },
 					  b->text ? b->text : "送信", BU_BTN_PRIMARY, false);
 				continue;
 			}
 			if (b->type == B_SELECT) {
 				const char *lbl = b->text ? b->text : "";
-				bu_rect box = { PAGE_X, by, PAGE_W, 38 };
+				bu_rect box = { b->x, by, b->w, 38 };
 				bu_fill_round_rect(c, box, 8, t->surface);
 				bu_stroke_round_rect(c, box, 8, 1, t->line);
 				if (lbl[0])
@@ -1659,7 +2510,7 @@ static void draw(bdapp *a, void *ctx)
 					nm = w->forms[b->form].fields[b->field].name;
 				}
 				bool active = w->editing && w->edit_field == i;
-				bu_rect box = { PAGE_X, by, PAGE_W, b->h };
+				bu_rect box = { b->x, by, b->w, b->h };
 				bu_fill_round_rect(c, box, 8, active ? t->surface3 : t->surface);
 				bu_stroke_round_rect(c, box, 8, 1, active ? t->accent : t->line);
 				const char *show = active ? w->edit : val;
@@ -1667,7 +2518,7 @@ static void draw(bdapp *a, void *ctx)
 				if (show[0]) {
 					/* wrap on width and on '\n', at most rows lines */
 					int ln = 0, pos = 0, len = (int)strlen(show);
-					int maxw = PAGE_W - 24;
+					int maxw = b->w - 24;
 					while (pos < len && ln < rows) {
 						int start = pos, wsum = 0;
 						while (pos < len && show[pos] != '\n') {
@@ -1716,7 +2567,7 @@ static void draw(bdapp *a, void *ctx)
 			float size = block_font_size(b);
 			int indent = b->type == B_ITEM ? 22 : 0;
 			if (b->type == B_ITEM)
-				bu_fill_circle(c, PAGE_X + 8, by + 10, 3, t->accent);
+				bu_fill_circle(c, b->x + 8, by + 10, 3, t->accent);
 			if (!b->lines)
 				continue;
 			for (int li = 0; li < b->nlines; li++) {
@@ -1733,26 +2584,69 @@ static void draw(bdapp *a, void *ctx)
 					segw[si] = bu_text_width(t->font, tmp, size);
 					linew += segw[si];
 				}
-				int x = PAGE_X + indent;
+				int x = b->x + indent;
 				if (b->align == 1)
-					x = PAGE_X + (PAGE_W - linew) / 2;
+					x = b->x + (b->w - linew) / 2;
 				else if (b->align == 2)
-					x = PAGE_X + PAGE_W - linew;
+					x = b->x + b->w - linew;
 				for (int si = 0; si < ln->nsegs; si++) {
 					struct lineseg *sg = &ln->segs[si];
 					char tmp[1024];
 					snprintf(tmp, sizeof(tmp), "%.*s", sg->len, b->text + sg->off);
+					/* find-in-page highlight: paint the match
+					 * background before the glyphs */
+					if (w->nfind_hits > 0) {
+						for (int hi = 0; hi < w->nfind_hits; hi++) {
+							if (w->find_hits[hi].block != i)
+								continue;
+							int mo = w->find_hits[hi].off;
+							int ml = w->find_hits[hi].len;
+							int s0 = sg->off, s1 = sg->off + sg->len;
+							if (mo >= s1 || mo + ml <= s0)
+								continue;
+							int po = mo > s0 ? mo - s0 : 0;
+							int pe = mo + ml < s1 ? mo + ml - s0 : sg->len;
+							char pre[1024], mch[1024];
+							snprintf(pre, sizeof(pre), "%.*s", po, tmp);
+							snprintf(mch, sizeof(mch), "%.*s", pe - po, tmp + po);
+							int px = x + bu_text_width(t->font, pre, size);
+							int mw = bu_text_width(t->font, mch, size);
+							bu_color hl = hi == w->find_cur
+								? BU_RGB(255, 140, 0)
+								: BU_RGB(255, 230, 128);
+							bu_fill_rect(c, (bu_rect){ px, ly, mw,
+								(int)(size * 1.5f) }, hl);
+						}
+					}
 					bu_color ink = t->text;
+					bool ink_default = true;
 					if (b->runs && sg->run < b->nruns) {
 						struct run *r = &b->runs[sg->run];
-						if (r->href[0])
+						if (r->href[0]) {
 							ink = t->accent;
-						else if (r->color >= 0)
+							ink_default = false;
+						} else if (r->color >= 0) {
 							ink = css_color(r->color);
-						else if (b->color >= 0)
+							ink_default = false;
+						} else if (b->color >= 0) {
 							ink = css_color(b->color);
+							ink_default = false;
+						}
 					} else if (b->color >= 0) {
 						ink = css_color(b->color);
+						ink_default = false;
+					}
+					/* No explicit color on a light background:
+					 * pages assume the web default (dark) text
+					 * unless they say otherwise; the theme's
+					 * white text would be unreadable. Links
+					 * keep their accent colour. */
+					if (ink_default && b->bg >= 0) {
+						int rr = (b->bg >> 16) & 255;
+						int gg = (b->bg >> 8) & 255;
+						int bb = b->bg & 255;
+						if (rr * 299 + gg * 587 + bb * 114 > 140 * 1000)
+							ink = BU_RGB(32, 32, 32);
 					}
 					bu_draw_text(c, t->font, x, ly, tmp, size, ink);
 					x += segw[si];
@@ -1863,7 +2757,12 @@ static void onevent(bdapp *a, void *ctx, bu_event *ev, bool *changed, bool *quit
 					w->edit[l - 1] = 0;
 			} else if (r == OSK_ENTER) {
 				w->editing = false;
-				if (w->edit_field >= 0) {
+				if (w->edit_field == -2) {
+					/* find query: commit, highlight, jump */
+					find_run(w, w->edit);
+					find_scroll(w);
+					w->edit_field = -1;
+				} else if (w->edit_field >= 0) {
 					/* form field edit: write back, no navigation */
 					struct block *b = &w->blocks[w->edit_field];
 					if (b->form >= 0 && b->field >= 0) {
@@ -1916,12 +2815,36 @@ static void onevent(bdapp *a, void *ctx, bu_event *ev, bool *changed, bool *quit
 			navigate(w, w->url, false);
 		return;
 	}
-	if (inr(x, y, (bu_rect){ 162, 50, 520, 38 })) {
+	if (inr(x, y, (bu_rect){ 162, 50, 438, 38 })) {
+		/* leaving find mode clears the highlights */
+		w->finding = false;
+		w->nfind_hits = 0;
 		w->editing = true;
 		w->edit_field = -1;
 		snprintf(w->edit, sizeof(w->edit), "%s", w->url);
 		bu_osk_init(&w->osk);
 		w->osk.kana = false;
+		return;
+	}
+	if (inr(x, y, (bu_rect){ 608, 50, 74, 38 })) {
+		if (!w->finding) {
+			/* open the find bar (OSK) */
+			w->finding = true;
+			w->editing = true;
+			w->edit_field = -2;
+			snprintf(w->edit, sizeof(w->edit), "%s", w->find_query);
+			bu_osk_init(&w->osk);
+			w->osk.kana = false;
+		} else if (!w->editing && w->nfind_hits == 0) {
+			/* no matches yet: re-open the query entry */
+			w->editing = true;
+			w->edit_field = -2;
+			snprintf(w->edit, sizeof(w->edit), "%s", w->find_query);
+			bu_osk_init(&w->osk);
+			w->osk.kana = false;
+		} else if (!w->editing) {
+			find_next(w);
+		}
 		return;
 	}
 	if (inr(x, y, (bu_rect){ 690, 50, 52, 38 })) {
@@ -1932,6 +2855,8 @@ static void onevent(bdapp *a, void *ctx, bu_event *ev, bool *changed, bool *quit
 	if (inr(x, y, (bu_rect){ 750, 50, 104, 38 })) {
 		free_page(w);
 		w->url[0] = 0;
+		w->finding = false;
+		w->nfind_hits = 0;
 		snprintf(w->status, sizeof(w->status), "ホーム");
 		return;
 	}
@@ -2005,7 +2930,10 @@ static void onevent(bdapp *a, void *ctx, bu_event *ev, bool *changed, bool *quit
 	for (int i = 0; i < w->nlinks; i++) {
 		struct linkregion *lr = &w->links[i];
 		if (x >= lr->x && x < lr->x + lr->w && cy >= lr->y && cy < lr->y + lr->h) {
-			navigate(w, lr->href, true);
+			if (lr->download || is_download_url(lr->href))
+				download_file(w, lr->href);
+			else
+				navigate(w, lr->href, true);
 			return;
 		}
 	}
@@ -2028,7 +2956,18 @@ int main(int argc, char **argv)
 	if (argc > 1 && strcmp(argv[1], "--shot") != 0)
 		navigate(&w, argv[1], true);
 	const char *shot = argc > 1 && strcmp(argv[1], "--shot") == 0 ? "bd-web.ppm" : NULL;
-	if (shot)
+	if (shot) {
 		navigate(&w, argc > 2 ? argv[2] : "https://example.com", true);
+		/* test hook (like BD_WEB_DEBUG): run a find query so the
+		 * --shot frame shows the highlights + first match. The
+		 * scroll happens in draw(), after layout() (the font is
+		 * only loaded inside bdapp_run). */
+		const char *fq = getenv("BD_WEB_FIND");
+		if (fq && fq[0]) {
+			w.finding = true;
+			find_run(&w, fq);
+			w.find_scroll_pending = true;
+		}
+	}
 	return bdapp_run("ブラウザ", shot, draw, onevent, NULL, &w);
 }
