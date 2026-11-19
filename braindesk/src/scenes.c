@@ -208,7 +208,12 @@ void bd_draw_login(bu_canvas *c, bu_theme *t, bd_state *s, const char *user)
 	bu_rect card = { PW / 2 - 170, 196, 340, 216 };
 	bu_card(c, t, card);
 	bu_fill_circle(c, PW / 2, 240, 26, t->accent);
-	bu_draw_text_centered(c, t->font, (bu_rect){ PW / 2 - 30, 222, 60, 36 }, "B", 24, BU_RGB(255, 255, 255));
+	{
+		char initial[2] = { '?', '\0' };
+		if (user && user[0])
+			initial[0] = (user[0] >= 'a' && user[0] <= 'z') ? user[0] - 32 : user[0];
+		bu_draw_text_centered(c, t->font, (bu_rect){ PW / 2 - 30, 222, 60, 36 }, initial, 24, BU_RGB(255, 255, 255));
+	}
 	bu_draw_text_centered(c, t->font, (bu_rect){ 0, 272, PW, 26 }, user, 17, t->text);
 	bu_text_field(c, t, (bu_rect){ PW / 2 - 140, 306, 280, 42 }, "パスワード", "●●●●●●●", true);
 	bu_button(c, t, (bu_rect){ PW / 2 - 140, 360, 280, 40 }, "ログイン", BU_BTN_PRIMARY, false);
