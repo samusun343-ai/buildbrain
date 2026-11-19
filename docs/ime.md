@@ -124,12 +124,42 @@ word cost only until connection costs + the Viterbi converter
 land (e.g. かんじ's top hit is 感じ, the stem of 感じる, which
 mozc prices as very frequent).
 
+## Measured BIDF v2 (2026-11-20)
+
+Builder `tools/ime/build_bidict2.py`, lookup `tools/ime/bidict_lookup2.c`,
+regression `tools/ime/test_bidict2.py` (independent pure-Python reader).
+Same 180,000-entry mozc dictionary as v1:
+
+| section | bytes | notes |
+|---|---|---|
+| header | 64 | magic `BIDF`, version 2 |
+| codebook (4,562 chars) | 18,116 | freq-ordered 1–2 byte codes; all 86 reading chars are single-byte by construction |
+| reading index (LOUDS trie, 227,053 nodes) | 428,958 | bits + 1-byte labels + terminal bits + counts + 1024-block samples |
+| surface trie (LOUDS, 236,551 nodes) | 561,819 | bits + 2-byte labels + terminal bits; surface id = BFS terminal rank |
+| tokens (180,000 × ~4.8 B) | 869,736 | ULEB128 surface id + POS 1 B + cost 1 B, grouped by reading in BFS terminal order |
+| connection matrix (zeros, v1) | 65,536 | unchanged; mozc connection data is the next step |
+| **total** | **1,944,229 (1.85 MB, 10.8 B/entry)** | **inside the 2.3–2.8 MB budget** (v1: 6,350,042) |
+
+Regression on the real dictionary (`test_bidict2.py`, ~5 min):
+exact lookup **116,292/116,292 readings OK**, prefix search
+**3,774/3,774 prefixes OK** (every distinct 1- and 2-char prefix),
+surface round-trip **151,878/151,878 OK** (decode every surface id
+via the LOUDS parent walk). C tool cross-checked against the v1
+tool on sampled readings and prefixes (same candidate sets).
+One LOUDS subtlety found by the test and fixed in both readers:
+the leading 1-bit is the root's virtual edge, not a child — the
+root's child range starts at position 1, not 0.
+
 ## Status
 
 - v1 builder + lookup tool: `tools/ime/` (sorted-index BIDF,
   prefix candidate search verified on a synthetic dictionary).
 - Real dictionary built: 180 k-entry BIDF v1 from mozc
   dictionary_oss, 6.35 MB (see above; binary not committed).
-- Next: LOUDS v2 (closes the size gap to the 2.3–2.8 MB budget),
-  connection matrix from mozc's connection data, the Viterbi
-  converter, then the OSK widget.
+- **v2 done (2026-11-20)**: LOUDS tries + codebook + varint
+  tokens, 1.85 MB, full regression PASS on the real dictionary
+  (see "Measured BIDF v2"). The `.bidf` binary stays regenerable
+  and uncommitted; the builder is the source of record.
+- Next: connection matrix from mozc's connection data, the Viterbi
+  converter (`libbrainime`) with the regression suite, then the
+  OSK widget.
