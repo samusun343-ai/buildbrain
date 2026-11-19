@@ -5,6 +5,13 @@ SRC = src/bui.c src/bui_wm.c src/scenes.c src/bui_fb.c src/bui_input.c src/bui_a
 APPS = bd-files bd-tasks bd-notes bd-clock bd-calc bd-player bd-recorder bd-devices bd-pkg bd-web bd-deck bd-regedit
 APPSRC = src/bui.c src/bui_wm.c src/bui_fb.c src/bui_input.c src/bui_alsa.c src/bui_osk.c src/bui_skin.c src/brainreg.c
 
+# QuickJS (vendored, third_party/quickjs) — linked into bd-web only (M3).
+QJS_SRC = third_party/quickjs/dtoa.c third_party/quickjs/libregexp.c third_party/quickjs/libunicode.c third_party/quickjs/quickjs.c
+QJS_OBJ = $(QJS_SRC:.c=.o)
+
+third_party/quickjs/%.o: third_party/quickjs/%.c
+	$(CC) -O2 -c $< -o $@
+
 all: demo shell test_events greeter apps
 
 apps: $(APPS) brainctl
@@ -14,6 +21,10 @@ brainctl: src/apps/brainctl.c src/brainreg.c src/brainreg.h
 
 bd-%: src/apps/bd-%.c src/apps/bdapp.h $(APPSRC)
 	$(CC) $(CFLAGS) -o $@ $(APPSRC) $< -lm
+
+# bd-web overrides the generic rule: QuickJS engine + JS wrapper.
+bd-web: src/apps/bd-web.c src/apps/bdapp.h src/apps/bd_js.c src/apps/bd_js.h $(APPSRC) $(QJS_OBJ)
+	$(CC) $(CFLAGS) -Ithird_party/quickjs -o $@ $(APPSRC) src/apps/bd-web.c src/apps/bd_js.c $(QJS_OBJ) -lm -lpthread -ldl
 
 greeter: $(SRC) src/greeter.c
 	$(CC) $(CFLAGS) -o $@ $(SRC) src/greeter.c -lm -lcrypt
@@ -32,6 +43,6 @@ arm:
 	arm-buildroot-linux-gnueabi-gcc -O2 -static -Wall -Wextra -Wno-unused-parameter -o braindesk-shell-arm $(SRC) src/shell.c -lm
 
 clean:
-	rm -f demo shell test_events greeter $(APPS) *.ppm
+	rm -f demo shell test_events greeter $(APPS) $(QJS_OBJ) *.ppm
 
 .PHONY: all arm clean

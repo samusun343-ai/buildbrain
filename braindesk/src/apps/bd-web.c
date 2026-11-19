@@ -2,12 +2,17 @@
  * In-house engine on libbrainui: fetch with curl, a small
  * HTML parser producing blocks (headings, paragraphs, lists,
  * images), a wrapping layout with tappable link regions,
- * history, and bookmarks. No JavaScript yet (M3 plans a
- * Duktape embedding); forms and a CSS subset are M2.
+ * history, and bookmarks. Forms and a CSS subset are M2.
+ * M3 embeds QuickJS (third_party/quickjs, v0.18.0): inline
+ * <script> runs after the page loads; console.log and a live
+ * document.title are exposed, external scripts and the DOM are
+ * still out of scope.
  */
 #include "bdapp.h"
+#include "bd_js.h"
 #include "../bui_osk.h"
 #include <ctype.h>
+#include <strings.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "../../third_party/stb_image.h"
@@ -127,6 +132,10 @@ struct web {
 	int edit_field;		/* block index being edited, -1 = URL bar */
 	struct cssrule rules[64];
 	int nrules;
+	/* inline scripts, collected at parse time (M3) */
+	char js_src[65536];
+	int js_len;
+	int js_ext;		/* external <script src> count, skipped */
 };
 
 static char *body_buf;
@@ -566,6 +575,7 @@ static void parse(struct web *w, const char *html, const char *page_url)
 	int csp = 0;
 	bool skip = false;	/* inside script/style/head */
 	bool in_style = false;
+	bool in_script = false;	/* inside an inline <script> */
 	static char cssbuf[16384];
 	int csslen = 0;
 	int cur_form = -1;
@@ -575,6 +585,8 @@ static void parse(struct web *w, const char *html, const char *page_url)
 	int tlen = 0;
 	w->nforms = 0;
 	w->nrules = 0;
+	w->js_len = 0;
+	w->js_ext = 0;
 	/* runs are recorded per block as (offset,len,href,bold) using a temp list */
 	static struct { int off, len; char href[512]; bool bold; int color; } truns[2048];
 	int ntruns = 0;
@@ -629,6 +641,37 @@ static void parse(struct web *w, const char *html, const char *page_url)
 
 	while (*p) {
 		if (*p == '<') {
+			/* '<' inside a script is script text, not markup
+			 * (JS comparisons, generics, '<' in strings), except
+			 * for the tag that closes the script. This also keeps
+			 * legacy <!-- --> inside scripts intact (Annex B
+			 * HTML-like comments are valid JS).
+			 * Stop at the closing tag: a '<' earlier in the script
+			 * must not swallow '</script>' (its '>' would otherwise
+			 * be taken as the end of this '<...>' chunk). */
+			if (in_script && !(p[1] == '/' &&
+					   strncasecmp(p + 2, "script", 6) == 0)) {
+				const char *close = strcasestr(p, "</script");
+				const char *gt2 = strchr(p, '>');
+				if (close && (!gt2 || close < gt2)) {
+					int tl = (int)(close - p);
+					if (w->js_len + tl < (int)sizeof(w->js_src)) {
+						memcpy(w->js_src + w->js_len, p, (size_t)tl);
+						w->js_len += tl;
+					}
+					p = close;
+					continue;
+				}
+				if (!gt2)
+					break;
+				int tl = (int)(gt2 - p + 1);
+				if (w->js_len + tl < (int)sizeof(w->js_src)) {
+					memcpy(w->js_src + w->js_len, p, (size_t)tl);
+					w->js_len += tl;
+				}
+				p = gt2 + 1;
+				continue;
+			}
 			/* comment */
 			if (strncmp(p, "<!--", 4) == 0) {
 				const char *e = strstr(p, "-->");
@@ -664,7 +707,24 @@ static void parse(struct web *w, const char *html, const char *page_url)
 				p = gt + 1;
 				continue;
 			}
-			if (strcmp(name, "script") == 0 || strcmp(name, "head") == 0) {
+			if (strcmp(name, "script") == 0) {
+				if (!closing) {
+					char src[512];
+					src[0] = 0;
+					get_attr(tag, "src", src, sizeof(src));
+					if (src[0])
+						w->js_ext++;
+					else
+						in_script = true;
+					skip = true;
+				} else {
+					in_script = false;
+					skip = false;
+				}
+				p = gt + 1;
+				continue;
+			}
+			if (strcmp(name, "head") == 0) {
 				if (!closing)
 					skip = true;
 				else
@@ -672,16 +732,19 @@ static void parse(struct web *w, const char *html, const char *page_url)
 				p = gt + 1;
 				continue;
 			}
-			if (skip) {
-				p = gt + 1;
-				continue;
-			}
+			/* <title> lives inside <head> (skipped), so extract it
+			 * before the skip check — otherwise w->title (and
+			 * document.title) is always empty. */
 			if (strcmp(name, "title") == 0 && !closing) {
 				const char *e = strcasestr(gt + 1, "</title>");
 				if (e) {
 					snprintf(w->title, sizeof(w->title), "%.*s", (int)(e - (gt + 1)), gt + 1);
 					decode_entities(w->title);
 				}
+			}
+			if (skip) {
+				p = gt + 1;
+				continue;
 			}
 			if (!closing && (strcmp(name, "p") == 0 || strcmp(name, "div") == 0 ||
 					 strcmp(name, "section") == 0 || strcmp(name, "article") == 0 ||
@@ -864,6 +927,12 @@ static void parse(struct web *w, const char *html, const char *page_url)
 			continue;
 		}
 		/* text */
+		if (in_script) {
+			if (w->js_len < (int)sizeof(w->js_src) - 1)
+				w->js_src[w->js_len++] = *p;
+			p++;
+			continue;
+		}
 		if (in_style) {
 			if (csslen < (int)sizeof(cssbuf) - 1)
 				cssbuf[csslen++] = *p;
@@ -881,6 +950,7 @@ static void parse(struct web *w, const char *html, const char *page_url)
 		}
 		p++;
 	}
+	w->js_src[w->js_len] = 0;
 	CLOSE_BLOCK();
 	/* drop empty blocks */
 	int out = 0;
@@ -1129,6 +1199,53 @@ static void layout(struct web *w, bu_font *font)
 	w->content_h = y;
 }
 
+/* ---------- JavaScript (M3) ---------- */
+/* Run the inline scripts collected by parse(). The status line only
+ * changes when the scripts had a visible effect (console output, a
+ * non-empty completion value, or an error); otherwise the title
+ * status set by navigate() stays. */
+static void run_scripts(struct web *w)
+{
+	if (w->js_len == 0 && w->js_ext == 0)
+		return;
+	if (w->js_len == 0) {
+		snprintf(w->status, sizeof(w->status),
+			 "JS: 外部スクリプト %d 件は未対応です", w->js_ext);
+		return;
+	}
+	struct bd_js *js = bd_js_new();
+	if (!js) {
+		snprintf(w->status, sizeof(w->status), "JS: エンジン初期化失敗");
+		return;
+	}
+	bd_js_set_title(js, w->title);
+	char *out = NULL;
+	int rc = bd_js_eval(js, w->js_src, &out);
+	const char *con = bd_js_console(js);
+	if (rc != 0) {
+		snprintf(w->status, sizeof(w->status), "JS エラー: %.120s",
+			 out ? out : "?");
+	} else if (con[0]) {
+		/* flatten console lines into the one-line status */
+		char flat[141];
+		size_t j = 0;
+		for (size_t i = 0; con[i] && j < sizeof(flat) - 1; i++) {
+			char c = con[i] == '\n' ? ' ' : con[i];
+			if (c == ' ' && j > 0 && flat[j - 1] == ' ')
+				continue;
+			flat[j++] = c;
+		}
+		while (j > 0 && flat[j - 1] == ' ')
+			j--;
+		flat[j] = 0;
+		snprintf(w->status, sizeof(w->status), "JS: %s", flat);
+	} else if (out && out[0]) {
+		snprintf(w->status, sizeof(w->status), "JS: %.140s", out);
+	}
+	free(out);
+	bd_js_free(js);
+}
+
 /* ---------- navigation ---------- */
 static void navigate(struct web *w, const char *url, bool push)
 {
@@ -1148,6 +1265,7 @@ static void navigate(struct web *w, const char *url, bool push)
 	}
 	snprintf(w->url, sizeof(w->url), "%s", eff);
 	snprintf(w->status, sizeof(w->status), "%s", w->title[0] ? w->title : eff);
+	run_scripts(w);
 	if (push && !w->hist_nav) {
 		if (w->hist_pos < w->hist_len - 1)
 			w->hist_len = w->hist_pos + 1;
