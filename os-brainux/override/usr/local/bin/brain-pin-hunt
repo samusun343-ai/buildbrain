@@ -1,0 +1,38 @@
+#!/bin/sh
+# brain-pin-hunt: find which GPIO / interrupt / ADC channel reacts to
+# a physical action (lid open/close, power button, ...).
+#
+# Usage: brain-pin-hunt [seconds]
+# It snapshots /sys/kernel/debug/gpio, /proc/interrupts and all IIO
+# in_*_raw channels once per second. Perform the action repeatedly
+# while it runs; afterwards, lines that changed are printed again at
+# the end for comparison. Needs root (debugfs) — run with sudo.
+set -u
+SECS="${1:-30}"
+OUT="/tmp/pin-hunt-$(date +%s)"
+mkdir -p "$OUT"
+
+snap() {
+	n="$1"
+	[ -r /sys/kernel/debug/gpio ] && cp /sys/kernel/debug/gpio "$OUT/gpio-$n" 2>/dev/null
+	cp /proc/interrupts "$OUT/ints-$n" 2>/dev/null
+	for f in /sys/bus/iio/devices/iio:device*/in_*_raw; do
+		[ -r "$f" ] || continue
+		echo "$f $(cat "$f" 2>/dev/null)" >> "$OUT/iio-$n"
+	done
+}
+
+echo "Snapshotting for ${SECS}s into $OUT — work the control now."
+i=0
+while [ "$i" -lt "$SECS" ]; do
+	snap "$i"
+	i=$((i + 1))
+	sleep 1
+done
+snap "$i"
+
+echo "== GPIO lines that changed =="
+diff "$OUT/gpio-0" "$OUT/gpio-$i" || true
+echo "== IIO channels that changed =="
+diff "$OUT/iio-0" "$OUT/iio-$i" || true
+echo "Full snapshots kept in $OUT (interrupt deltas: diff ints-0 ints-$i)"
