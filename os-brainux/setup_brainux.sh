@@ -113,7 +113,7 @@ DEBIAN_FRONTEND=noninteractive \
 make -C /opt/braindesk -j$(nproc) shell greeter apps
 install -m 0755 /opt/braindesk/shell /usr/local/bin/braindesk
 install -m 0755 /opt/braindesk/greeter /usr/local/bin/braingreeter
-for app in bd-files bd-tasks bd-notes bd-clock bd-calc bd-player bd-recorder bd-devices bd-pkg; do
+for app in bd-files bd-tasks bd-notes bd-clock bd-calc bd-player bd-recorder bd-devices bd-pkg bd-web; do
     install -m 0755 /opt/braindesk/$app /usr/local/bin/$app
 done
 # Not enabled yet: ly stays the default greeter until braindesk is

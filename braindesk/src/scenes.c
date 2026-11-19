@@ -94,7 +94,7 @@ static const struct app APPS[] = {
 	{ "電卓", bu_icon_calc, { 116, 192, 252, 255 }, "/usr/local/bin/bd-calc" },
 	{ "音楽", bu_icon_music, { 240, 101, 149, 255 }, "/usr/local/bin/bd-player" },
 	{ "録音", bu_icon_mic, { 255, 110, 110, 255 }, "/usr/local/bin/bd-recorder" },
-	{ "ブラウザ", bu_icon_globe, { 32, 201, 151, 255 }, "/usr/local/bin/netsurf-fb" },
+	{ "ブラウザ", bu_icon_globe, { 32, 201, 151, 255 }, "/usr/local/bin/bd-web" },
 	{ "デバイス", bu_icon_chip, { 178, 140, 240, 255 }, "/usr/local/bin/bd-devices" },
 	{ "パッケージ", bu_icon_box, { 165, 215, 130, 255 }, "/usr/local/bin/bd-pkg" },
 	{ "辞書", bu_icon_book, { 45, 156, 219, 255 }, NULL },
@@ -567,7 +567,7 @@ int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y,
 			return BD_ACT_LAUNCH;
 		}
 		if (in_rect(ql_rect(2), x, y)) {
-			snprintf(s->launch_path, sizeof(s->launch_path), "/usr/local/bin/netsurf-fb");
+			snprintf(s->launch_path, sizeof(s->launch_path), "/usr/local/bin/bd-web");
 			*changed = true;
 			return BD_ACT_LAUNCH;
 		}
