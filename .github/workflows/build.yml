@@ -47,7 +47,7 @@ jobs:
       - name: Workaround for apt update failure
         run: sudo rm -f /etc/apt/sources.list.d/github_git-lfs.*
       - name: Install deps
-        run: sudo apt update && sudo apt install build-essential bison flex libncurses5-dev gcc-arm-linux-gnueabi qemu-user-static debootstrap python3-pip
+        run: sudo apt update && sudo apt install build-essential bison flex libncurses5-dev gcc-arm-linux-gnueabi qemu-user-static debootstrap python3-pip kmod
       - name: Upgrade pip and setuptools
         run: pip3 install -U pip 'setuptools<71'
       - name: Install listconfig
@@ -96,7 +96,7 @@ jobs:
       - name: Workaround for apt update failure
         run: sudo rm -f /etc/apt/sources.list.d/github_git-lfs.*
       - name: Install deps
-        run: sudo apt update && sudo apt install build-essential bison flex libncurses5-dev gcc-arm-linux-gnueabihf libssl-dev lzop qemu-user-static debootstrap
+        run: sudo apt update && sudo apt install build-essential bison flex libncurses5-dev gcc-arm-linux-gnueabihf libssl-dev lzop qemu-user-static debootstrap kmod
       - name: Configure for Linux
         run: make ldefconfig-x1
       - name: Build Linux
@@ -249,7 +249,7 @@ jobs:
       - name: Workaround for apt update failure
         run: sudo rm -f /etc/apt/sources.list.d/github_git-lfs.*
       - name: Install deps
-        run: sudo apt update && sudo apt install kpartx build-essential bison flex libncurses5-dev gcc-arm-linux-gnueabi qemu-user-static debootstrap
+        run: sudo apt update && sudo apt install kpartx build-essential bison flex libncurses5-dev gcc-arm-linux-gnueabi qemu-user-static debootstrap kmod
       - name: Configure for Linux
         run: make ldefconfig
       - name: Build Linux
@@ -289,7 +289,7 @@ jobs:
       - name: Workaround for apt update failure
         run: sudo rm -f /etc/apt/sources.list.d/github_git-lfs.*
       - name: Install deps
-        run: sudo apt update && sudo apt install kpartx build-essential bison flex libncurses5-dev gcc-arm-linux-gnueabihf libssl-dev lzop qemu-user-static debootstrap
+        run: sudo apt update && sudo apt install kpartx build-essential bison flex libncurses5-dev gcc-arm-linux-gnueabihf libssl-dev lzop qemu-user-static debootstrap kmod
       - name: Upgrade pip and setuptools
         run: pip3 install -U pip setuptools
       - name: Install pyelftools
