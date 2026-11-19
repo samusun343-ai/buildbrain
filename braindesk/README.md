@@ -4,10 +4,33 @@ braindesk is the desktop environment, greeter (login screen) and
 settings app for Brainux on SHARP Brain, written from scratch
 together with its own UI toolkit, **libbrainui**.
 
-It deliberately does not use X11, GTK, Qt, or any existing desktop:
-on a 128 MiB, single-core ARMv5 machine with an 854x480 panel,
-a general-purpose stack spends the hardware budget on itself.
-braindesk is designed only for this machine:
+braindesk is not a purist from-scratch stack, and it is not a
+reskin of the stock one either. The rule is per-layer: abolish
+what is wasteful, adopt what is already good (protocols and
+libraries), and build our own where the generic option costs
+this machine too much. Concretely:
+
+- The greeter owns the framebuffer directly before any session
+  exists (the same position ly occupies today) — no display
+  server is needed, or wanted, at that stage.
+- Inside the session, existing applications must keep running:
+  a desktop that only runs its own apps is a dead end for
+  development and for users. The session therefore keeps a
+  standard display path (X11 or Wayland — decided by measuring
+  both on this hardware, see below), and braindesk's shell,
+  panel and settings live there as first-class programs.
+- libbrainui is the toolkit for braindesk's own programs and
+  draws into an abstract canvas, so the same apps run on the
+  greeter's fbdev backend and on the session backend without
+  being rewritten for either.
+- Where an existing library is simply better (pixman for
+  compositing, libwayland, fontconfig), braindesk uses it
+  instead of reinventing it.
+
+Open decision, to be settled by measurement on the real image
+(idle PSS, start-up time, input latency): Xorg+fbdev with a
+braindesk window manager vs a small Wayland compositor. The
+greeter and libbrainui are unaffected by that choice.
 
 - **libbrainui** (src/bui.c): one renderer for everything —
   software canvas with damage tracking in mind, glyph-cached

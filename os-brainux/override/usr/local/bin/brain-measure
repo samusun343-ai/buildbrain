@@ -1,0 +1,33 @@
+#!/bin/sh
+# brain-measure: snapshot the memory cost of the running desktop.
+#
+# Prints total RAM use and the PSS of every process that belongs
+# to the graphical session (display server, WM/compositor, panel,
+# input method, greeter, apps), so different stacks (stock X+JWM,
+# weston, braindesk) can be compared on equal terms.
+# Usage: brain-measure [label]
+set -u
+LABEL="${1:-snapshot}"
+
+total_kb=$(awk '/^MemTotal:/{print $2}' /proc/meminfo)
+avail_kb=$(awk '/^MemAvailable:/{print $2}' /proc/meminfo)
+echo "== brain-measure: $LABEL =="
+echo "MemTotal ${total_kb} kB, MemAvailable ${avail_kb} kB, used $((total_kb - avail_kb)) kB"
+
+sum=0
+printf '%-24s %10s %10s\n' PROCESS PSS_kB RSS_kB
+for d in /proc/[0-9]*; do
+	pid="${d#/proc/}"
+	[ -r "$d/smaps_rollup" ] || continue
+	comm=$(cat "$d/comm" 2>/dev/null) || continue
+	case "$comm" in
+		Xorg|weston|jwm|pcmanfm|lxterminal|gnome-terminal|xterm|fcitx*|uim*|ly|braindesk|braingreeter|netsurf*|systemd|dbus-daemon|NetworkManager|wpa_supplicant)
+			pss=$(awk '/^Pss:/{print $2}' "$d/smaps_rollup" 2>/dev/null)
+			rss=$(awk '/^VmRSS:/{print $2}' "$d/status" 2>/dev/null)
+			[ -n "$pss" ] || pss=0
+			sum=$((sum + pss))
+			printf '%-24s %10s %10s\n' "$comm($pid)" "$pss" "${rss:-0}"
+			;;
+	esac
+done
+echo "session PSS total: ${sum} kB"

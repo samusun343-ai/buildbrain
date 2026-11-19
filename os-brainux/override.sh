@@ -25,3 +25,4 @@ install -g root -o root -m 0755 $SRC/usr/local/bin/brain-pin-hunt $DST/usr/local
 install -g root -o root -m 0755 $SRC/usr/local/bin/braindesk-session $DST/usr/local/bin/braindesk-session
 install -g root -o root -m 0644 $SRC/lib/systemd/system/braindesk-session.service $DST/lib/systemd/system/braindesk-session.service
 install -g root -o root -m 0644 -D $SRC/etc/systemd/logind.conf.d/braindesk.conf $DST/etc/systemd/logind.conf.d/braindesk.conf
+install -g root -o root -m 0755 $SRC/usr/local/bin/brain-measure $DST/usr/local/bin/brain-measure
