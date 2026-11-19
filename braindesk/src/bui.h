@@ -58,6 +58,7 @@ typedef struct {
 	bu_color bg, surface, surface2, surface3, line;
 	bu_color text, text_dim, text_faint;
 	bu_color accent, accent2, danger, ok, warn;
+	bu_color panel;		/* panel / title-bar chrome (skins) */
 	int radius;
 	bu_font *font;
 } bu_theme;

@@ -125,7 +125,8 @@ static void wallpaper(bu_canvas *c)
 static void panel(bu_canvas *c, bu_theme *t, bd_state *s)
 {
 	bu_rect bar = { 0, PH - PANEL_H, PW, PANEL_H };
-	bu_fill_rect(c, bar, BU_RGBA(18, 23, 33, 235));
+	bu_color pc = t->panel; pc.a = 235;
+	bu_fill_rect(c, bar, pc);
 	bu_fill_rect(c, (bu_rect){ 0, PH - PANEL_H, PW, 1 }, BU_RGBA(255, 255, 255, 26));
 	bu_rect sb = start_btn();
 	bu_fill_round_rect(c, sb, 9, s->start_pressed ? t->accent2 : t->accent);
@@ -142,13 +143,17 @@ static void panel(bu_canvas *c, bu_theme *t, bd_state *s)
 		if (active)
 			bu_fill_round_rect(c, (bu_rect){ chip.x + chip.w / 2 - 12, PH - 9, 24, 3 }, 1, t->accent);
 	}
-	bu_icon_wifi(c, PW - 178, PH - 23, t->text_dim);
-	bu_icon_volume(c, PW - 148, PH - 23, t->text_dim);
+	/* tray ink: light on dark panels (XP/Win8), theme text otherwise */
+	int lum = (t->panel.r * 3 + t->panel.g * 5 + t->panel.b * 2) / 10;
+	bu_color tray = lum < 110 ? BU_RGB(255, 255, 255) : t->text_dim;
+	bu_color tray_main = lum < 110 ? BU_RGB(255, 255, 255) : t->text;
+	bu_icon_wifi(c, PW - 178, PH - 23, tray);
+	bu_icon_volume(c, PW - 148, PH - 23, tray);
 	char pct[8];
 	snprintf(pct, sizeof(pct), "%d%%", s->battery_pct);
-	bu_draw_text_right(c, t->font, (bu_rect){ 0, PH - PANEL_H, PW - 96, PANEL_H }, pct, 13, t->text_dim);
-	bu_icon_battery(c, PW - 92, PH - 30, s->battery_pct / 100.0f, false, t->text_dim);
-	bu_draw_text_right(c, t->font, (bu_rect){ 0, PH - PANEL_H, PW - 12, PANEL_H }, s->clock, 14, t->text);
+	bu_draw_text_right(c, t->font, (bu_rect){ 0, PH - PANEL_H, PW - 96, PANEL_H }, pct, 13, tray);
+	bu_icon_battery(c, PW - 92, PH - 30, s->battery_pct / 100.0f, false, tray);
+	bu_draw_text_right(c, t->font, (bu_rect){ 0, PH - PANEL_H, PW - 12, PANEL_H }, s->clock, 14, tray_main);
 }
 
 static void draw_launcher(bu_canvas *c, bu_theme *t, bd_state *s)
@@ -232,8 +237,11 @@ static void draw_settings(bu_canvas *c, bu_theme *t, bd_state *s)
 	if (s->settings_cat == 1) {
 		bu_draw_text(c, t->font, pane.x + 22, pane.y + 16, "スキン", 19, t->text);
 		bu_draw_text(c, t->font, pane.x + 22, pane.y + 48, "テーマと壁紙の配色を切り替えます。全アプリに反映されます。", 12.5, t->text_dim);
-		for (int i = 0; i < BD_NSKINS; i++) {
-			bu_rect row = { pane.x + 8, pane.y + 76 + i * 46, pane.w - 16, 42 };
+		for (int vi = 0; vi < 6; vi++) {
+			int i = s->skin_scroll + vi;
+			if (i >= BD_NSKINS)
+				break;
+			bu_rect row = { pane.x + 8, pane.y + 76 + vi * 46, pane.w - 70, 42 };
 			bu_fill_round_rect(c, row, 8, i == s->skin ? t->surface3 : t->surface2);
 			bu_fill_circle(c, row.x + 26, row.y + row.h / 2, 11, BD_SKINS[i].accent);
 			bu_fill_circle(c, row.x + 40, row.y + row.h / 2, 7, BD_SKINS[i].wall_bottom);
@@ -241,6 +249,8 @@ static void draw_settings(bu_canvas *c, bu_theme *t, bd_state *s)
 			if (i == s->skin)
 				bu_draw_text_right(c, t->font, (bu_rect){ row.x, row.y + 10, row.w - 16, 22 }, "使用中", 12.5, t->accent);
 		}
+		bu_button(c, t, (bu_rect){ pane.x + pane.w - 54, pane.y + 76, 46, 60 }, "▲", BU_BTN_NORMAL, false);
+		bu_button(c, t, (bu_rect){ pane.x + pane.w - 54, pane.y + 292, 46, 60 }, "▼", BU_BTN_NORMAL, false);
 		return;
 	}
 	bu_draw_text(c, t->font, pane.x + 22, pane.y + 16, "画面", 19, t->text);
@@ -345,8 +355,21 @@ int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y,
 				return BD_ACT_NONE;
 			if (s->settings_cat == 1) {
 				bu_rect pane = pane_rect();
-				for (int i = 0; i < BD_NSKINS; i++) {
-					bu_rect row = { pane.x + 8, pane.y + 76 + i * 46, pane.w - 16, 42 };
+				if (in_rect((bu_rect){ pane.x + pane.w - 54, pane.y + 76, 46, 60 }, x, y)) {
+					if (s->skin_scroll > 0) s->skin_scroll -= 3;
+					*changed = true;
+					return BD_ACT_NONE;
+				}
+				if (in_rect((bu_rect){ pane.x + pane.w - 54, pane.y + 292, 46, 60 }, x, y)) {
+					if (s->skin_scroll + 6 < BD_NSKINS) s->skin_scroll += 3;
+					*changed = true;
+					return BD_ACT_NONE;
+				}
+				for (int vi = 0; vi < 6; vi++) {
+					int i = s->skin_scroll + vi;
+					if (i >= BD_NSKINS)
+						break;
+					bu_rect row = { pane.x + 8, pane.y + 76 + vi * 46, pane.w - 70, 42 };
 					if (in_rect(row, x, y)) { s->skin = i; *changed = true; return BD_ACT_NONE; }
 				}
 				return BD_ACT_NONE; /* skin page swallows other pane taps */

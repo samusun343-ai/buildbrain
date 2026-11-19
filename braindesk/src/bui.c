@@ -353,6 +353,7 @@ bu_theme bu_theme_dark = {
 	.danger = { 224, 82, 82, 255 },
 	.ok = { 81, 207, 102, 255 },
 	.warn = { 250, 176, 5, 255 },
+	.panel = { 18, 23, 33, 255 },
 	.radius = 10,
 	.font = NULL,
 };

@@ -22,6 +22,7 @@ typedef struct {
 	int battery_pct;
 	char launch_path[128];	/* set when BD_ACT_LAUNCH is returned */
 	int skin;		/* current skin index (bui_skin) */
+	int skin_scroll;	/* skin page scroll offset */
 	/* network page (filled by the shell from nmcli) */
 	bool wifi_on;
 	char wifi_ssid[64];

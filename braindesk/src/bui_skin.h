@@ -1,9 +1,13 @@
 /* bui_skin: braindesk skins.
- * A skin is an accent pair, a wallpaper gradient and an
- * optional light palette. The selection persists in
- * ~/.config/braindesk/skin and is applied by every braindesk
- * process (shell, greeter, apps) at startup; the shell also
- * applies live when the user picks a skin in Settings.
+ * A skin is a full palette (surfaces, text, accents, panel),
+ * a wallpaper gradient and a corner radius, so a skin changes
+ * the character of the whole desktop, not just one colour.
+ * The selection persists in ~/.config/braindesk/skin and is
+ * applied by every braindesk process (shell, greeter, apps)
+ * at startup; the shell also applies live from Settings.
+ *
+ * The OS-flavoured skins are original palettes inspired by
+ * each era's look — no artwork or assets from those systems.
  */
 #ifndef BUI_SKIN_H
 #define BUI_SKIN_H
@@ -12,9 +16,12 @@
 
 typedef struct {
 	const char *name;
+	bu_color bg, surface, surface2, surface3, line;
+	bu_color text, text_dim, text_faint;
 	bu_color accent, accent2;
+	bu_color panel;
 	bu_color wall_top, wall_bottom, wall_glow;
-	bool light;
+	int radius;
 } bd_skin;
 
 extern const bd_skin BD_SKINS[];

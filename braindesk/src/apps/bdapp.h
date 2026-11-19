@@ -40,7 +40,8 @@ static inline void bdapp_frame(bdapp *a)
 	bu_theme *t = a->theme;
 	const bd_skin *sk = bd_skin_get();
 	bu_gradient_v(c, (bu_rect){ 0, 0, a->w, a->h }, sk->wall_top, sk->wall_bottom);
-	bu_fill_rect(c, (bu_rect){ 0, 0, a->w, 44 }, BU_RGBA(18, 23, 33, 235));
+	bu_color pc = t->panel; pc.a = 235;
+	bu_fill_rect(c, (bu_rect){ 0, 0, a->w, 44 }, pc);
 	bu_fill_rect(c, (bu_rect){ 0, 43, a->w, 1 }, BU_RGBA(255, 255, 255, 26));
 	bu_draw_text(c, t->font, 16, 8, a->title, 17, t->text);
 	/* close button */
