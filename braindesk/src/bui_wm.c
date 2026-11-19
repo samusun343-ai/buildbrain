@@ -476,34 +476,85 @@ void bd_wm_draw(bu_canvas *c, bu_theme *t)
 }
 
 /* task buttons: slots for windows in creation order */
+/* Task buttons are sized to their content (title text + padding),
+ * like XP/7 task buttons — a fixed wide slot wastes panel space.
+ * Win11 uses fixed 40 px icon buttons in the centred cluster. */
+static bu_font *task_font;
+static int task_x[WM_MAX_WIN], task_w[WM_MAX_WIN], task_n;
+
+static void task_layout(int x0, int x1, int layout)
+{
+	int cx = x0;
+	task_n = 0;
+	for (int i = 0; i < WM_MAX_WIN; i++) {
+		if (!wins[i].used) continue;
+		int bw;
+		if (layout == 3 /* WIN11 */) {
+			bw = 40;
+		} else {
+			int tw = task_font ? bu_text_width(task_font, wins[i].title, 11.5f) : 40;
+			bw = tw + 22;
+			if (bw < 60) bw = 60;
+			if (bw > 148) bw = 148;
+		}
+		if (cx + bw > x1) break;
+		task_x[task_n] = cx;
+		task_w[task_n] = bw;
+		task_n++;
+		cx += bw + 4;
+	}
+}
+
 static bu_rect task_rect(int slot, int x0, int x1, int py, int ph)
 {
-	int bw = 118;
-	return (bu_rect){ x0 + slot * (bw + 6), py + 5, bw, ph - 10 };
+	(void)x0; (void)x1;
+	if (slot >= task_n) return (bu_rect){ 0, -100, 0, 0 };
+	return (bu_rect){ task_x[slot], py + 4, task_w[slot], ph - 8 };
 }
 
 void bd_wm_draw_tasks(bu_canvas *c, bu_theme *t, int x0, int x1, int py, int ph)
 {
+	task_font = t->font;
+	int layout = bd_skin_get()->layout;
+	task_layout(x0, x1, layout);
 	int slot = 0;
 	for (int i = 0; i < WM_MAX_WIN; i++) {
-		if (!wins[i].used) continue;
+		if (!wins[i].used || slot >= task_n) continue;
 		bu_rect r = task_rect(slot, x0, x1, py, ph);
-		if (r.x + r.w > x1) break;
 		bool active = (i == win_top());
-		bu_fill_round_rect(c, r, 6, active ? t->surface3 : t->surface2);
-		bu_draw_text(c, t->font, r.x + 10, r.y + (r.h - 16) / 2,
-			     wins[i].title, 11.5, active ? t->text : t->text_dim);
+		if (layout == 3 /* WIN11: icon button + accent pill */) {
+			if (active)
+				bu_fill_round_rect(c, r, 6, t->surface2);
+			char initial[5];
+			int n = 0;
+			while (wins[i].title[n] && n < 4 &&
+			       (wins[i].title[n] & 0xC0) != 0x80)
+				initial[n] = wins[i].title[n], n++;
+			initial[n] = 0;
+			bu_draw_text_centered(c, t->font,
+				(bu_rect){ r.x, r.y + 2, r.w, r.h - 8 },
+				initial, 13, active ? t->text : t->text_dim);
+			bu_fill_round_rect(c,
+				(bu_rect){ r.x + r.w / 2 - 8, r.y + r.h - 4, 16, 3 },
+				1, active ? t->accent : t->text_faint);
+		} else {
+			bu_fill_round_rect(c, r, bd_skin_get()->chrome == 2 ? 3 : 6,
+					   active ? t->surface3 : t->surface2);
+			bu_draw_text(c, t->font, r.x + 11, r.y + (r.h - 12) / 2,
+				     wins[i].title, 11.5,
+				     active ? t->text : t->text_dim);
+		}
 		slot++;
 	}
 }
 
 int bd_wm_task_hit(int x, int y, int x0, int x1, int py, int ph)
 {
+	task_layout(x0, x1, bd_skin_get()->layout);
 	int slot = 0;
 	for (int i = 0; i < WM_MAX_WIN; i++) {
-		if (!wins[i].used) continue;
+		if (!wins[i].used || slot >= task_n) continue;
 		bu_rect r = task_rect(slot, x0, x1, py, ph);
-		if (r.x + r.w > x1) break;
 		if (x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h)
 			return i;
 		slot++;

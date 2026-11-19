@@ -50,7 +50,7 @@ static bu_rect start_btn(void)
 	if (bu_chrome == BU_CHROME_BEVEL)
 		return (bu_rect){ 4, PH - PANEL_H + 3, 86, PANEL_H - 6 };
 	if (bu_chrome == BU_CHROME_AERO)
-		return (bu_rect){ 6, PH - PANEL_H - 6, 44, 44 };
+		return (bu_rect){ 2, PH - PANEL_H - 7, 54, 54 };	/* Win7 orb: 54px, protrudes ~7 */
 	return (bu_rect){ dock_x0() + 8, PH - PANEL_H + (PANEL_H - 34) / 2, 34, 34 };
 }
 static bu_rect ql_rect(int i)
@@ -459,7 +459,9 @@ static void draw_dock(bu_canvas *c, bu_theme *t, bd_state *s)
 static void task_area(int *x0, int *x1)
 {
 	if (skin_layout() == BD_LAYOUT_WIN11) {
-		*x0 = PW / 2 + 118;
+		/* running apps join the centred cluster, right after the pins */
+		bu_rect q2 = ql_rect(2);
+		*x0 = q2.x + q2.w + 6;
 	} else {
 		bu_rect q2 = ql_rect(2);
 		*x0 = q2.x + q2.w + 12;
@@ -571,7 +573,8 @@ static void panel(bu_canvas *c, bu_theme *t, bd_state *s)
 		} else {
 			bu_fill_round_rect(c, chip, 8, active ? t->surface3 : t->surface);
 		}
-		int drawn = draw_app_asset(c, QL_APP_IDX[i], chip.x + 4, chip.y + 3, 26);
+		int isz = skin_layout() == BD_LAYOUT_WIN11 ? 24 : 26;	/* Win11 taskbar icons are 24 */
+		int drawn = draw_app_asset(c, QL_APP_IDX[i], chip.x + (chip.w - isz) / 2, chip.y + (chip.h - isz) / 2, isz);
 		if (!drawn && bu_chrome == BU_CHROME_LUNA && QL_APP_IDX[i] == 1)
 			drawn = draw_named_asset(c, "xp", "files", chip.x + 4, chip.y + 3, 26);
 		if (!drawn && bu_chrome == BU_CHROME_LUNA && QL_APP_IDX[i] == 8)
