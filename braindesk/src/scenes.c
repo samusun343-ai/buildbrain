@@ -31,6 +31,25 @@ static bu_rect brightness_slider(void)
 	bu_rect p = pane_rect();
 	return (bu_rect){ p.x + 58, p.y + 80, p.w - 150, 24 };
 }
+
+const char *const BD_MODE_IDS[4] = { "normal", "deck", "server", "share" };
+const char *const BD_MODE_NAMES[4] = { "通常", "デッキ", "サーバ", "共有" };
+static const char *const BD_MODE_DESCS[4] = {
+	"デスクトップとして使う。USB はネットワークのみ",
+	"PC のコントロールデッキになる (HID キーボード+メディアキー)",
+	"小型サーバの束を起動する (DNS / MQTT / 共有)",
+	"USB メモリとしてファイルを渡す + ネットワーク",
+};
+static bu_rect mode_row(int i)
+{
+	bu_rect p = pane_rect();
+	return (bu_rect){ p.x + 8, p.y + 76 + i * 56, p.w - 16, 50 };
+}
+static bu_rect mode_deck_btn(void)
+{
+	bu_rect p = pane_rect();
+	return (bu_rect){ p.x + 8, p.y + 304, p.w - 16, 42 };
+}
 static bu_rect volume_slider(void)
 {
 	bu_rect p = pane_rect();
@@ -139,6 +158,8 @@ void bd_state_init(bd_state *s)
 	s->battery_pct = 78;
 	s->panel_h = 46;
 	s->wifi_on = true;
+	s->mode_set = -1;
+	snprintf(s->mode_name, sizeof(s->mode_name), "normal");
 	s->net_connect = -1;
 	snprintf(s->wifi_ssid, sizeof(s->wifi_ssid), "—");
 	snprintf(s->ip_addr, sizeof(s->ip_addr), "—");
@@ -332,9 +353,9 @@ static void draw_settings(bu_canvas *c, bu_theme *t, bd_state *s)
 	bu_fill_circle(c, win.x + win.w - 72, win.y + 21, 7, t->ok);
 	bu_rect side = { win.x, win.y + 42, 176, win.h - 42 };
 	bu_fill_rect(c, side, BU_RGBA(255, 255, 255, 7));
-	const char *cats[] = { "画面", "スキン", "音声", "キーボード", "ネットワーク", "バッテリー", "入力と日本語", "システム" };
-	for (int i = 0; i < 8; i++) {
-		bu_rect row = { side.x + 10, side.y + 12 + i * 40, side.w - 20, 34 };
+	const char *cats[] = { "画面", "スキン", "音声", "キーボード", "ネットワーク", "バッテリー", "入力と日本語", "システム", "モード" };
+	for (int i = 0; i < 9; i++) {
+		bu_rect row = { side.x + 10, side.y + 10 + i * 36, side.w - 20, 31 };
 		bu_list_row(c, t, row, cats[i], NULL, false, i == s->settings_cat);
 	}
 	bu_rect pane = pane_rect();
@@ -432,9 +453,26 @@ static void draw_settings(bu_canvas *c, bu_theme *t, bd_state *s)
 		bu_toggle(c, t, r3.x + r3.w - 60, r3.y + 8, s->key_sound);
 		return;
 	}
+	if (s->settings_cat == 8) {
+		bu_draw_text(c, t->font, pane.x + 22, pane.y + 16, "モード", 19, t->text);
+		bu_draw_text(c, t->font, pane.x + 22, pane.y + 48, "この1台を何にするか。切替は即座に反映されます。", 12.5, t->text_dim);
+		for (int i = 0; i < 4; i++) {
+			bu_rect row = mode_row(i);
+			bool cur = strcmp(s->mode_name, BD_MODE_IDS[i]) == 0;
+			bu_fill_round_rect(c, row, 8, cur ? t->surface3 : t->surface2);
+			bu_draw_text(c, t->font, row.x + 14, row.y + 5, BD_MODE_NAMES[i], 15, t->text);
+			bu_draw_text(c, t->font, row.x + 14, row.y + 27, BD_MODE_DESCS[i], 11.5, t->text_dim);
+			if (cur)
+				bu_draw_text_right(c, t->font, (bu_rect){ row.x, row.y + 5, row.w - 14, 22 }, "使用中", 12.5, t->accent);
+		}
+		if (strcmp(s->mode_name, "deck") == 0)
+			bu_button(c, t, mode_deck_btn(), "コントロールデッキを開く", BU_BTN_PRIMARY, false);
+		return;
+	}
 	{
-		static const char *names[] = { "画面", "スキン", "音声", "キーボード", "ネットワーク", "バッテリー", "入力と日本語", "システム" };
-		bu_draw_text(c, t->font, pane.x + 22, pane.y + 16, names[s->settings_cat & 7], 19, t->text);
+		static const char *names[] = { "画面", "スキン", "音声", "キーボード", "ネットワーク", "バッテリー", "入力と日本語", "システム", "モード" };
+		int ci = s->settings_cat >= 0 && s->settings_cat < 9 ? s->settings_cat : 0;
+		bu_draw_text(c, t->font, pane.x + 22, pane.y + 16, names[ci], 19, t->text);
 		bu_draw_text(c, t->font, pane.x + 22, pane.y + 60, "このカテゴリは今後の更新で拡充されます。", 13, t->text_dim);
 	}
 }
@@ -627,11 +665,24 @@ int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y,
 				if (in_rect(keysound_hit_for(s), x, y)) { s->key_sound = !s->key_sound; *changed = true; return BD_ACT_NONE; }
 			}
 
+			if (s->settings_cat == 8) {
+				for (int i = 0; i < 4; i++) {
+					if (in_rect(mode_row(i), x, y)) { s->mode_set = i; *changed = true; return BD_ACT_NONE; }
+				}
+				if (strcmp(s->mode_name, "deck") == 0 && in_rect(mode_deck_btn(), x, y)) {
+					snprintf(s->launch_path, sizeof(s->launch_path), "bd-deck");
+					s->settings_open = false;
+					*changed = true;
+					return BD_ACT_LAUNCH;
+				}
+				/* other taps fall through to the sidebar handling */
+			}
+
 			/* sidebar categories */
 			bu_rect w = settings_win();
-			for (int i = 0; i < 8; i++) {
-				bu_rect row = { w.x + 10, w.y + 42 + 12 + i * 40, 156, 34 };
-				if (in_rect(row, x, y)) { s->settings_cat = i; if (i == 4) s->net_scan_req++; *changed = true; return BD_ACT_NONE; }
+			for (int i = 0; i < 9; i++) {
+				bu_rect row = { w.x + 10, w.y + 42 + 10 + i * 36, 156, 31 };
+				if (in_rect(row, x, y)) { s->settings_cat = i; if (i == 4) s->net_scan_req++; if (i == 8) s->mode_poll_req++; *changed = true; return BD_ACT_NONE; }
 			}
 			return BD_ACT_NONE; /* clicks inside the window don't fall through */
 		}

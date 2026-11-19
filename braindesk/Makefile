@@ -2,7 +2,7 @@ CC ?= gcc
 CFLAGS ?= -O2 -Wall -Wextra -Wno-unused-parameter
 SRC = src/bui.c src/scenes.c src/bui_fb.c src/bui_input.c src/bui_alsa.c src/bui_osk.c src/bui_skin.c
 
-APPS = bd-files bd-tasks bd-notes bd-clock bd-calc bd-player bd-recorder bd-devices bd-pkg bd-web
+APPS = bd-files bd-tasks bd-notes bd-clock bd-calc bd-player bd-recorder bd-devices bd-pkg bd-web bd-deck
 APPSRC = src/bui.c src/bui_fb.c src/bui_input.c src/bui_alsa.c src/bui_osk.c src/bui_skin.c
 
 all: demo shell test_events greeter apps

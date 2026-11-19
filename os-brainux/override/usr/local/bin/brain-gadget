@@ -70,6 +70,18 @@ add_hid_keyboard() {
     ln -s "$G/functions/hid.usb0" "$G/configs/c.1/"
 }
 
+add_hid_consumer() {
+    mkdir -p "$G/functions/hid.usb1"
+    echo 0 > "$G/functions/hid.usb1/protocol"
+    echo 0 > "$G/functions/hid.usb1/subclass"
+    echo 1 > "$G/functions/hid.usb1/report_length"
+    # Consumer control: 7 one-bit usages (play/pause, next, prev,
+    # stop, mute, vol+, vol-) + 1 pad bit = 1-byte reports.
+    printf '\x05\x0c\x09\x01\xa1\x01\x15\x00\x25\x01\x09\xcd\x09\xb5\x09\xb6\x09\xb7\x09\xe2\x09\xe9\x09\xea\x75\x01\x95\x07\x81\x02\x95\x01\x81\x01\xc0' \
+        > "$G/functions/hid.usb1/report_desc"
+    ln -s "$G/functions/hid.usb1" "$G/configs/c.1/"
+}
+
 add_acm() {
     mkdir -p "$G/functions/acm.usb0"
     ln -s "$G/functions/acm.usb0" "$G/configs/c.1/"
@@ -98,7 +110,7 @@ case "$1" in
     net)
         teardown; setup_common; add_ncm; bind ;;
     deck)
-        teardown; setup_common; add_hid_keyboard; add_acm; add_ncm; bind ;;
+        teardown; setup_common; add_hid_keyboard; add_hid_consumer; add_acm; add_ncm; bind ;;
     share)
         teardown; setup_common; add_msc; add_ncm; bind ;;
     off)

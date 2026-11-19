@@ -103,6 +103,18 @@ static void panel_prefs_save(bd_state *s)
 	}
 }
 /* --- settings data providers (network / system pages) --- */
+static void fill_mode(bd_state *s)
+{
+	FILE *fp = popen("brain-mode get 2>/dev/null", "r");
+	if (!fp) return;
+	char buf[32] = "";
+	if (fgets(buf, sizeof(buf), fp)) {
+		buf[strcspn(buf, "\r\n")] = 0;
+		if (buf[0]) snprintf(s->mode_name, sizeof(s->mode_name), "%s", buf);
+	}
+	pclose(fp);
+}
+
 static void fill_sysinfo(bd_state *s)
 {
 	struct utsname un;
@@ -244,11 +256,13 @@ int main(int argc, char **argv)
 		if (getenv("BD_SHOT_ASSIST")) s.assist_on = true;
 		if (getenv("BD_SHOT_ASSIST_OPEN")) { s.assist_on = true; s.assist_open = true; }
 		if (getenv("BD_SHOT_VOLPOP")) s.vol_popup = true;
+		if (getenv("BD_SHOT_MODE")) { s.settings_open = true; s.settings_cat = 8; snprintf(s.mode_name, sizeof(s.mode_name), "deck"); }
 	}
+	fill_mode(&s);
 	fill_sysinfo(&s);
 	int last_panel_h = s.panel_h;
 	bool last_assist_on = s.assist_on;
-	int last_scan_req = 0, last_connect = -1;
+	int last_scan_req = 0, last_connect = -1, last_mode_poll = 0;
 	bool last_wifi_on = s.wifi_on;
 	time_t last_net_poll = 0;
 	update_clock(&s, &(bool){ 0 });
@@ -344,6 +358,19 @@ int main(int argc, char **argv)
 			}
 			s.net_connect = -1;
 			last_connect = -1;
+		}
+		if (s.settings_open && s.settings_cat == 8 && s.mode_poll_req != last_mode_poll) {
+			last_mode_poll = s.mode_poll_req;
+			fill_mode(&s);
+			changed = true;
+		}
+		if (s.mode_set >= 0 && s.mode_set < 4) {
+			char cmd[80];
+			snprintf(cmd, sizeof(cmd), "brain-mode set %s >/dev/null 2>&1", BD_MODE_IDS[s.mode_set]);
+			if (system(cmd) == 0)
+				snprintf(s.mode_name, sizeof(s.mode_name), "%s", BD_MODE_IDS[s.mode_set]);
+			s.mode_set = -1;
+			changed = true;
 		}
 		if (s.panel_h != last_panel_h || s.assist_on != last_assist_on) {
 			panel_prefs_save(&s);

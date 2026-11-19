@@ -43,10 +43,17 @@ typedef struct {
 	char net_status[96];
 	/* system page (filled by the shell) */
 	char sysinfo[6][96];
+	/* mode page (filled/applied by the shell via brain-mode) */
+	char mode_name[16];	/* current mode id: normal/deck/server/share */
+	int mode_set;		/* mode index to apply, -1 = none pending */
+	int mode_poll_req;	/* bumped when the mode page opens */
 	/* interaction */
 	int drag_slider;	/* 0 none, 1 brightness, 2 volume */
 	bool start_pressed;
 } bd_state;
+
+extern const char *const BD_MODE_IDS[4];	/* normal deck server share */
+extern const char *const BD_MODE_NAMES[4];
 
 void bd_state_init(bd_state *s);
 void bd_update_datetime(bd_state *s); /* fills clock + date from local time */
