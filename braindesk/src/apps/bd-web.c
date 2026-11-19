@@ -8,6 +8,8 @@
  * document.title are exposed, external scripts and the DOM are
  * still out of scope. <select> (tap cycles options) and
  * <textarea> (multi-line OSK editing) are M3 follow-up.
+ * M3 follow-up 2: form POST (application/x-www-form-urlencoded
+ * via curl --data-binary); unknown methods report 未対応.
  */
 #include "bdapp.h"
 #include "bd_js.h"
@@ -149,13 +151,29 @@ static char *body_buf;
 static int body_len;
 
 /* ---------- fetch ---------- */
-static int fetch(struct web *w, const char *url, char *effective, size_t en)
+/* post_body != NULL: POST the body as application/x-www-form-urlencoded
+ * (curl --data-binary @file sets the content type); NULL = plain GET. */
+static int fetch_impl(struct web *w, const char *url, const char *post_body,
+		      char *effective, size_t en)
 {
-	char tmp[600], cmd[2048];
+	char tmp[600], cmd[2300];
 	snprintf(tmp, sizeof(tmp), "%s/fetch.html", w->cache_dir);
-	snprintf(cmd, sizeof(cmd),
-		 "curl -sL --max-time 25 -A 'Mozilla/5.0 (X11; Linux) bd-web' -o '%s' -w '%%{url_effective}' '%s' 2>/dev/null",
-		 tmp, url);
+	if (post_body) {
+		char pb[600];
+		snprintf(pb, sizeof(pb), "%s/postbody.txt", w->cache_dir);
+		FILE *fp = fopen(pb, "w");
+		if (!fp)
+			return -1;
+		fputs(post_body, fp);
+		fclose(fp);
+		snprintf(cmd, sizeof(cmd),
+			 "curl -sL --max-time 25 -A 'Mozilla/5.0 (X11; Linux) bd-web' -o '%s' -w '%%{url_effective}' --data-binary @'%s' '%s' 2>/dev/null",
+			 tmp, pb, url);
+	} else {
+		snprintf(cmd, sizeof(cmd),
+			 "curl -sL --max-time 25 -A 'Mozilla/5.0 (X11; Linux) bd-web' -o '%s' -w '%%{url_effective}' '%s' 2>/dev/null",
+			 tmp, url);
+	}
 	FILE *pp = popen(cmd, "r");
 	if (!pp)
 		return -1;
@@ -171,6 +189,17 @@ static int fetch(struct web *w, const char *url, char *effective, size_t en)
 	fclose(fp);
 	body_buf[body_len] = 0;
 	return 0;
+}
+
+static int fetch(struct web *w, const char *url, char *effective, size_t en)
+{
+	return fetch_impl(w, url, NULL, effective, en);
+}
+
+static int fetch_post(struct web *w, const char *url, const char *body,
+		      char *effective, size_t en)
+{
+	return fetch_impl(w, url, body, effective, en);
 }
 
 /* ---------- URL resolution ---------- */
@@ -1431,11 +1460,14 @@ static void run_scripts(struct web *w)
 }
 
 /* ---------- navigation ---------- */
-static void navigate(struct web *w, const char *url, bool push)
+/* post_body != NULL: submit the form body with POST instead of GET. */
+static void navigate_impl(struct web *w, const char *url, const char *post_body, bool push)
 {
 	char eff[1024];
 	snprintf(w->status, sizeof(w->status), "読み込み中… %s", url);
-	if (fetch(w, url, eff, sizeof(eff)) != 0) {
+	int rc = post_body ? fetch_post(w, url, post_body, eff, sizeof(eff))
+			    : fetch(w, url, eff, sizeof(eff));
+	if (rc != 0) {
 		snprintf(w->status, sizeof(w->status), "読み込めませんでした: %s", url);
 		return;
 	}
@@ -1460,6 +1492,16 @@ static void navigate(struct web *w, const char *url, bool push)
 		}
 	}
 	w->hist_nav = false;
+}
+
+static void navigate(struct web *w, const char *url, bool push)
+{
+	navigate_impl(w, url, NULL, push);
+}
+
+static void navigate_post(struct web *w, const char *url, const char *body, bool push)
+{
+	navigate_impl(w, url, body, push);
 }
 
 static void bookmark_path(struct web *w, char *out, size_t n)
@@ -1755,13 +1797,10 @@ static void submit_form(struct web *w, int fi)
 	if (fi < 0 || fi >= w->nforms)
 		return;
 	struct form *f = &w->forms[fi];
-	if (strcmp(f->method, "get") != 0) {
-		snprintf(w->status, sizeof(w->status),
-			 "POST フォームは未対応です (method=%s)", f->method);
-		return;
-	}
-	char url[4096];
-	snprintf(url, sizeof(url), "%s", f->action);
+	/* Build the urlencoded body once; GET appends it to the URL,
+	 * POST sends it as the request body. */
+	char qs[8192];
+	qs[0] = 0;
 	bool first = true;
 	for (int i = 0; i < f->nfields; i++) {
 		struct formfield *ff = &f->fields[i];
@@ -1770,13 +1809,25 @@ static void submit_form(struct web *w, int fi)
 		char en[600], ev[2200];
 		url_encode(en, sizeof(en), ff->name);
 		url_encode(ev, sizeof(ev), ff->value);
-		strncat(url, first ? "?" : "&", sizeof(url) - strlen(url) - 1);
-		strncat(url, en, sizeof(url) - strlen(url) - 1);
-		strncat(url, "=", sizeof(url) - strlen(url) - 1);
-		strncat(url, ev, sizeof(url) - strlen(url) - 1);
+		strncat(qs, first ? "" : "&", sizeof(qs) - strlen(qs) - 1);
+		strncat(qs, en, sizeof(qs) - strlen(qs) - 1);
+		strncat(qs, "=", sizeof(qs) - strlen(qs) - 1);
+		strncat(qs, ev, sizeof(qs) - strlen(qs) - 1);
 		first = false;
 	}
-	navigate(w, url, true);
+	if (strcmp(f->method, "get") == 0) {
+		char url[4096];
+		snprintf(url, sizeof(url), "%s", f->action);
+		if (qs[0])
+			strncat(url, "?", sizeof(url) - strlen(url) - 1);
+		strncat(url, qs, sizeof(url) - strlen(url) - 1);
+		navigate(w, url, true);
+	} else if (strcmp(f->method, "post") == 0) {
+		navigate_post(w, f->action, qs, true);
+	} else {
+		snprintf(w->status, sizeof(w->status),
+			 "この method は未対応です (method=%s)", f->method);
+	}
 }
 
 static void onevent(bdapp *a, void *ctx, bu_event *ev, bool *changed, bool *quit)
