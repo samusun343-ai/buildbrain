@@ -60,9 +60,76 @@ QWERTY romaji, and a 50-on grid. Key short dimension ≥ 56 px at
 854×480 (the 48 dp guideline ≈ 6.5 mm on this panel, below the
 7–10 mm comfort band).
 
+## Real dictionary build (mozc dictionary_oss, 2026-11-20)
+
+The real dictionary is built from mozc `dictionary_oss`
+(BSD-3 + IPADIC notices; provenance and licence texts recorded in
+`tools/ime/MOZC-NOTICE.md`, mozc commit
+`3cf2d38553835f9241479d3b42c7d408c8f45076`). The `.bidf` binary is
+regenerable and is **not** committed; the converter and this
+procedure are the source of record.
+
+Procedure:
+
+```
+git clone --depth 1 --filter=blob:none --sparse https://github.com/google/mozc
+git -C mozc sparse-checkout set src/data/dictionary_oss
+python3 tools/ime/convert_mozc.py mozc/src/data/dictionary_oss words.tsv
+python3 tools/ime/build_bidict.py words.tsv brainux.bidf
+```
+
+`convert_mozc.py` (disk-backed sqlite; runs in a few hundred MB):
+
+- **POS compression**: mozc's 2,672 IPADIC ids → **57 BIDF
+  classes** by ordered rules over the id.def POS string (the full
+  mapping table is in the script). Kept distinct: noun general /
+  proper-person / place / organisation / sahen / numeral /
+  suffix / pronoun, verb godan / ichidan / sahen / kahen /
+  irregular, adjectives, and the particle subtypes. The class is
+  taken from the entry's lid.
+- **Cost quantisation**: linear rescale 0..255 with hi = p99 of
+  deduplicated costs (11,895 on this snapshot; one step ≈ 47 mozc
+  units). Linear, not log: mozc's cost is already a log-domain
+  quantity, so linear rescaling preserves the additive spacing
+  Viterbi needs.
+- **Selection**: mozc's own `dictionary_filter.tsv` applied (15
+  entries), non-kana readings dropped (3,486), deduplicated on
+  (reading, surface, class) keeping min cost → 1,166,186 entries.
+  All **10,390 single-kanji entries force-included** (coverage
+  floor), the rest filled by ascending cost (cutoff 5,770) to
+  exactly **180,000 entries / 116,292 readings**; max 129
+  candidates for one reading. Known bias: cost ranking favours
+  frequent loanwords and proper nouns (top class is 人名, 29.5 k).
+
+Measured BIDF v1 (2026-11-20):
+
+| section | bytes |
+|---|---|
+| header | 64 |
+| reading index (116,292 × 12 B) | 1,395,504 |
+| tokens (180,000 × 8 B) | 1,440,000 |
+| string pool (raw UTF-8) | 3,448,938 |
+| connection matrix (zeros, v1) | 65,536 |
+| **total** | **6,350,042 (35.3 B/entry)** |
+
+The 2.3–2.8 MB budget above is the **v2** figure (LOUDS tries +
+codebook + varint tokens). v1's fixed-width layout costs more —
+the raw string pool alone is 3.45 MB — which is exactly what v2
+attacks; the token/pool/conn layout does not change. Coverage:
+**3,463 distinct single-kanji surfaces** (≥ 2,136 jōyō + 863
+jinmeiyō). Verified with `bidict_lookup`: かんじ→漢字・感じ・
+幹事, とうきょう→東京 (top, cost 0), せんせい→先生, がくせい→
+学生, あい→愛, prefix search over かん…. Ranking is raw mozc
+word cost only until connection costs + the Viterbi converter
+land (e.g. かんじ's top hit is 感じ, the stem of 感じる, which
+mozc prices as very frequent).
+
 ## Status
 
 - v1 builder + lookup tool: `tools/ime/` (sorted-index BIDF,
   prefix candidate search verified on a synthetic dictionary).
-- Next: fetch mozc dictionary_oss, build the real ~180 k BIDF,
-  LOUDS v2, the Viterbi converter, then the OSK widget.
+- Real dictionary built: 180 k-entry BIDF v1 from mozc
+  dictionary_oss, 6.35 MB (see above; binary not committed).
+- Next: LOUDS v2 (closes the size gap to the 2.3–2.8 MB budget),
+  connection matrix from mozc's connection data, the Viterbi
+  converter, then the OSK widget.
