@@ -102,6 +102,10 @@ void bd_state_init(bd_state *s)
 	snprintf(s->clock, sizeof(s->clock), "10:42");
 	snprintf(s->date, sizeof(s->date), "1月1日 木曜日");
 	s->battery_pct = 78;
+	s->wifi_on = true;
+	s->net_connect = -1;
+	snprintf(s->wifi_ssid, sizeof(s->wifi_ssid), "—");
+	snprintf(s->ip_addr, sizeof(s->ip_addr), "—");
 }
 
 static void wallpaper(bu_canvas *c)
@@ -189,6 +193,42 @@ static void draw_settings(bu_canvas *c, bu_theme *t, bd_state *s)
 		bu_list_row(c, t, row, cats[i], NULL, false, i == s->settings_cat);
 	}
 	bu_rect pane = pane_rect();
+	if (s->settings_cat == 3) {
+		bu_draw_text(c, t->font, pane.x + 22, pane.y + 16, "ネットワーク", 19, t->text);
+		bu_rect r0 = { pane.x + 8, pane.y + 52, pane.w - 16, 42 };
+		bu_draw_text(c, t->font, r0.x + 14, r0.y + 10, "Wi-Fi", 15, t->text);
+		bu_toggle(c, t, r0.x + r0.w - 60, r0.y + 8, s->wifi_on);
+		char conn[128];
+		snprintf(conn, sizeof(conn), "接続先: %s   IP: %s", s->wifi_ssid, s->ip_addr);
+		bu_draw_text(c, t->font, pane.x + 22, pane.y + 108, conn, 13, t->text_dim);
+		bu_draw_text(c, t->font, pane.x + 22, pane.y + 136, "ネットワーク一覧 (タップで接続)", 13, t->text_dim);
+		for (int i = 0; i < s->net_count && i < 4; i++) {
+			bu_rect row = { pane.x + 8, pane.y + 162 + i * 44, pane.w - 16, 40 };
+			bu_fill_round_rect(c, row, 8, t->surface2);
+			bu_icon_wifi(c, row.x + 24, row.y + row.h / 2, t->text_dim);
+			bu_draw_text(c, t->font, row.x + 48, row.y + 9, s->net_list[i], 14.5, t->text);
+			char sig[16];
+			snprintf(sig, sizeof(sig), "%d%%", s->net_signal[i]);
+			bu_draw_text_right(c, t->font, (bu_rect){ row.x, row.y + 9, row.w - 14, 22 }, sig, 12.5, t->text_dim);
+		}
+		if (s->net_count == 0)
+			bu_draw_text(c, t->font, pane.x + 22, pane.y + 170, "走査中または見つかりません", 13, t->text_faint);
+		if (s->net_status[0])
+			bu_draw_text(c, t->font, pane.x + 240, pane.y + 136, s->net_status, 12.5, t->warn);
+		return;
+	}
+	if (s->settings_cat == 6) {
+		bu_draw_text(c, t->font, pane.x + 22, pane.y + 16, "システム", 19, t->text);
+		for (int i = 0; i < 6; i++) {
+			if (!s->sysinfo[i][0])
+				continue;
+			bu_rect row = { pane.x + 8, pane.y + 56 + i * 46, pane.w - 16, 42 };
+			bu_fill_round_rect(c, row, 8, t->surface2);
+			bu_draw_text(c, t->font, row.x + 14, row.y + 10, s->sysinfo[i], 13.5, t->text);
+		}
+		bu_draw_text(c, t->font, pane.x + 22, pane.y + 350, "braindesk — Brainux 用デスクトップ環境", 12.5, t->text_faint);
+		return;
+	}
 	if (s->settings_cat == 1) {
 		bu_draw_text(c, t->font, pane.x + 22, pane.y + 16, "スキン", 19, t->text);
 		bu_draw_text(c, t->font, pane.x + 22, pane.y + 48, "テーマと壁紙の配色を切り替えます。全アプリに反映されます。", 12.5, t->text_dim);
@@ -291,6 +331,18 @@ int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y,
 		}
 		if (s->settings_open) {
 			if (in_rect(settings_close(), x, y)) { s->settings_open = false; *changed = true; return BD_ACT_NONE; }
+			if (s->settings_cat == 3) {
+				bu_rect pane = pane_rect();
+				bu_rect r0 = { pane.x + 8, pane.y + 52, pane.w - 16, 42 };
+				if (in_rect(r0, x, y)) { s->wifi_on = !s->wifi_on; *changed = true; return BD_ACT_NONE; }
+				for (int i = 0; i < s->net_count && i < 4; i++) {
+					bu_rect row = { pane.x + 8, pane.y + 162 + i * 44, pane.w - 16, 40 };
+					if (in_rect(row, x, y)) { s->net_connect = i; *changed = true; return BD_ACT_NONE; }
+				}
+				return BD_ACT_NONE;
+			}
+			if (s->settings_cat == 6)
+				return BD_ACT_NONE;
 			if (s->settings_cat == 1) {
 				bu_rect pane = pane_rect();
 				for (int i = 0; i < BD_NSKINS; i++) {
@@ -307,7 +359,7 @@ int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y,
 			bu_rect w = settings_win();
 			for (int i = 0; i < 8; i++) {
 				bu_rect row = { w.x + 10, w.y + 42 + 12 + i * 40, 156, 34 };
-				if (in_rect(row, x, y)) { s->settings_cat = i; *changed = true; return BD_ACT_NONE; }
+				if (in_rect(row, x, y)) { s->settings_cat = i; if (i == 3) s->net_scan_req++; *changed = true; return BD_ACT_NONE; }
 			}
 			return BD_ACT_NONE; /* clicks inside the window don't fall through */
 		}

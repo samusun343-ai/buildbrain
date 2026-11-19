@@ -18,6 +18,81 @@
 #include <glob.h>
 
 static bu_theme *T;
+#include <sys/utsname.h>
+/* --- settings data providers (network / system pages) --- */
+static void fill_sysinfo(bd_state *s)
+{
+	struct utsname un;
+	uname(&un);
+	snprintf(s->sysinfo[0], 96, "カーネル   Linux %s", un.release);
+	snprintf(s->sysinfo[1], 96, "アーキテクチャ   %s", un.machine);
+	FILE *fp = fopen("/proc/device-tree/model", "r");
+	if (fp) {
+		char m[80] = "";
+		if (fgets(m, sizeof(m), fp))
+			snprintf(s->sysinfo[2], 96, "機種   %s", m);
+		fclose(fp);
+	}
+	if (!s->sysinfo[2][0])
+		snprintf(s->sysinfo[2], 96, "機種   SHARP Brain (Brainux)");
+	long total = 0;
+	fp = fopen("/proc/meminfo", "r");
+	if (fp) {
+		char line[128];
+		while (fgets(line, sizeof(line), fp))
+			sscanf(line, "MemTotal: %ld", &total);
+		fclose(fp);
+	}
+	snprintf(s->sysinfo[3], 96, "メモリ   %.0f MB", total / 1024.0);
+	snprintf(s->sysinfo[4], 96, "braindesk   スキン: %s", bd_skin_get()->name);
+	snprintf(s->sysinfo[5], 96, "セッション   braindesk (fbdev / libbrainui)");
+}
+
+static void fill_netinfo(bd_state *s)
+{
+	FILE *pp = popen("nmcli -t -f ACTIVE,SSID dev wifi 2>/dev/null | grep '^yes' | cut -d: -f2", "r");
+	if (pp) {
+		char ssid[64] = "";
+		if (fgets(ssid, sizeof(ssid), pp))
+			ssid[strcspn(ssid, "\n")] = 0;
+		pclose(pp);
+		snprintf(s->wifi_ssid, sizeof(s->wifi_ssid), "%s", ssid[0] ? ssid : "未接続");
+	}
+	pp = popen("hostname -I 2>/dev/null | awk '{print $1}'", "r");
+	if (pp) {
+		char ip[48] = "";
+		if (fgets(ip, sizeof(ip), pp))
+			ip[strcspn(ip, "\n")] = 0;
+		pclose(pp);
+		snprintf(s->ip_addr, sizeof(s->ip_addr), "%s", ip[0] ? ip : "—");
+	}
+	pp = popen("nmcli -t -f SSID,SIGNAL dev wifi list 2>/dev/null | head -10", "r");
+	if (pp) {
+		char line[128];
+		s->net_count = 0;
+		while (fgets(line, sizeof(line), pp) && s->net_count < 10) {
+			char *colon = strrchr(line, ':');
+			if (!colon)
+				continue;
+			*colon = 0;
+			if (!line[0])
+				continue;
+			snprintf(s->net_list[s->net_count], 64, "%s", line);
+			s->net_signal[s->net_count] = atoi(colon + 1);
+			s->net_count++;
+		}
+		pclose(pp);
+	}
+	/* connect result from the helper child, if any */
+	FILE *st = fopen("/tmp/bd-net-status", "r");
+	if (st) {
+		if (fgets(s->net_status, sizeof(s->net_status), st))
+			s->net_status[strcspn(s->net_status, "\n")] = 0;
+		fclose(st);
+		remove("/tmp/bd-net-status");
+	}
+}
+
 
 static void apply_brightness(float frac)
 {
@@ -79,6 +154,10 @@ int main(int argc, char **argv)
 	bd_state_init(&s);
 	s.skin = bd_skin_current;
 	int last_skin = s.skin;
+	fill_sysinfo(&s);
+	int last_scan_req = 0, last_connect = -1;
+	bool last_wifi_on = s.wifi_on;
+	time_t last_net_poll = 0;
 	update_clock(&s, &(bool){ 0 });
 	bu_alsa *alsa = bu_alsa_open();
 	if (alsa) {
@@ -136,6 +215,34 @@ int main(int argc, char **argv)
 		if (s.brightness != last_brightness) {
 			apply_brightness(s.brightness);
 			last_brightness = s.brightness;
+		}
+		if (s.settings_open && s.settings_cat == 3 &&
+		    (s.net_scan_req != last_scan_req || time(NULL) - last_net_poll > 10)) {
+			last_scan_req = s.net_scan_req;
+			last_net_poll = time(NULL);
+			fill_netinfo(&s);
+			changed = true;
+		}
+		if (s.wifi_on != last_wifi_on) {
+			last_wifi_on = s.wifi_on;
+			if (system(s.wifi_on ? "nmcli radio wifi on 2>/dev/null" : "nmcli radio wifi off 2>/dev/null") != 0)
+				snprintf(s.net_status, sizeof(s.net_status), "Wi-Fi 切替に失敗");
+			s.net_scan_req++;
+		}
+		if (s.net_connect != last_connect && s.net_connect >= 0) {
+			last_connect = s.net_connect;
+			if (s.net_connect < s.net_count) {
+				char cmd[256];
+				snprintf(cmd, sizeof(cmd),
+					 "(nmcli dev wifi connect '%s' >/dev/null 2>&1 && echo '接続しました' > /tmp/bd-net-status || echo '接続に失敗しました (保存済み/オープンのみ)' > /tmp/bd-net-status) &",
+					 s.net_list[s.net_connect]);
+				if (system(cmd) != 0)
+					snprintf(s.net_status, sizeof(s.net_status), "接続を開始できませんでした");
+				else
+					snprintf(s.net_status, sizeof(s.net_status), "接続中...");
+			}
+			s.net_connect = -1;
+			last_connect = -1;
 		}
 		if (s.skin != last_skin) {
 			bd_skin_set(s.skin);

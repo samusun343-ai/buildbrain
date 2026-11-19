@@ -22,6 +22,18 @@ typedef struct {
 	int battery_pct;
 	char launch_path[128];	/* set when BD_ACT_LAUNCH is returned */
 	int skin;		/* current skin index (bui_skin) */
+	/* network page (filled by the shell from nmcli) */
+	bool wifi_on;
+	char wifi_ssid[64];
+	char ip_addr[48];
+	char net_list[10][64];
+	int net_signal[10];
+	int net_count;
+	int net_scan_req;	/* bumped by scenes when the page opens */
+	int net_connect;	/* SSID index to connect, -1 none */
+	char net_status[96];
+	/* system page (filled by the shell) */
+	char sysinfo[6][96];
 	/* interaction */
 	int drag_slider;	/* 0 none, 1 brightness, 2 volume */
 	bool start_pressed;

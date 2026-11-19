@@ -305,5 +305,5 @@ int main(int argc, char **argv)
 	nt.sel = -1;
 	load_list(&nt);
 	const char *shot = argc > 1 && strcmp(argv[1], "--shot") == 0 ? "bd-notes.ppm" : NULL;
-	return bdapp_run("メモ", shot, draw, onevent, &nt);
+	return bdapp_run("メモ", shot, draw, onevent, NULL, &nt);
 }

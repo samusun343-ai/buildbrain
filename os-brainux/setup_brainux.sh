@@ -85,7 +85,7 @@ DEBIAN_FRONTEND=noninteractive \
                    build-essential flex bison pkg-config autotools-dev libtool autoconf automake device-tree-compiler \
                    python3 python3-dev python3-setuptools python3-wheel python3-pip python3-smbus \
                    resolvconf net-tools isc-dhcp-client ssh openssh-client avahi-daemon wget git \
-                   network-manager zip fastfetch sl python3-numpy ipython3 netsurf-gtk fcitx-anthy
+                   network-manager zip fastfetch sl python3-numpy ipython3 netsurf-gtk netsurf-fb mpg123 vorbis-tools fcitx-anthy
 
 # Packages from packagecloud
 DEBIAN_FRONTEND=noninteractive \
@@ -110,9 +110,12 @@ systemctl enable ly
 # braindesk (from-scratch desktop: greeter + shell, libbrainui)
 DEBIAN_FRONTEND=noninteractive \
     apt install -y libcrypt-dev
-make -C /opt/braindesk -j$(nproc) shell greeter
+make -C /opt/braindesk -j$(nproc) shell greeter apps
 install -m 0755 /opt/braindesk/shell /usr/local/bin/braindesk
 install -m 0755 /opt/braindesk/greeter /usr/local/bin/braingreeter
+for app in bd-files bd-tasks bd-notes bd-clock bd-calc bd-player bd-recorder bd-devices bd-pkg; do
+    install -m 0755 /opt/braindesk/$app /usr/local/bin/$app
+done
 # Not enabled yet: ly stays the default greeter until braindesk is
 # verified on the image. Enable with:
 #   systemctl disable ly && systemctl enable braindesk-session

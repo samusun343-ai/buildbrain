@@ -183,5 +183,5 @@ int main(int argc, char **argv)
 	t.sel = -1;
 	load(&t);
 	const char *shot = argc > 1 && strcmp(argv[1], "--shot") == 0 ? "bd-tasks.ppm" : NULL;
-	return bdapp_run("タスクマネージャー", shot, draw, onevent, &t);
+	return bdapp_run("タスクマネージャー", shot, draw, onevent, NULL, &t);
 }

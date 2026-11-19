@@ -158,5 +158,5 @@ int main(int argc, char **argv)
 	memset(&k, 0, sizeof(k));
 	k.tm_minutes = 5;
 	const char *shot = argc > 1 && strcmp(argv[1], "--shot") == 0 ? "bd-clock.ppm" : NULL;
-	return bdapp_run("時計", shot, draw, onevent, &k);
+	return bdapp_run("時計", shot, draw, onevent, NULL, &k);
 }

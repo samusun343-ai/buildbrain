@@ -177,5 +177,5 @@ int main(int argc, char **argv)
 	snprintf(k.disp, sizeof(k.disp), "0");
 	k.fresh = true;
 	const char *shot = argc > 1 && strcmp(argv[1], "--shot") == 0 ? "bd-calc.ppm" : NULL;
-	return bdapp_run("電卓", shot, draw, onevent, &k);
+	return bdapp_run("電卓", shot, draw, onevent, NULL, &k);
 }

@@ -224,5 +224,5 @@ int main(int argc, char **argv)
 	f.sel = -1;
 	load(&f);
 	const char *shot = argc > 1 && strcmp(argv[1], "--shot") == 0 ? "bd-files.ppm" : NULL;
-	return bdapp_run("ファイル", shot, draw, onevent, &f);
+	return bdapp_run("ファイル", shot, draw, onevent, NULL, &f);
 }
