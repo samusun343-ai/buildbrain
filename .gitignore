@@ -1,5 +1,6 @@
 env
 brainux
+os-brainux/modules-staging/
 cache/*
 !cache/.gitkeep
 nk.bin

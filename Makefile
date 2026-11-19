@@ -90,6 +90,13 @@ lclean:
 .PHONY:
 lbuild:
 	make CROSS_COMPILE=$(LINUX_CROSS) -j$(JOBS) -C ./linux-brain
+	# Stage the loadable modules so override-pre.sh can ship them
+	# in the rootfs. The image historically contained no modules,
+	# which forced every peripheral driver to be built-in (=y) and
+	# permanently resident; with modules shipped, dongle-class
+	# drivers are =m and load on plug.
+	make CROSS_COMPILE=$(LINUX_CROSS) -C ./linux-brain modules_install INSTALL_MOD_PATH=$(CURDIR)/os-brainux/modules-staging INSTALL_MOD_STRIP=1
+	rm -f ./os-brainux/modules-staging/lib/modules/*/build ./os-brainux/modules-staging/lib/modules/*/source
 
 .PHONY:
 ldebpkg:

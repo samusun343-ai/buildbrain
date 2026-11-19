@@ -26,7 +26,7 @@ jobs:
       - name: Workaround for apt update failure
         run: sudo rm -f /etc/apt/sources.list.d/github_git-lfs.*
       - name: Install deps
-        run: sudo apt update && sudo apt install -y kpartx build-essential bison flex libncurses5-dev gcc-arm-linux-gnueabi qemu-user-static debootstrap
+        run: sudo apt update && sudo apt install -y kpartx build-essential bison flex libncurses5-dev gcc-arm-linux-gnueabi qemu-user-static debootstrap kmod
       - name: Configure for Linux
         run: make ldefconfig
       - name: Build Linux

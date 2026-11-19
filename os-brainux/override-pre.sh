@@ -13,3 +13,11 @@ install -g root -o root -m 0755 $SRC/usr/bin/enable_ethernet_gadget $DST/usr/bin
 # (same pattern as ly). Copy them from the repo's braindesk/ directory.
 install -d -m 0755 $DST/opt/braindesk
 cp -a ./braindesk/src ./braindesk/Makefile ./braindesk/third_party $DST/opt/braindesk/
+
+# Kernel modules staged by `make lbuild` (see the root Makefile).
+# Shipping them lets peripheral drivers be loadable modules instead
+# of permanent built-ins. Absent on builds that skipped lbuild.
+if [ -d ./os-brainux/modules-staging/lib/modules ]; then
+    install -d -m 0755 $DST/lib/modules
+    cp -a ./os-brainux/modules-staging/lib/modules/. $DST/lib/modules/
+fi
