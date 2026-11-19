@@ -1,0 +1,22 @@
+# サンプル: ユーザー定義スキン (docs/skins.md 参照)
+# 夕焼けを濃い紫寄りにしたカスタム配色。base を省略しているので
+# layout=bd の代表ビルトイン (Brainux) から欠けた項目を補完します。
+name=マイ・サンセット
+layout=bd
+chrome=modern
+radius=12
+panel_h=44
+bg=#241A20
+surface=#33222B
+surface2=#402A33
+surface3=#523845
+line=#6B4A57
+text=#FFF3EA
+text_dim=#D8BBAE
+text_faint=#A37F72
+accent=#FF7A59
+accent2=#FFB84D
+panel=#1D141B
+wall_top=#3B1D33
+wall_bottom=#7A2E1D
+wall_glow=#FF9A5C

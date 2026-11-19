@@ -8,6 +8,13 @@
  *
  * The OS-flavoured skins are original palettes inspired by
  * each era's look — no artwork or assets from those systems.
+ *
+ * Users can add their own skins as key=value text files
+ * (*.skin, see docs/skins.md in buildbrain): bd_skin_load_files()
+ * appends them after the built-ins, so indices of built-in
+ * skins never change. Search order (earlier wins on duplicate
+ * file names): $BRAINDESK_SKINS_DIR, then
+ * ~/.config/braindesk/skins, then /usr/share/braindesk/skins.
  */
 #ifndef BUI_SKIN_H
 #define BUI_SKIN_H
@@ -38,10 +45,18 @@ enum {
 	BD_LAYOUT_WIN = 4,	/* bottom taskbar, start left */
 };
 
-extern const bd_skin BD_SKINS[];
-extern const int BD_NSKINS;
+/* The skin table. BD_SKINS points at the built-in table until
+ * file-defined skins are loaded, then at a combined table with
+ * the file skins appended; BD_NSKINS is the total count. Prefer
+ * bd_skin_count()/bd_skin_at() in new code. */
+extern const bd_skin *BD_SKINS;
+extern int BD_NSKINS;
+extern const int BD_NBUILTIN;
 extern int bd_skin_current;
 
+int bd_skin_count(void);		/* total skins (loads files) */
+const bd_skin *bd_skin_at(int idx);	/* NULL when out of range */
+void bd_skin_load_files(void);		/* scan *.skin files (idempotent) */
 const bd_skin *bd_skin_get(void);
 void bd_skin_load(void);		/* read saved selection */
 void bd_skin_save(int idx);		/* persist selection */

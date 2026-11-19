@@ -19,7 +19,7 @@ install -g root -o root -m 0644 $SRC/lib/systemd/system/brain-mode.service $DST/
 # braindesk sources are compiled inside the chroot by setup_brainux.sh
 # (same pattern as ly). Copy them from the repo's braindesk/ directory.
 install -d -m 0755 $DST/opt/braindesk
-cp -a ./braindesk/src ./braindesk/Makefile ./braindesk/third_party ./braindesk/assets $DST/opt/braindesk/
+cp -a ./braindesk/src ./braindesk/Makefile ./braindesk/third_party ./braindesk/assets ./braindesk/skins $DST/opt/braindesk/
 
 # Kernel modules staged by `make lbuild` (see the root Makefile).
 # Shipping them lets peripheral drivers be loadable modules instead

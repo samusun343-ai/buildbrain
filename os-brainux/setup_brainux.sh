@@ -120,6 +120,10 @@ install -m 0755 /opt/braindesk/brainctl /usr/local/bin/brainctl
 # real icon assets for the skin families (launcher/dock/taskbar)
 install -d -m 0755 /usr/share/braindesk/assets
 cp -a /opt/braindesk/assets/. /usr/share/braindesk/assets/
+# factory sample for user-creatable skins (docs/skins.md);
+# user skins live in ~/.config/braindesk/skins and win over these
+install -d -m 0755 /usr/share/braindesk/skins
+cp -a /opt/braindesk/skins/. /usr/share/braindesk/skins/
 # Not enabled yet: ly stays the default greeter until braindesk is
 # verified on the image. Enable with:
 #   systemctl disable ly && systemctl enable braindesk-session
