@@ -3,6 +3,10 @@
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
 
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "../third_party/stb_truetype.h"
@@ -204,6 +208,7 @@ typedef struct {
 struct bu_font {
 	stbtt_fontinfo info;
 	unsigned char *data;
+	long data_len;
 	int ascent, descent, linegap;
 	glyph_entry cache[GLYPH_CACHE];
 	int cache_len;
@@ -223,18 +228,25 @@ static int utf8_next(const char **sp)
 
 bu_font *bu_font_load(const char *path)
 {
-	FILE *f = fopen(path, "rb");
-	if (!f) return NULL;
-	fseek(f, 0, SEEK_END);
-	long len = ftell(f);
-	fseek(f, 0, SEEK_SET);
-	unsigned char *data = malloc(len);
-	if (fread(data, 1, len, f) != (size_t)len) { fclose(f); free(data); return NULL; }
-	fclose(f);
+	/* The font is mmap'ed, never read into anonymous memory:
+	 * NotoSansCJK is ~19 MB as a TTC, but a desktop session only
+	 * touches the cmap and the glyphs it actually draws, so the
+	 * resident cost is a few hundred KiB of file-backed pages
+	 * the kernel can reclaim under pressure. Reading the whole
+	 * file into malloc'ed memory cost 19 MB of PSS (measured:
+	 * braindesk 22.2 MB before this change). */
+	int fd = open(path, O_RDONLY);
+	if (fd < 0) return NULL;
+	struct stat st;
+	if (fstat(fd, &st) < 0 || st.st_size == 0) { close(fd); return NULL; }
+	unsigned char *data = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+	close(fd);
+	if (data == MAP_FAILED) return NULL;
 	bu_font *font = calloc(1, sizeof(*font));
 	font->data = data;
+	font->data_len = st.st_size;
 	int off = stbtt_GetFontOffsetForIndex(data, 0);
-	if (!stbtt_InitFont(&font->info, data, off)) { free(data); free(font); return NULL; }
+	if (!stbtt_InitFont(&font->info, data, off)) { munmap(data, st.st_size); free(font); return NULL; }
 	stbtt_GetFontVMetrics(&font->info, &font->ascent, &font->descent, &font->linegap);
 	return font;
 }
@@ -244,7 +256,7 @@ void bu_font_free(bu_font *f)
 	if (!f) return;
 	for (int i = 0; i < f->cache_len; i++)
 		free(f->cache[i].bmp);
-	free(f->data);
+	munmap(f->data, f->data_len);
 	free(f);
 }
 

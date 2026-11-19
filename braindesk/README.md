@@ -27,6 +27,14 @@ this machine too much. Concretely:
   compositing, libwayland, fontconfig), braindesk uses it
   instead of reinventing it.
 
+Measured on the QEMU Brainux image (2026-11-19, brain-measure):
+the shell runs at 4.6 MB PSS total (docs/on-device-qemu.png is a
+framebuffer capture from that run). The first build measured
+22.2 MB — the font had been read fully into anonymous memory;
+mmap'ing the TTC instead brought it to 4.6 MB. Stock-system
+baseline for comparison: NetworkManager alone is 13.0 MB PSS,
+systemd(1) 4.5 MB, ly 0.5 MB.
+
 Open decision, to be settled by measurement on the real image
 (idle PSS, start-up time, input latency): Xorg+fbdev with a
 braindesk window manager vs a small Wayland compositor. The
