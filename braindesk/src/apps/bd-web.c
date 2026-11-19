@@ -6,7 +6,8 @@
  * M3 embeds QuickJS (third_party/quickjs, v0.18.0): inline
  * <script> runs after the page loads; console.log and a live
  * document.title are exposed, external scripts and the DOM are
- * still out of scope.
+ * still out of scope. <select> (tap cycles options) and
+ * <textarea> (multi-line OSK editing) are M3 follow-up.
  */
 #include "bdapp.h"
 #include "bd_js.h"
@@ -23,7 +24,7 @@
 #define MAXIMGS 64
 #define BODYMAX (2 * 1024 * 1024)
 
-enum { B_PARA, B_HEAD, B_ITEM, B_PRE, B_IMG, B_HR, B_INPUT, B_SUBMIT };
+enum { B_PARA, B_HEAD, B_ITEM, B_PRE, B_IMG, B_HR, B_INPUT, B_SUBMIT, B_SELECT, B_TEXTAREA };
 
 struct run {
 	int block;
@@ -58,9 +59,10 @@ struct block {
 	float font_scale;
 	int align;		/* 0 left, 1 center, 2 right */
 	bool hidden;		/* display:none */
-	/* form membership (B_INPUT / B_SUBMIT) */
+	/* form membership (B_INPUT / B_SUBMIT / B_SELECT / B_TEXTAREA) */
 	int form;		/* form index, -1 none */
 	int field;		/* field index in the form, -1 none */
+	int rows;		/* B_TEXTAREA: rows attribute (default 3) */
 	/* layout results */
 	int y, h;
 	struct wline *lines;
@@ -86,6 +88,11 @@ struct formfield {
 	char name[64];
 	char value[512];
 	int block;		/* block index, -1 = hidden field */
+	/* <select> options (max 8); value = opt_val[sel] */
+	char opt_label[8][64];
+	char opt_val[8][64];
+	int nopts;
+	int sel;
 };
 struct form {
 	char action[1024];
@@ -564,6 +571,38 @@ static void block_apply_style(struct block *b, const struct cssrule *st)
 	b->hidden = st->hide;
 }
 
+/* Append the option currently being collected to the <select>
+ * field. Called on </option>, on the next <option>, and on
+ * </select>. The label is the option text (entities decoded,
+ * surrounding whitespace trimmed); the submitted value is the
+ * value attribute, or the label when it is absent. */
+static void flush_option(struct web *w, int form_i, int field_i,
+			 char *opt_text, const char *opt_value, bool selected)
+{
+	if (form_i < 0 || field_i < 0)
+		return;
+	struct formfield *ff = &w->forms[form_i].fields[field_i];
+	if (ff->nopts >= 8)
+		return;
+	decode_entities(opt_text);
+	/* trim surrounding whitespace */
+	char *s = opt_text;
+	while (*s == ' ' || *s == '\n' || *s == '\t' || *s == '\r')
+		s++;
+	char *e = s + strlen(s);
+	while (e > s && (e[-1] == ' ' || e[-1] == '\n' || e[-1] == '\t' || e[-1] == '\r'))
+		*--e = 0;
+	snprintf(ff->opt_label[ff->nopts], 64, "%s", s);
+	snprintf(ff->opt_val[ff->nopts], 64, "%s",
+		 opt_value[0] ? opt_value : s);
+	if (selected || ff->nopts == 0) {
+		ff->sel = ff->nopts;
+		snprintf(ff->value, sizeof(ff->value), "%s",
+			 ff->opt_val[ff->nopts]);
+	}
+	ff->nopts++;
+}
+
 static void parse(struct web *w, const char *html, const char *page_url)
 {
 	struct block *cur = NULL;
@@ -580,6 +619,19 @@ static void parse(struct web *w, const char *html, const char *page_url)
 	int csslen = 0;
 	int cur_form = -1;
 	int pre = 0;
+	/* <select> / <textarea> collection state */
+	bool in_select = false;
+	int sel_form = -1, sel_field = -1;
+	bool in_option = false;
+	char opt_text[256];
+	char opt_value[64];
+	bool opt_selected = false;
+	bool in_textarea = false;
+	int ta_form = -1;
+	char ta_name[64];
+	int ta_rows = 3;
+	static char ta_buf[1024];
+	int ta_len = 0;
 	const char *p = html;
 	char textbuf[8192];
 	int tlen = 0;
@@ -872,6 +924,114 @@ static void parse(struct web *w, const char *html, const char *page_url)
 					cur = NULL;
 				}
 				/* checkbox/radio/button/file: not rendered */
+			} else if (!closing && strcmp(name, "select") == 0) {
+				FLUSH_TEXT();
+				char nm[64];
+				nm[0] = 0;
+				get_attr(tag, "name", nm, sizeof(nm));
+				if (cur_form < 0 && w->nforms < MAXFORMS) {
+					struct form *f = &w->forms[w->nforms];
+					memset(f, 0, sizeof(*f));
+					snprintf(f->action, sizeof(f->action), "%s", page_url);
+					snprintf(f->method, sizeof(f->method), "get");
+					cur_form = w->nforms++;
+				}
+				sel_form = cur_form;
+				sel_field = -1;
+				if (cur_form >= 0 && w->forms[cur_form].nfields < MAXFIELDS) {
+					sel_field = w->forms[cur_form].nfields++;
+					struct formfield *ff =
+						&w->forms[cur_form].fields[sel_field];
+					memset(ff, 0, sizeof(*ff));
+					snprintf(ff->name, sizeof(ff->name), "%s", nm);
+					ff->block = -1;
+				}
+				in_select = true;
+				in_option = false;
+			} else if (!closing && strcmp(name, "option") == 0 && in_select) {
+				if (in_option)
+					flush_option(w, sel_form, sel_field, opt_text,
+						     opt_value, opt_selected);
+				in_option = true;
+				opt_text[0] = 0;
+				opt_value[0] = 0;
+				get_attr(tag, "value", opt_value, sizeof(opt_value));
+				/* boolean attribute: presence only */
+				opt_selected = strcasestr(tag, "selected") != NULL;
+			} else if (closing && strcmp(name, "option") == 0 && in_select) {
+				if (in_option)
+					flush_option(w, sel_form, sel_field, opt_text,
+						     opt_value, opt_selected);
+				in_option = false;
+			} else if (closing && strcmp(name, "select") == 0 && in_select) {
+				if (in_option)
+					flush_option(w, sel_form, sel_field, opt_text,
+						     opt_value, opt_selected);
+				in_option = false;
+				in_select = false;
+				CLOSE_BLOCK();
+				struct formfield *ff = (sel_form >= 0 && sel_field >= 0)
+					? &w->forms[sel_form].fields[sel_field] : NULL;
+				if (ff && ff->nopts > 0) {
+					struct block *sb = new_block(w, B_SELECT, 0);
+					if (sb) {
+						sb->form = sel_form;
+						sb->field = sel_field;
+						ff->block = (int)(sb - w->blocks);
+						block_append(sb, ff->opt_label[ff->sel],
+							     (int)strlen(ff->opt_label[ff->sel]),
+							     "", false);
+					}
+				}
+				sel_form = sel_field = -1;
+				cur = NULL;
+			} else if (!closing && strcmp(name, "textarea") == 0) {
+				FLUSH_TEXT();
+				ta_name[0] = 0;
+				get_attr(tag, "name", ta_name, sizeof(ta_name));
+				char rs[16];
+				rs[0] = 0;
+				get_attr(tag, "rows", rs, sizeof(rs));
+				ta_rows = rs[0] ? atoi(rs) : 3;
+				if (ta_rows < 2)
+					ta_rows = 2;
+				if (ta_rows > 6)
+					ta_rows = 6;
+				if (cur_form < 0 && w->nforms < MAXFORMS) {
+					struct form *f = &w->forms[w->nforms];
+					memset(f, 0, sizeof(*f));
+					snprintf(f->action, sizeof(f->action), "%s", page_url);
+					snprintf(f->method, sizeof(f->method), "get");
+					cur_form = w->nforms++;
+				}
+				ta_form = cur_form;
+				ta_len = 0;
+				ta_buf[0] = 0;
+				in_textarea = true;
+			} else if (closing && strcmp(name, "textarea") == 0 && in_textarea) {
+				in_textarea = false;
+				ta_buf[ta_len] = 0;
+				decode_entities(ta_buf);
+				CLOSE_BLOCK();
+				struct block *tb = new_block(w, B_TEXTAREA, 0);
+				if (tb) {
+					tb->form = ta_form;
+					tb->rows = ta_rows;
+					if (ta_form >= 0 &&
+					    w->forms[ta_form].nfields < MAXFIELDS) {
+						int fi = w->forms[ta_form].nfields++;
+						struct formfield *ff =
+							&w->forms[ta_form].fields[fi];
+						memset(ff, 0, sizeof(*ff));
+						snprintf(ff->name, sizeof(ff->name), "%s", ta_name);
+						snprintf(ff->value, sizeof(ff->value), "%s", ta_buf);
+						ff->block = (int)(tb - w->blocks);
+						tb->field = fi;
+					}
+					block_append(tb, ta_buf, (int)strlen(ta_buf), "", false);
+				}
+				ta_form = -1;
+				cur = NULL;
 			} else if (!closing && (strcmp(name, "span") == 0 || strcmp(name, "font") == 0)) {
 				FLUSH_TEXT();
 				struct cssrule st;
@@ -939,7 +1099,23 @@ static void parse(struct web *w, const char *html, const char *page_url)
 			p++;
 			continue;
 		}
-		if (!skip) {
+		if (in_option) {
+			/* option label text: collected, not page content */
+			size_t l = strlen(opt_text);
+			if (l + 1 < sizeof(opt_text)) {
+				opt_text[l] = *p;
+				opt_text[l + 1] = 0;
+			}
+			p++;
+			continue;
+		}
+		if (in_textarea) {
+			if (ta_len + 1 < (int)sizeof(ta_buf))
+				ta_buf[ta_len++] = *p;
+			p++;
+			continue;
+		}
+		if (!skip && !in_select) {
 			if (!cur) {
 				cur = new_block(w, pre ? B_PRE : B_PARA, 0);
 				ntruns = 0;
@@ -962,7 +1138,8 @@ static void parse(struct web *w, const char *html, const char *page_url)
 			if (b->text[k] != ' ' && b->text[k] != '\n' && b->text[k] != '\t' && b->text[k] != '\r')
 				ws_only = false;
 		if (b->type != B_IMG && b->type != B_HR && b->type != B_INPUT &&
-		    b->type != B_SUBMIT && (b->text_len == 0 || ws_only)) {
+		    b->type != B_SUBMIT && b->type != B_SELECT &&
+		    b->type != B_TEXTAREA && (b->text_len == 0 || ws_only)) {
 			free(b->text);
 			free(b->runs);
 			idxmap[i] = -1;
@@ -1055,8 +1232,14 @@ static void layout_block(struct web *w, bu_font *font, struct block *b)
 		b->nlines = 0;
 		return;
 	}
-	if (b->type == B_INPUT || b->type == B_SUBMIT) {
+	if (b->type == B_INPUT || b->type == B_SUBMIT || b->type == B_SELECT) {
 		b->h = 44;
+		b->nlines = 0;
+		return;
+	}
+	if (b->type == B_TEXTAREA) {
+		int rows = b->rows > 0 ? b->rows : 3;
+		b->h = 12 + rows * 22;
 		b->nlines = 0;
 		return;
 	}
@@ -1161,12 +1344,13 @@ static void layout(struct web *w, bu_font *font)
 		b->y = y;
 		layout_block(w, font, b);
 		y += b->h + 6;
-		if ((b->type == B_INPUT || b->type == B_SUBMIT) && !b->hidden &&
+		if ((b->type == B_INPUT || b->type == B_SUBMIT ||
+		     b->type == B_SELECT || b->type == B_TEXTAREA) && !b->hidden &&
 		    w->ntaps < MAXLINKS) {
 			struct tapregion *tr = &w->taps[w->ntaps++];
 			tr->x = PAGE_X;
 			tr->y = b->y;
-			tr->w = b->type == B_INPUT ? PAGE_W : 240;
+			tr->w = b->type == B_SUBMIT ? 240 : PAGE_W;
 			tr->h = b->h;
 			tr->block = i;
 		}
@@ -1414,6 +1598,77 @@ static void draw(bdapp *a, void *ctx)
 			if (b->type == B_SUBMIT) {
 				bu_button(c, t, (bu_rect){ PAGE_X, by, 240, 38 },
 					  b->text ? b->text : "送信", BU_BTN_PRIMARY, false);
+				continue;
+			}
+			if (b->type == B_SELECT) {
+				const char *lbl = b->text ? b->text : "";
+				bu_rect box = { PAGE_X, by, PAGE_W, 38 };
+				bu_fill_round_rect(c, box, 8, t->surface);
+				bu_stroke_round_rect(c, box, 8, 1, t->line);
+				if (lbl[0])
+					bu_draw_text(c, t->font, box.x + 12, by + 10, lbl, 14, t->text);
+				bu_draw_text(c, t->font, box.x + box.w - 30, by + 10, "▼", 12, t->text_faint);
+				continue;
+			}
+			if (b->type == B_TEXTAREA) {
+				const char *val = "", *nm = "";
+				if (b->form >= 0 && b->field >= 0) {
+					val = w->forms[b->form].fields[b->field].value;
+					nm = w->forms[b->form].fields[b->field].name;
+				}
+				bool active = w->editing && w->edit_field == i;
+				bu_rect box = { PAGE_X, by, PAGE_W, b->h };
+				bu_fill_round_rect(c, box, 8, active ? t->surface3 : t->surface);
+				bu_stroke_round_rect(c, box, 8, 1, active ? t->accent : t->line);
+				const char *show = active ? w->edit : val;
+				int rows = b->rows > 0 ? b->rows : 3;
+				if (show[0]) {
+					/* wrap on width and on '\n', at most rows lines */
+					int ln = 0, pos = 0, len = (int)strlen(show);
+					int maxw = PAGE_W - 24;
+					while (pos < len && ln < rows) {
+						int start = pos, wsum = 0;
+						while (pos < len && show[pos] != '\n') {
+							int clen = 1;
+							unsigned char ch0 = (unsigned char)show[pos];
+							if (ch0 >= 0xF0) clen = 4;
+							else if (ch0 >= 0xE0) clen = 3;
+							else if (ch0 >= 0xC0) clen = 2;
+							if (pos + clen > len)
+								clen = len - pos;
+							char tmp[8];
+							snprintf(tmp, sizeof(tmp), "%.*s", clen, show + pos);
+							int cw = bu_text_width(t->font, tmp, 14);
+							if (wsum + cw > maxw && pos > start)
+								break;
+							wsum += cw;
+							pos += clen;
+						}
+						if (pos > start) {
+							char tmp[1024];
+							snprintf(tmp, sizeof(tmp), "%.*s",
+							 pos - start < 1023 ? pos - start : 1023,
+							 show + start);
+							bu_draw_text(c, t->font, box.x + 12,
+								     by + 6 + ln * 22, tmp, 14, t->text);
+							ln++;
+						}
+						if (pos < len && show[pos] == '\n') {
+							pos++;
+							if (pos >= len)
+								break;
+							/* empty line still consumes a row */
+							if (pos == start + 1)
+								ln++;
+						}
+						if (pos == start)
+							break; /* no progress: avoid a loop */
+					}
+				} else if (nm[0]) {
+					char ph[96];
+					snprintf(ph, sizeof(ph), "(%s)", nm);
+					bu_draw_text(c, t->font, box.x + 12, by + 6, ph, 14, t->text_faint);
+				}
 				continue;
 			}
 			float size = block_font_size(b);
@@ -1666,7 +1921,7 @@ static void onevent(bdapp *a, void *ctx, bu_event *ev, bool *changed, bool *quit
 		struct tapregion *tr = &w->taps[i];
 		if (x >= tr->x && x < tr->x + tr->w && cy >= tr->y && cy < tr->y + tr->h) {
 			struct block *b = &w->blocks[tr->block];
-			if (b->type == B_INPUT) {
+			if (b->type == B_INPUT || b->type == B_TEXTAREA) {
 				w->editing = true;
 				w->edit_field = tr->block;
 				const char *v = "";
@@ -1675,6 +1930,20 @@ static void onevent(bdapp *a, void *ctx, bu_event *ev, bool *changed, bool *quit
 				snprintf(w->edit, sizeof(w->edit), "%s", v);
 				bu_osk_init(&w->osk);
 				w->osk.kana = false;
+			} else if (b->type == B_SELECT) {
+				/* tap cycles to the next option */
+				if (b->form >= 0 && b->field >= 0) {
+					struct formfield *ff =
+						&w->forms[b->form].fields[b->field];
+					if (ff->nopts > 0) {
+						ff->sel = (ff->sel + 1) % ff->nopts;
+						snprintf(ff->value, sizeof(ff->value), "%s",
+							 ff->opt_val[ff->sel]);
+						free(b->text);
+						b->text = strdup(ff->opt_label[ff->sel]);
+						b->text_len = (int)strlen(b->text);
+					}
+				}
 			} else if (b->type == B_SUBMIT) {
 				submit_form(w, b->form);
 			}
