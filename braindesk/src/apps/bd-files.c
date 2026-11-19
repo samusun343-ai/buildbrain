@@ -2,7 +2,10 @@
  * Mainstream layout: places sidebar, toolbar with history and
  * breadcrumbs, list/grid views, an info + actions bar for the
  * selection, and a status bar with free space. Copy/cut/paste,
- * rename and new-folder use the on-screen keyboard.
+ * rename and new-folder use the on-screen keyboard. The toolbar
+ * search field filters the current folder (case-insensitive
+ * substring, live as you type) and stays scoped to the folder
+ * you are in when you navigate.
  */
 #include "bdapp.h"
 #include "../bui_osk.h"
@@ -36,14 +39,59 @@ struct files {
 	char clip[PATH_MAX];
 	bool clip_cut;
 	bool confirm_delete;
-	/* OSK input mode: 0 none, 1 rename, 2 new folder */
+	/* OSK input mode: 0 none, 1 rename, 2 new folder, 3 search */
 	int input_mode;
 	char input[256];
+	/* live search query: filters the current folder; kept while
+	 * navigating so the scope follows the folder you are in. */
+	char query[128];
 	bu_osk osk;
 	char status[160];
 };
 
 static int sort_mode;
+
+/* Case-insensitive substring match. Only ASCII A-Z is folded;
+ * multibyte UTF-8 bytes compare as-is, which is correct for a
+ * byte-substring search because UTF-8 is self-synchronising. */
+static bool contains_ci(const char *hay, const char *needle)
+{
+	if (!needle[0])
+		return true;
+	size_t nl = strlen(needle);
+	for (const char *p = hay; *p; p++) {
+		if (strlen(p) < nl)
+			return false;
+		size_t i;
+		for (i = 0; i < nl; i++) {
+			unsigned char hc = (unsigned char)p[i], nc = (unsigned char)needle[i];
+			if (hc >= 'A' && hc <= 'Z')
+				hc += 32;
+			if (nc >= 'A' && nc <= 'Z')
+				nc += 32;
+			if (hc != nc)
+				break;
+		}
+		if (i == nl)
+			return true;
+	}
+	return false;
+}
+
+/* Copy at most maxb bytes, never splitting a UTF-8 character. */
+static void trunc_utf8(char *dst, size_t dn, const char *src, size_t maxb)
+{
+	size_t l = strlen(src);
+	if (l > maxb) {
+		l = maxb;
+		while (l > 0 && (src[l] & 0xC0) == 0x80)
+			l--;
+	}
+	if (l >= dn)
+		l = dn - 1;
+	memcpy(dst, src, l);
+	dst[l] = 0;
+}
 
 static int ent_cmp(const void *a, const void *b)
 {
@@ -86,6 +134,8 @@ static void load(struct files *f)
 		if (strcmp(de->d_name, "..") == 0)
 			continue;
 		if (de->d_name[0] == '.' && !f->show_hidden)
+			continue;
+		if (f->query[0] && !contains_ci(de->d_name, f->query))
 			continue;
 		struct entry *e = &f->ent[f->n];
 		snprintf(e->name, sizeof(e->name), "%s", de->d_name);
@@ -192,7 +242,7 @@ static void draw(bdapp *a, void *ctx)
 	bu_button(c, t, (bu_rect){ 52, TOOL_Y, 40, 36 }, "▶", BU_BTN_NORMAL, false);
 	bu_button(c, t, (bu_rect){ 96, TOOL_Y, 40, 36 }, "▲", BU_BTN_NORMAL, false);
 	/* breadcrumbs */
-	bu_fill_round_rect(c, (bu_rect){ 144, TOOL_Y, 470, 36 }, 8, t->surface);
+	bu_fill_round_rect(c, (bu_rect){ 144, TOOL_Y, 360, 36 }, 8, t->surface);
 	{
 		char tmp[PATH_MAX];
 		snprintf(tmp, sizeof(tmp), "%s", f->cwd);
@@ -206,9 +256,25 @@ static void draw(bdapp *a, void *ctx)
 			x += w;
 			bu_draw_text(c, t->font, x, TOOL_Y + 8, "›", 13.5, t->text_faint);
 			x += 14;
-			if (x > 590)
+			if (x > 480)
 				break;
 		}
+	}
+	/* search field (scoped to the current folder) */
+	bu_fill_round_rect(c, (bu_rect){ 512, TOOL_Y, 102, 36 }, 8, t->surface);
+	if (f->query[0]) {
+		char qd[128];
+		snprintf(qd, sizeof(qd), "%s", f->query);
+		while (bu_text_width(t->font, qd, 13.5) > 86 && qd[0]) {
+			int l = (int)strlen(qd);
+			while (l > 0 && (qd[l - 1] & 0xC0) == 0x80)
+				l--;
+			if (l > 0)
+				qd[l - 1] = 0;
+		}
+		bu_draw_text(c, t->font, 522, TOOL_Y + 8, qd, 13.5, t->text);
+	} else {
+		bu_draw_text(c, t->font, 522, TOOL_Y + 8, "検索", 13.5, t->text_faint);
 	}
 	bu_button(c, t, (bu_rect){ 622, TOOL_Y, 74, 36 }, f->grid ? "リスト" : "グリッド", BU_BTN_NORMAL, false);
 	bu_button(c, t, (bu_rect){ 702, TOOL_Y, 74, 36 }, "並替", BU_BTN_NORMAL, false);
@@ -280,8 +346,16 @@ static void draw(bdapp *a, void *ctx)
 		bu_button(c, t, (bu_rect){ cont.x + cont.w - 50, cont.y + 24, 46, 52 }, "▲", BU_BTN_NORMAL, false);
 		bu_button(c, t, (bu_rect){ cont.x + cont.w - 50, cont.y + cont.h - 56, 46, 52 }, "▼", BU_BTN_NORMAL, false);
 	}
-	if (f->n == 0)
-		bu_draw_text(c, t->font, cont.x + 16, cont.y + 40, "このフォルダは空です", 13.5, t->text_dim);
+	if (f->n == 0) {
+		if (f->query[0]) {
+			char qt[32], msg[160];
+			trunc_utf8(qt, sizeof(qt), f->query, 24);
+			snprintf(msg, sizeof(msg), "「%s」に一致する項目がありません", qt);
+			bu_draw_text(c, t->font, cont.x + 16, cont.y + 40, msg, 13.5, t->text_dim);
+		} else {
+			bu_draw_text(c, t->font, cont.x + 16, cont.y + 40, "このフォルダは空です", 13.5, t->text_dim);
+		}
+	}
 	/* action + info bar */
 	bu_fill_round_rect(c, (bu_rect){ 8, ACT_Y, 848, 42 }, 10, t->surface);
 	if (f->sel >= 0) {
@@ -320,8 +394,15 @@ static void draw(bdapp *a, void *ctx)
 	if (statvfs(f->cwd, &sv) == 0)
 		free_mb = (long)((double)sv.f_bavail * sv.f_frsize / 1048576.0);
 	const char *sorts[] = { "名前順", "サイズ順", "日付順" };
-	snprintf(st, sizeof(st), "%d 項目 · 並替: %s%s%s", f->n, sorts[f->sort],
-		 free_mb >= 0 ? " · 空き " : "", "");
+	if (f->query[0]) {
+		char qt[32];
+		trunc_utf8(qt, sizeof(qt), f->query, 24);
+		snprintf(st, sizeof(st), "「%s」 %d 項目 · 並替: %s%s", qt, f->n, sorts[f->sort],
+			 free_mb >= 0 ? " · 空き " : "");
+	} else {
+		snprintf(st, sizeof(st), "%d 項目 · 並替: %s%s%s", f->n, sorts[f->sort],
+			 free_mb >= 0 ? " · 空き " : "", "");
+	}
 	bu_draw_text(c, t->font, 12, STAT_Y + 4, st, 11.5, t->text_faint);
 	if (free_mb >= 0) {
 		char fb[32];
@@ -335,7 +416,7 @@ static void draw(bdapp *a, void *ctx)
 	if (f->input_mode) {
 		int oskh = bu_osk_height();
 		bu_fill_round_rect(c, (bu_rect){ 144, TOOL_Y, 470, 36 }, 8, t->surface3);
-		bu_draw_text(c, t->font, 156, TOOL_Y + 8, f->input[0] ? f->input : (f->input_mode == 1 ? "新しい名前" : "フォルダ名"), 13.5, t->text);
+		bu_draw_text(c, t->font, 156, TOOL_Y + 8, f->input[0] ? f->input : (f->input_mode == 1 ? "新しい名前" : f->input_mode == 2 ? "フォルダ名" : "検索する文字"), 13.5, t->text);
 		bu_button(c, t, (bu_rect){ 622, TOOL_Y, 74, 36 }, "決定", BU_BTN_PRIMARY, false);
 		bu_button(c, t, (bu_rect){ 782, TOOL_Y, 74, 36 }, "取消", BU_BTN_NORMAL, false);
 		bu_osk_draw(c, t, &f->osk, (bu_rect){ 0, a->h - oskh, a->w, oskh });
@@ -404,6 +485,16 @@ static void do_paste(struct files *f)
 
 static void commit_input(struct files *f)
 {
+	if (f->input_mode == 3) {
+		/* search: the list is already filtered live; 決定 just
+		 * closes the keyboard and keeps the query. */
+		snprintf(f->query, sizeof(f->query), "%s", f->input);
+		if (f->query[0])
+			load(f);
+		f->input_mode = 0;
+		f->input[0] = 0;
+		return;
+	}
 	if (!f->input[0]) {
 		f->input_mode = 0;
 		return;
@@ -445,6 +536,11 @@ static void onevent(bdapp *a, void *ctx, bu_event *ev, bool *changed, bool *quit
 			return;
 		}
 		if (inr(x, y, (bu_rect){ 782, TOOL_Y, 74, 36 })) {
+			if (f->input_mode == 3) {
+				/* 取消 in search clears the query too */
+				f->query[0] = 0;
+				load(f);
+			}
 			f->input_mode = 0;
 			f->input[0] = 0;
 			return;
@@ -454,14 +550,22 @@ static void onevent(bdapp *a, void *ctx, bu_event *ev, bool *changed, bool *quit
 		if (y >= area.y) {
 			char out[32];
 			int r = bu_osk_hit(&f->osk, area, x, y, out, sizeof(out));
-			if (r == OSK_TEXT && out[0])
+			if (r == OSK_TEXT && out[0]) {
 				strncat(f->input, out, sizeof(f->input) - strlen(f->input) - 1);
-			else if (r == OSK_BACKSPACE) {
+				if (f->input_mode == 3) {
+					snprintf(f->query, sizeof(f->query), "%s", f->input);
+					load(f);
+				}
+			} else if (r == OSK_BACKSPACE) {
 				int l = (int)strlen(f->input);
 				while (l > 0 && (f->input[l - 1] & 0xC0) == 0x80)
 					l--;
 				if (l > 0)
 					f->input[l - 1] = 0;
+				if (f->input_mode == 3) {
+					snprintf(f->query, sizeof(f->query), "%s", f->input);
+					load(f);
+				}
 			} else if (r == OSK_ENTER) {
 				commit_input(f);
 			}
@@ -502,6 +606,14 @@ static void onevent(bdapp *a, void *ctx, bu_event *ev, bool *changed, bool *quit
 	if (inr(x, y, (bu_rect){ 622, TOOL_Y, 74, 36 })) {
 		f->grid = !f->grid;
 		f->scroll = 0;
+		return;
+	}
+	/* search field: opens the OSK with the current query prefilled */
+	if (inr(x, y, (bu_rect){ 512, TOOL_Y, 102, 36 })) {
+		f->input_mode = 3;
+		snprintf(f->input, sizeof(f->input), "%s", f->query);
+		bu_osk_init(&f->osk);
+		f->osk.kana = false;
 		return;
 	}
 	if (inr(x, y, (bu_rect){ 702, TOOL_Y, 74, 36 })) {
