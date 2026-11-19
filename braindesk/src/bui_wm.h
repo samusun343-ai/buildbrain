@@ -26,6 +26,13 @@
 
 enum { WM_HELLO = 1, WM_GEOM = 2, WM_COMMIT = 3, WM_EVENT = 4, WM_CLOSE = 5 };
 
+/* Window frame states. These are server-side only: the wire
+ * protocol and the client's fixed-size shared buffer never
+ * change, so existing clients keep working unmodified. A
+ * maximized / snapped window's frame fills (half) the work
+ * area and the shell scales the client's buffer into it. */
+enum { BD_WM_NORMAL = 0, BD_WM_MAX = 1, BD_WM_SNAP_L = 2, BD_WM_SNAP_R = 3 };
+
 struct wm_hdr { uint32_t type; uint32_t len; };
 struct wm_hello { char title[64]; int32_t w, h; };
 struct wm_geom { int32_t w, h; };
@@ -77,5 +84,21 @@ int bd_wm_key(int code, int value);
  * overlays should take the keys. */
 int bd_wm_focused(void);
 void bd_wm_raise_task(int idx);
+
+/* Window list for the shell's task switcher, in creation order
+ * (the same order as the panel task buttons). */
+struct bd_wm_info {
+	char title[64];
+	int idx;		/* window index for bd_wm_raise_task() */
+	int minimized;
+	int state;		/* BD_WM_* */
+	int active;		/* topmost visible window */
+};
+int bd_wm_list(struct bd_wm_info *out, int max);
+/* Frame state of one window (BD_WM_*), -1 for a bad index. */
+int bd_wm_window_state(int idx);
+void bd_wm_set_state(int idx, int state);
+/* Outer frame rect (incl. chrome) of one window; 0 on success. */
+int bd_wm_window_outer(int idx, bu_rect *out);
 
 #endif

@@ -1208,6 +1208,268 @@ static int eff_panel_h(bd_state *s)
 	return ph > 0 ? ph : 42;
 }
 
+/* ================= shell overlays =================
+ * Task switcher, control centre and toasts. Their state is
+ * file-static (bd_state is shared with the greeter/demo, which
+ * never open them); the shell drives time-based behaviour
+ * through bd_scenes_tick() and posts toasts through
+ * bd_toast_push(). Both are declared in shell.c. */
+
+static long now_ms(void)
+{
+	struct timespec ts;
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	return ts.tv_sec * 1000L + ts.tv_nsec / 1000000L;
+}
+
+/* ---------- toasts ---------- */
+#define TOAST_MS 2500
+static char toast_cur[128];
+static long toast_deadline;
+static char toast_queue[2][128];
+static int toast_nqueue;
+
+void bd_toast_push(const char *text)
+{
+	if (!text || !text[0])
+		return;
+	if (!toast_cur[0]) {
+		snprintf(toast_cur, sizeof(toast_cur), "%s", text);
+		toast_deadline = now_ms() + TOAST_MS;
+	} else if (toast_nqueue < 2) {
+		snprintf(toast_queue[toast_nqueue], sizeof(toast_queue[0]), "%s", text);
+		toast_nqueue++;
+	} else {
+		snprintf(toast_queue[1], sizeof(toast_queue[0]), "%s", text);
+	}
+}
+
+int bd_toast_active(void) { return toast_cur[0] != 0; }
+
+static void toast_tick(bool *changed)
+{
+	if (toast_cur[0] && now_ms() >= toast_deadline) {
+		if (toast_nqueue > 0) {
+			snprintf(toast_cur, sizeof(toast_cur), "%s", toast_queue[0]);
+			toast_nqueue--;
+			if (toast_nqueue > 0)
+				snprintf(toast_queue[0], sizeof(toast_queue[0]), "%s", toast_queue[1]);
+			toast_deadline = now_ms() + TOAST_MS;
+		} else {
+			toast_cur[0] = 0;
+		}
+		*changed = true;
+	}
+}
+
+static void draw_toast(bu_canvas *c, bu_theme *t)
+{
+	if (!toast_cur[0])
+		return;
+	int tw = bu_text_width(t->font, toast_cur, 13.5f);
+	int w = tw + 48;
+	if (w < 140) w = 140;
+	if (w > 720) w = 720;
+	int y = top_bar() ? PH - dock_h() - 56 : PH - PANEL_H - 56;
+	bu_rect r = { (PW - w) / 2, y, w, 42 };
+	bu_shadow_round_rect(c, r, 21, 8, BU_RGBA(0, 0, 0, 120));
+	bu_color bg = t->surface;
+	bg.a = 242;
+	bu_fill_round_rect(c, r, 21, bg);
+	bu_stroke_round_rect(c, r, 21, 1, t->line);
+	bu_draw_text_centered(c, t->font, (bu_rect){ r.x, r.y + 10, r.w, 22 },
+			      toast_cur, 13.5, t->text);
+}
+
+/* ---------- task switcher ---------- */
+static bool sw_open;
+static int sw_sel;
+static struct bd_wm_info sw_items[8];
+static int sw_n;
+
+static void sw_refresh(void)
+{
+	sw_n = bd_wm_list(sw_items, 8);
+	if (sw_sel >= sw_n)
+		sw_sel = sw_n - 1;
+	if (sw_sel < 0)
+		sw_sel = 0;
+}
+
+void bd_switcher_open(void)
+{
+	sw_refresh();
+	sw_sel = 0;
+	for (int i = 0; i < sw_n; i++)
+		if (sw_items[i].active)
+			sw_sel = i;
+	sw_open = true;
+}
+
+void bd_switcher_cycle(void)
+{
+	if (!sw_open)
+		bd_switcher_open();
+	sw_refresh();
+	if (sw_n > 0)
+		sw_sel = (sw_sel + 1) % sw_n;
+	sw_open = true;
+}
+
+int bd_switcher_is_open(void) { return sw_open; }
+
+static void sw_activate(void)
+{
+	if (sw_sel >= 0 && sw_sel < sw_n)
+		bd_wm_raise_task(sw_items[sw_sel].idx);
+	sw_open = false;
+}
+
+static bu_rect switcher_rect(void)
+{
+	bu_rect wa;
+	bd_workarea(&wa);
+	int n = sw_n > 0 ? sw_n : 1;
+	int h = 44 + n * 46 + 10;
+	return (bu_rect){ wa.x + (wa.w - 460) / 2, wa.y + (wa.h - h) / 2, 460, h };
+}
+static bu_rect switcher_row(int i)
+{
+	bu_rect r = switcher_rect();
+	return (bu_rect){ r.x + 10, r.y + 44 + i * 46, r.w - 20, 40 };
+}
+
+static void draw_switcher(bu_canvas *c, bu_theme *t)
+{
+	if (!sw_open)
+		return;
+	sw_refresh();
+	bu_rect r = switcher_rect();
+	bu_shadow_round_rect(c, r, 14, 10, BU_RGBA(0, 0, 0, 130));
+	bu_color sf = t->surface;
+	sf.a = 248;
+	bu_fill_round_rect(c, r, 14, sf);
+	bu_stroke_round_rect(c, r, 14, 1, t->line);
+	bu_draw_text(c, t->font, r.x + 18, r.y + 12, "ウィンドウを切り替え", 14, t->text);
+	if (sw_n == 0) {
+		bu_draw_text(c, t->font, r.x + 18, r.y + 56,
+			     "開いているウィンドウはありません", 13, t->text_dim);
+		return;
+	}
+	for (int i = 0; i < sw_n; i++) {
+		bu_rect row = switcher_row(i);
+		if (i == sw_sel) {
+			bu_fill_round_rect(c, row, 8, t->surface3);
+			bu_fill_round_rect(c, (bu_rect){ row.x, row.y + 6, 4, row.h - 12 }, 2, t->accent);
+		}
+		bu_fill_round_rect(c, (bu_rect){ row.x + 10, row.y + 6, 28, 28 }, 7,
+				   sw_items[i].minimized ? t->surface2 : t->accent);
+		/* first UTF-8 character of the title */
+		char initial[5];
+		int n = 0;
+		const unsigned char *tp = (const unsigned char *)sw_items[i].title;
+		if (tp[0]) {
+			n = (tp[0] & 0xE0) == 0xC0 ? 2
+			  : (tp[0] & 0xF0) == 0xE0 ? 3
+			  : (tp[0] & 0xF8) == 0xF0 ? 4 : 1;
+			for (int k = 0; k < n && tp[k]; k++)
+				initial[k] = (char)tp[k];
+		}
+		initial[n] = 0;
+		bu_draw_text_centered(c, t->font, (bu_rect){ row.x + 10, row.y + 11, 28, 18 },
+				      initial, 12.5, BU_RGB(255, 255, 255));
+		bu_draw_text(c, t->font, row.x + 50, row.y + 10, sw_items[i].title, 14,
+			     sw_items[i].minimized ? t->text_dim : t->text);
+		const char *st = sw_items[i].active ? "表示中"
+			: sw_items[i].minimized ? "最小化"
+			: sw_items[i].state == BD_WM_MAX ? "最大化"
+			: sw_items[i].state != BD_WM_NORMAL ? "スナップ" : "";
+		if (st[0])
+			bu_draw_text_right(c, t->font, (bu_rect){ row.x, row.y + 11, row.w - 14, 18 },
+					   st, 12, t->text_faint);
+	}
+}
+
+/* ---------- control centre ---------- */
+static bool cc_open;
+
+void bd_cc_show(void) { cc_open = true; }
+int bd_cc_is_open(void) { return cc_open; }
+
+static bu_rect cc_btn_rect(void)
+{
+	if (top_bar())
+		return (bu_rect){ PW - 282, 0, 30, topbar_h() };
+	return (bu_rect){ panel_rx() - 202, PH - PANEL_H, 34, PANEL_H };
+}
+static bu_rect cc_rect(void)
+{
+	if (top_bar())
+		return (bu_rect){ PW - 316, topbar_h() + 8, 300, 244 };
+	return (bu_rect){ PW - 316, PH - PANEL_H - 252, 300, 244 };
+}
+static bu_rect cc_vol_slider(void) { bu_rect r = cc_rect(); return (bu_rect){ r.x + 52, r.y + 46, r.w - 110, 26 }; }
+static bu_rect cc_bri_slider(void) { bu_rect r = cc_rect(); return (bu_rect){ r.x + 52, r.y + 90, r.w - 110, 26 }; }
+static bu_rect cc_wifi_row(void) { bu_rect r = cc_rect(); return (bu_rect){ r.x + 10, r.y + 132, r.w - 20, 42 }; }
+static bu_rect cc_mode_row(void) { bu_rect r = cc_rect(); return (bu_rect){ r.x + 10, r.y + 182, r.w - 20, 42 }; }
+
+static void draw_cc(bu_canvas *c, bu_theme *t, bd_state *s)
+{
+	if (!cc_open)
+		return;
+	bu_rect r = cc_rect();
+	bu_shadow_round_rect(c, r, 14, 10, BU_RGBA(0, 0, 0, 120));
+	bu_color sf = t->surface;
+	sf.a = 248;
+	bu_fill_round_rect(c, r, 14, sf);
+	bu_stroke_round_rect(c, r, 14, 1, t->line);
+	bu_draw_text(c, t->font, r.x + 16, r.y + 10, "コントロールセンター", 13.5, t->text);
+	/* volume */
+	bu_icon_volume(c, r.x + 28, r.y + 59, t->text_dim);
+	bu_slider(c, t, cc_vol_slider(), s->volume, s->drag_slider == 4);
+	char pct[8];
+	snprintf(pct, sizeof(pct), "%d%%", (int)(s->volume * 100 + 0.5f));
+	bu_draw_text_right(c, t->font, (bu_rect){ r.x, r.y + 48, r.w - 12, 22 }, pct, 12.5, t->text);
+	/* brightness */
+	bu_icon_brightness(c, r.x + 28, r.y + 103, t->text_dim);
+	bu_slider(c, t, cc_bri_slider(), s->brightness, s->drag_slider == 5);
+	snprintf(pct, sizeof(pct), "%d%%", (int)(s->brightness * 100 + 0.5f));
+	bu_draw_text_right(c, t->font, (bu_rect){ r.x, r.y + 92, r.w - 12, 22 }, pct, 12.5, t->text);
+	/* Wi-Fi */
+	bu_rect wr = cc_wifi_row();
+	bu_fill_round_rect(c, wr, 8, t->surface2);
+	bu_icon_wifi(c, wr.x + 24, wr.y + wr.h / 2, t->text_dim);
+	bu_draw_text(c, t->font, wr.x + 44, wr.y + (wr.h - 22) / 2, "Wi-Fi", 14, t->text);
+	bu_toggle(c, t, wr.x + wr.w - 60, wr.y + 8, s->wifi_on);
+	/* mode: tap cycles to the next profile */
+	bu_rect mr = cc_mode_row();
+	bu_fill_round_rect(c, mr, 8, t->surface2);
+	bu_draw_text(c, t->font, mr.x + 14, mr.y + (mr.h - 22) / 2, "モード", 14, t->text);
+	int cur = mode_current(s);
+	const char *mn = cur >= 0 ? s->mode_names[cur] : (s->mode_count > 0 ? s->mode_name : "—");
+	bu_draw_text_right(c, t->font, (bu_rect){ mr.x, mr.y + (mr.h - 22) / 2, mr.w - 14, 22 },
+			   mn, 13.5, t->accent);
+}
+
+/* ---------- task-button long press ---------- */
+static int task_press_idx = -1;
+static long task_press_ms;
+static int task_press_x, task_press_y;
+
+/* Time-based overlay behaviour, driven by the shell's main
+ * loop: toast expiry and the task-button long press that opens
+ * the switcher. */
+void bd_scenes_tick(bd_state *s, bool *changed)
+{
+	(void)s;
+	toast_tick(changed);
+	if (task_press_idx >= 0 && now_ms() - task_press_ms >= 600) {
+		task_press_idx = -1;
+		bd_switcher_open();
+		*changed = true;
+	}
+}
+
 void bd_draw_shell(bu_canvas *c, bu_theme *t, bd_state *s)
 {
 	PANEL_H = eff_panel_h(s);	/* skin family bar height (Vista 30, Win7 40, Win11 48, …); s->panel_h overrides */
@@ -1223,6 +1485,9 @@ void bd_draw_shell(bu_canvas *c, bu_theme *t, bd_state *s)
 	if (s->settings_open)
 		draw_settings(c, t, s);
 	panel(c, t, s);
+	draw_cc(c, t, s);
+	draw_switcher(c, t);
+	draw_toast(c, t);
 	draw_assist(c, t, s);
 }
 
@@ -1280,6 +1545,48 @@ int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y,
 {
 	PANEL_H = eff_panel_h(s);
 	*changed = false;
+	/* modal overlays first: the task switcher takes every tap */
+	if (ev_type == BU_EV_POINTER_DOWN && sw_open) {
+		sw_refresh();
+		for (int i = 0; i < sw_n; i++) {
+			if (in_rect(switcher_row(i), x, y)) {
+				sw_sel = i;
+				sw_activate();
+				*changed = true;
+				return BD_ACT_NONE;
+			}
+		}
+		sw_open = false;
+		*changed = true;
+		return BD_ACT_NONE;
+	}
+	if (ev_type == BU_EV_POINTER_DOWN && cc_open) {
+		if (in_rect(cc_btn_rect(), x, y)) {
+			cc_open = false;
+			*changed = true;
+			return BD_ACT_NONE;
+		}
+		if (in_rect(cc_rect(), x, y)) {
+			if (in_rect(cc_vol_slider(), x, y)) {
+				s->drag_slider = 4;
+				s->volume = slider_frac(cc_vol_slider(), x);
+			} else if (in_rect(cc_bri_slider(), x, y)) {
+				s->drag_slider = 5;
+				s->brightness = slider_frac(cc_bri_slider(), x);
+			} else if (in_rect(cc_wifi_row(), x, y)) {
+				s->wifi_on = !s->wifi_on;
+				bd_toast_push(s->wifi_on ? "Wi-Fi オン" : "Wi-Fi オフ");
+			} else if (in_rect(cc_mode_row(), x, y)) {
+				if (s->mode_count > 0)
+					s->mode_set = (mode_current(s) + 1) % s->mode_count;
+			}
+			*changed = true;
+			return BD_ACT_NONE;
+		}
+		cc_open = false;
+		*changed = true;
+		/* fall through: the tap itself still counts */
+	}
 	if (ev_type == BU_EV_POINTER_MOVE || ev_type == BU_EV_POINTER_UP) {
 		if (bd_wm_pointer(ev_type, x, y)) {
 			*changed = true;
@@ -1288,13 +1595,18 @@ int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y,
 	}
 	if (ev_type == BU_EV_POINTER_DOWN && !s->settings_open &&
 	    s->view == BD_VIEW_DESKTOP && !s->assist_open) {
-		/* panel task buttons raise windows */
+		/* panel task buttons: a tap raises on release; a
+		 * long press (>= 600 ms, via bd_scenes_tick) opens
+		 * the task switcher instead */
 		{
 			int tx0, tx1;
 			task_area(&tx0, &tx1);
 			int ti = bd_wm_task_hit(x, y, tx0, tx1, PH - PANEL_H, PANEL_H);
 			if (ti >= 0) {
-				bd_wm_raise_task(ti);
+				task_press_idx = ti;
+				task_press_ms = now_ms();
+				task_press_x = x;
+				task_press_y = y;
 				*changed = true;
 				return BD_ACT_NONE;
 			}
@@ -1311,6 +1623,27 @@ int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y,
 		}
 	}
 	if (ev_type == BU_EV_KEY) {
+		if (sw_open) {
+			/* switcher keys: Tab / arrows cycle, Enter
+			 * activates, Esc cancels */
+			if (value == 1 || value == 2) {
+				sw_refresh();
+				if (code == 15 /* TAB */ || code == 108 /* DOWN */) {
+					if (sw_n > 0) sw_sel = (sw_sel + 1) % sw_n;
+					*changed = true;
+				} else if (code == 103 /* UP */) {
+					if (sw_n > 0) sw_sel = (sw_sel + sw_n - 1) % sw_n;
+					*changed = true;
+				} else if (code == 28 /* ENTER */ && value == 1) {
+					sw_activate();
+					*changed = true;
+				} else if (code == 1 /* ESC */ && value == 1) {
+					sw_open = false;
+					*changed = true;
+				}
+			}
+			return BD_ACT_NONE;
+		}
 		if (value == 1 && code == 1 /* KEY_ESC */) {
 			if (s->settings_open) { s->settings_open = false; *changed = true; }
 			else if (s->view == BD_VIEW_LAUNCHER) { s->view = BD_VIEW_DESKTOP; *changed = true; }
@@ -1334,10 +1667,10 @@ int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y,
 						int act = ACTS[i];
 						s->assist_open = false;
 						*changed = true;
-						if (act == BD_ASSIST_VOL_UP) { s->volume = s->volume + 0.1f > 1 ? 1 : s->volume + 0.1f; return BD_ACT_NONE; }
-						if (act == BD_ASSIST_VOL_DOWN) { s->volume = s->volume - 0.1f < 0 ? 0 : s->volume - 0.1f; return BD_ACT_NONE; }
-						if (act == BD_ASSIST_BRIGHT_UP) { s->brightness = s->brightness + 0.125f > 1 ? 1 : s->brightness + 0.125f; return BD_ACT_NONE; }
-						if (act == BD_ASSIST_BRIGHT_DOWN) { s->brightness = s->brightness - 0.125f < 0 ? 0 : s->brightness - 0.125f; return BD_ACT_NONE; }
+						if (act == BD_ASSIST_VOL_UP) { s->volume = s->volume + 0.1f > 1 ? 1 : s->volume + 0.1f; char tb[32]; snprintf(tb, sizeof(tb), "音量 %d%%", (int)(s->volume * 100 + 0.5f)); bd_toast_push(tb); return BD_ACT_NONE; }
+						if (act == BD_ASSIST_VOL_DOWN) { s->volume = s->volume - 0.1f < 0 ? 0 : s->volume - 0.1f; char tb[32]; snprintf(tb, sizeof(tb), "音量 %d%%", (int)(s->volume * 100 + 0.5f)); bd_toast_push(tb); return BD_ACT_NONE; }
+						if (act == BD_ASSIST_BRIGHT_UP) { s->brightness = s->brightness + 0.125f > 1 ? 1 : s->brightness + 0.125f; char tb[32]; snprintf(tb, sizeof(tb), "明るさ %d%%", (int)(s->brightness * 100 + 0.5f)); bd_toast_push(tb); return BD_ACT_NONE; }
+						if (act == BD_ASSIST_BRIGHT_DOWN) { s->brightness = s->brightness - 0.125f < 0 ? 0 : s->brightness - 0.125f; char tb[32]; snprintf(tb, sizeof(tb), "明るさ %d%%", (int)(s->brightness * 100 + 0.5f)); bd_toast_push(tb); return BD_ACT_NONE; }
 						if (act == BD_ASSIST_LAUNCHER) { s->view = BD_VIEW_LAUNCHER; return BD_ACT_NONE; }
 						s->assist_action = act;
 						return BD_ACT_ASSIST;
@@ -1354,6 +1687,14 @@ int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y,
 				*changed = true;
 				return BD_ACT_NONE;
 			}
+		}
+		/* control centre toggle (the tray Wi-Fi icon) */
+		if (in_rect(cc_btn_rect(), x, y)) {
+			cc_open = !cc_open;
+			if (cc_open)
+				s->vol_popup = false;
+			*changed = true;
+			return BD_ACT_NONE;
 		}
 		/* volume popup */
 		if (s->vol_popup) {
@@ -1433,7 +1774,7 @@ int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y,
 			if (s->settings_cat == 4) {
 				bu_rect pane = pane_rect();
 				bu_rect r0 = { pane.x + 8, pane.y + 52, pane.w - 16, 42 };
-				if (in_rect(r0, x, y)) { s->wifi_on = !s->wifi_on; *changed = true; return BD_ACT_NONE; }
+				if (in_rect(r0, x, y)) { s->wifi_on = !s->wifi_on; bd_toast_push(s->wifi_on ? "Wi-Fi オン" : "Wi-Fi オフ"); *changed = true; return BD_ACT_NONE; }
 				for (int i = 0; i < s->net_count && i < 4; i++) {
 					bu_rect row = { pane.x + 8, pane.y + 162 + i * 44, pane.w - 16, 40 };
 					if (in_rect(row, x, y)) { s->net_connect = i; *changed = true; return BD_ACT_NONE; }
@@ -1553,16 +1894,40 @@ int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y,
 		return BD_ACT_NONE;
 	}
 	if (ev_type == BU_EV_POINTER_MOVE) {
+		if (task_press_idx >= 0 &&
+		    (x - task_press_x > 16 || task_press_x - x > 16 ||
+		     y - task_press_y > 16 || task_press_y - y > 16))
+			task_press_idx = -1;	/* moved: not a long press */
 		if (s->drag_slider == 1) { s->brightness = slider_frac(brightness_slider(), x); *changed = true; }
 		if (s->drag_slider == 2) { s->volume = slider_frac(volume_slider_for(s), x); *changed = true; }
 		if (s->drag_slider == 3) { s->volume = slider_frac(vol_popup_slider(), x); *changed = true; }
+		if (s->drag_slider == 4) { s->volume = slider_frac(cc_vol_slider(), x); *changed = true; }
+		if (s->drag_slider == 5) { s->brightness = slider_frac(cc_bri_slider(), x); *changed = true; }
 		return BD_ACT_NONE;
 	}
 	if (ev_type == BU_EV_POINTER_UP) {
+		if (task_press_idx >= 0) {
+			/* plain task-button tap: raise on release */
+			bd_wm_raise_task(task_press_idx);
+			task_press_idx = -1;
+			*changed = true;
+		}
 		if (s->start_pressed) {
 			s->start_pressed = false;
 			if (in_rect(start_btn(), x, y))
 				s->view = s->view == BD_VIEW_LAUNCHER ? BD_VIEW_DESKTOP : BD_VIEW_LAUNCHER;
+			*changed = true;
+		}
+		if (s->drag_slider == 2 || s->drag_slider == 3 || s->drag_slider == 4) {
+			char tb[32];
+			snprintf(tb, sizeof(tb), "音量 %d%%", (int)(s->volume * 100 + 0.5f));
+			bd_toast_push(tb);
+			*changed = true;
+		}
+		if (s->drag_slider == 1 || s->drag_slider == 5) {
+			char tb[32];
+			snprintf(tb, sizeof(tb), "明るさ %d%%", (int)(s->brightness * 100 + 0.5f));
+			bd_toast_push(tb);
 			*changed = true;
 		}
 		s->drag_slider = 0;

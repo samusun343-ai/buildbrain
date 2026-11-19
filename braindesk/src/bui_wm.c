@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
+#include <time.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/mman.h>
@@ -191,10 +192,12 @@ typedef struct {
 	int fd;
 	int memfd;
 	uint32_t *px;
-	int w, h;		/* content size */
-	int x, y;		/* window position (incl. chrome) */
+	int w, h;		/* content (client buffer) size — never changes */
+	int x, y;		/* window position (incl. chrome), normal state */
 	char title[64];
 	int minimized;
+	int state;		/* BD_WM_*: frame fills (half) the work area */
+	int nx, ny;		/* saved normal position while max/snapped */
 	unsigned z;
 } wm_win;
 
@@ -204,7 +207,17 @@ static char server_path[108];
 static unsigned z_counter = 1;
 static int focused_idx = -1;	/* index into wins, -1 = none */
 static int drag_idx = -1, drag_dx, drag_dy;
+static int drag_preview;	/* BD_WM_* snap target while dragging */
+static int dtap_idx = -1;	/* title-bar double-tap detection */
+static long dtap_ms;
 static int capture_idx = -1;	/* window holding pointer capture */
+
+static long wm_now_ms(void)
+{
+	struct timespec ts;
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	return ts.tv_sec * 1000L + ts.tv_nsec / 1000000L;
+}
 /* Desktop work area (minus panel / top bar); the shell pushes it.
  * Default is the whole 854x480 panel until then. */
 static bu_rect workarea = { 0, 0, 854, 480 };
@@ -215,13 +228,51 @@ void bd_wm_set_workarea(int x, int y, int w, int h)
 		workarea = (bu_rect){ x, y, w, h };
 }
 
+static void win_clamp(wm_win *w);
+
+/* The frame rect for a given state: the normal rect, the
+ * whole work area (maximized) or its left/right half (snapped).
+ * The client buffer keeps its HELLO size; only the frame moves. */
+static bu_rect frame_for_state(const wm_win *w, int st)
+{
+	switch (st) {
+	case BD_WM_MAX:
+		return workarea;
+	case BD_WM_SNAP_L:
+		return (bu_rect){ workarea.x, workarea.y, workarea.w / 2, workarea.h };
+	case BD_WM_SNAP_R:
+		return (bu_rect){ workarea.x + workarea.w - workarea.w / 2,
+				  workarea.y, workarea.w / 2, workarea.h };
+	default:
+		return (bu_rect){ w->x, w->y, w->w, w->h + wm_chrome_h() };
+	}
+}
 static bu_rect win_outer(const wm_win *w)
 {
-	return (bu_rect){ w->x, w->y, w->w, w->h + wm_chrome_h() };
+	return frame_for_state(w, w->state);
 }
 static bu_rect win_content(const wm_win *w)
 {
-	return (bu_rect){ w->x, w->y + wm_chrome_h(), w->w, w->h };
+	bu_rect o = win_outer(w);
+	return (bu_rect){ o.x, o.y + wm_chrome_h(), o.w, o.h - wm_chrome_h() };
+}
+
+/* Switch frame state, remembering the normal position on the
+ * way out and restoring it on the way back. */
+static void win_set_state(wm_win *w, int st)
+{
+	if (w->state == st)
+		return;
+	if (w->state == BD_WM_NORMAL && st != BD_WM_NORMAL) {
+		w->nx = w->x;
+		w->ny = w->y;
+	}
+	w->state = st;
+	if (st == BD_WM_NORMAL) {
+		w->x = w->nx;
+		w->y = w->ny;
+		win_clamp(w);
+	}
 }
 
 /* Keep the whole outer window inside the work area, so a new
@@ -279,7 +330,8 @@ static void win_remove(int i)
 	munmap(wins[i].px, (size_t)wins[i].w * wins[i].h * 4);
 	memset(&wins[i], 0, sizeof(wins[i]));
 	if (focused_idx == i) focused_idx = -1;
-	if (drag_idx == i) drag_idx = -1;
+	if (drag_idx == i) { drag_idx = -1; drag_preview = BD_WM_NORMAL; }
+	if (dtap_idx == i) dtap_idx = -1;
 	if (capture_idx == i) capture_idx = -1;
 }
 
@@ -402,24 +454,68 @@ int bd_wm_focused(void) { return focused_idx >= 0 && wins[focused_idx].used; }
 /* ---------- drawing ---------- */
 
 /* chrome buttons, shared by draw + hit: returns rects for the
- * active skin family. kind: 0=close, 1=min */
+ * active skin family. kind: 0=close, 1=min, 2=maximize/restore */
 static bu_rect chrome_btn(const wm_win *w, int kind, int layout)
 {
 	bu_rect o = win_outer(w);
 	if (layout == 1 /* MAC */) {
-		/* traffic lights: red close, yellow min (12px, centres 18/38) */
+		/* traffic lights: red close, yellow min, green max
+		 * (12px, centres 18/38/58) */
 		return (bu_rect){ o.x + 11 + kind * 20, o.y + wm_chrome_h() / 2 - 7, 14, 14 };
 	}
 	/* Windows/BD families: right side caption buttons */
 	if (kind == 0)
 		return (bu_rect){ o.x + o.w - 40, o.y + 4, 34, 22 };
-	return (bu_rect){ o.x + o.w - 78, o.y + 4, 34, 22 };
+	if (kind == 2)
+		return (bu_rect){ o.x + o.w - 78, o.y + 4, 34, 22 };
+	return (bu_rect){ o.x + o.w - 116, o.y + 4, 34, 22 };
+}
+
+/* Bilinear scale of the client buffer into a content rect of a
+ * different size (maximized / snapped frames). The 1:1 case is
+ * handled by the memcpy path in bd_wm_draw. */
+static void blit_scaled(bu_canvas *c, const wm_win *w, bu_rect ct)
+{
+	for (int dy = 0; dy < ct.h; dy++) {
+		int cy = ct.y + dy;
+		if (cy < c->clip.y || cy >= c->clip.y + c->clip.h)
+			continue;
+		int sy_fp = w->h > 0 ? dy * w->h * 256 / ct.h : 0;
+		int sy = sy_fp >> 8, fy = sy_fp & 255;
+		int sy2 = sy + 1 < w->h ? sy + 1 : sy;
+		uint32_t *dst = c->px + cy * c->w;
+		for (int dx = 0; dx < ct.w; dx++) {
+			int cx = ct.x + dx;
+			if (cx < c->clip.x || cx >= c->clip.x + c->clip.w)
+				continue;
+			int sx_fp = w->w > 0 ? dx * w->w * 256 / ct.w : 0;
+			int sx = sx_fp >> 8, fx = sx_fp & 255;
+			int sx2 = sx + 1 < w->w ? sx + 1 : sx;
+			uint32_t p00 = w->px[sy * w->w + sx], p10 = w->px[sy * w->w + sx2];
+			uint32_t p01 = w->px[sy2 * w->w + sx], p11 = w->px[sy2 * w->w + sx2];
+			uint32_t out = 0xFF000000u;
+			for (int sh = 0; sh < 24; sh += 8) {
+				int top = ((p00 >> sh) & 255) + (((p10 >> sh) & 255) - ((p00 >> sh) & 255)) * fx / 256;
+				int bot = ((p01 >> sh) & 255) + (((p11 >> sh) & 255) - ((p01 >> sh) & 255)) * fx / 256;
+				out |= (uint32_t)(top + (bot - top) * fy / 256) << sh;
+			}
+			dst[cx] = out;
+		}
+	}
 }
 
 void bd_wm_draw(bu_canvas *c, bu_theme *t)
 {
 	const bd_skin *sk = bd_skin_get();
 	int layout = sk->layout; /* 1 = MAC per bui_skin.h */
+	/* snap preview under the windows while dragging */
+	if (drag_idx >= 0 && drag_preview != BD_WM_NORMAL) {
+		bu_rect pr = frame_for_state(&wins[drag_idx], drag_preview);
+		bu_color pv = t->accent;
+		pv.a = 70;
+		bu_fill_rect(c, pr, pv);
+		bu_stroke_round_rect(c, pr, 8, 2, t->accent);
+	}
 	/* draw in z order, bottom first */
 	int order[WM_MAX_WIN], n = 0;
 	for (int i = 0; i < WM_MAX_WIN; i++)
@@ -434,17 +530,22 @@ void bd_wm_draw(bu_canvas *c, bu_theme *t)
 		bu_rect o = win_outer(w);
 		bool active = (order[oi] == win_top());
 		bu_shadow_round_rect(c, o, 8, 10, BU_RGBA(0, 0, 0, active ? 130 : 90));
-		/* content first (client pixels, opaque) */
+		/* content first (client pixels, opaque; scaled into
+		 * the frame when maximized / snapped) */
 		bu_rect ct = win_content(w);
-		for (int y = 0; y < w->h; y++) {
-			if (ct.y + y < c->clip.y || ct.y + y >= c->clip.y + c->clip.h)
-				continue;
-			uint32_t *dst = c->px + (ct.y + y) * c->w + ct.x;
-			const uint32_t *src = w->px + y * w->w;
-			int x0 = 0, xn = w->w;
-			if (ct.x < c->clip.x) x0 = c->clip.x - ct.x;
-			if (ct.x + xn > c->clip.x + c->clip.w) xn = c->clip.x + c->clip.w - ct.x;
-			for (int x = x0; x < xn; x++) dst[x] = src[x] | 0xFF000000u;
+		if (ct.w == w->w && ct.h == w->h) {
+			for (int y = 0; y < w->h; y++) {
+				if (ct.y + y < c->clip.y || ct.y + y >= c->clip.y + c->clip.h)
+					continue;
+				uint32_t *dst = c->px + (ct.y + y) * c->w + ct.x;
+				const uint32_t *src = w->px + y * w->w;
+				int x0 = 0, xn = w->w;
+				if (ct.x < c->clip.x) x0 = c->clip.x - ct.x;
+				if (ct.x + xn > c->clip.x + c->clip.w) xn = c->clip.x + c->clip.w - ct.x;
+				for (int x = x0; x < xn; x++) dst[x] = src[x] | 0xFF000000u;
+			}
+		} else {
+			blit_scaled(c, w, ct);
 		}
 		/* chrome */
 		bu_rect bar = { o.x, o.y, o.w, wm_chrome_h() };
@@ -471,6 +572,14 @@ void bd_wm_draw(bu_canvas *c, bu_theme *t)
 			bu_line(c, cb.x + 22, cb.y + 6, cb.x + 12, cb.y + 16, 2, ink);
 			bu_rect mb = chrome_btn(w, 1, layout);
 			bu_line(c, mb.x + 12, mb.y + 16, mb.x + 22, mb.y + 16, 2, ink);
+			/* maximize / restore glyph */
+			bu_rect xb = chrome_btn(w, 2, layout);
+			if (w->state == BD_WM_NORMAL) {
+				bu_stroke_round_rect(c, (bu_rect){ xb.x + 12, xb.y + 6, 10, 10 }, 0, 2, ink);
+			} else {
+				bu_stroke_round_rect(c, (bu_rect){ xb.x + 14, xb.y + 5, 9, 8 }, 0, 1, ink);
+				bu_stroke_round_rect(c, (bu_rect){ xb.x + 11, xb.y + 9, 9, 8 }, 0, 1, ink);
+			}
 		}
 	}
 }
@@ -533,7 +642,8 @@ void bd_wm_draw_tasks(bu_canvas *c, bu_theme *t, int x0, int x1, int py, int ph)
 			initial[n] = 0;
 			bu_draw_text_centered(c, t->font,
 				(bu_rect){ r.x, r.y + 2, r.w, r.h - 8 },
-				initial, 13, active ? t->text : t->text_dim);
+				initial, 13, wins[i].minimized ? t->text_faint
+						     : active ? t->text : t->text_dim);
 			bu_fill_round_rect(c,
 				(bu_rect){ r.x + r.w / 2 - 8, r.y + r.h - 4, 16, 3 },
 				1, active ? t->accent : t->text_faint);
@@ -542,7 +652,8 @@ void bd_wm_draw_tasks(bu_canvas *c, bu_theme *t, int x0, int x1, int py, int ph)
 					   active ? t->surface3 : t->surface2);
 			bu_draw_text(c, t->font, r.x + 11, r.y + (r.h - 12) / 2,
 				     wins[i].title, 11.5,
-				     active ? t->text : t->text_dim);
+				     wins[i].minimized ? t->text_faint
+				     : active ? t->text : t->text_dim);
 		}
 		slot++;
 	}
@@ -568,6 +679,42 @@ void bd_wm_raise_task(int idx)
 		win_raise(idx);
 }
 
+int bd_wm_list(struct bd_wm_info *out, int max)
+{
+	int top = win_top();
+	int n = 0;
+	for (int i = 0; i < WM_MAX_WIN && n < max; i++) {
+		if (!wins[i].used) continue;
+		snprintf(out[n].title, sizeof(out[n].title), "%s", wins[i].title);
+		out[n].idx = i;
+		out[n].minimized = wins[i].minimized;
+		out[n].state = wins[i].state;
+		out[n].active = (i == top);
+		n++;
+	}
+	return n;
+}
+
+int bd_wm_window_state(int idx)
+{
+	if (idx < 0 || idx >= WM_MAX_WIN || !wins[idx].used) return -1;
+	return wins[idx].state;
+}
+
+void bd_wm_set_state(int idx, int state)
+{
+	if (idx < 0 || idx >= WM_MAX_WIN || !wins[idx].used) return;
+	if (state < BD_WM_NORMAL || state > BD_WM_SNAP_R) return;
+	win_set_state(&wins[idx], state);
+}
+
+int bd_wm_window_outer(int idx, bu_rect *out)
+{
+	if (idx < 0 || idx >= WM_MAX_WIN || !wins[idx].used || !out) return -1;
+	*out = win_outer(&wins[idx]);
+	return 0;
+}
+
 /* ---------- input routing ---------- */
 
 static void win_send_event(wm_win *w, int type, int code, int value, int x, int y)
@@ -581,6 +728,21 @@ static int in_rect(bu_rect r, int x, int y)
 	return x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
 }
 
+/* Desktop coords -> client buffer coords. Identity for normal
+ * windows; inverts the blit scale for maximized / snapped ones. */
+static void content_xy(const wm_win *w, int x, int y, int *ox, int *oy)
+{
+	bu_rect ct = win_content(w);
+	int bx = ct.w > 0 ? (x - ct.x) * w->w / ct.w : 0;
+	int by = ct.h > 0 ? (y - ct.y) * w->h / ct.h : 0;
+	if (bx < 0) bx = 0;
+	if (bx >= w->w) bx = w->w - 1;
+	if (by < 0) by = 0;
+	if (by >= w->h) by = w->h - 1;
+	*ox = bx;
+	*oy = by;
+}
+
 int bd_wm_pointer(int type, int x, int y)
 {
 	const bd_skin *sk = bd_skin_get();
@@ -590,20 +752,32 @@ int bd_wm_pointer(int type, int x, int y)
 			wins[drag_idx].x = x - drag_dx;
 			wins[drag_idx].y = y - drag_dy;
 			win_clamp(&wins[drag_idx]);
+			/* snap preview: pointer near a work-area edge */
+			drag_preview = x <= workarea.x + 20 ? BD_WM_SNAP_L
+				: x >= workarea.x + workarea.w - 20 ? BD_WM_SNAP_R
+				: BD_WM_NORMAL;
 			return 1;
 		}
 		if (capture_idx >= 0) {
-			bu_rect ct = win_content(&wins[capture_idx]);
-			win_send_event(&wins[capture_idx], type, 0, 0, x - ct.x, y - ct.y);
+			int bx, by;
+			content_xy(&wins[capture_idx], x, y, &bx, &by);
+			win_send_event(&wins[capture_idx], type, 0, 0, bx, by);
 			return 1;
 		}
 		return 0;
 	}
 	if (type == BU_EV_POINTER_UP) {
-		if (drag_idx >= 0) { drag_idx = -1; return 1; }
+		if (drag_idx >= 0) {
+			if (drag_preview != BD_WM_NORMAL)
+				win_set_state(&wins[drag_idx], drag_preview);
+			drag_idx = -1;
+			drag_preview = BD_WM_NORMAL;
+			return 1;
+		}
 		if (capture_idx >= 0) {
-			bu_rect ct = win_content(&wins[capture_idx]);
-			win_send_event(&wins[capture_idx], type, 0, 0, x - ct.x, y - ct.y);
+			int bx, by;
+			content_xy(&wins[capture_idx], x, y, &bx, &by);
+			win_send_event(&wins[capture_idx], type, 0, 0, bx, by);
 			capture_idx = -1;
 			return 1;
 		}
@@ -630,22 +804,52 @@ int bd_wm_pointer(int type, int x, int y)
 				send_msg(w->fd, WM_CLOSE, NULL, 0, -1);
 				return 1;
 			}
+			if (in_rect(chrome_btn(w, 2, layout), x, y)) {
+				/* maximize / restore (green light on Mac) */
+				win_set_state(w, w->state == BD_WM_MAX
+						 ? BD_WM_NORMAL : BD_WM_MAX);
+				return 1;
+			}
 			if (in_rect(chrome_btn(w, 1, layout), x, y)) {
 				w->minimized = 1;
 				focused_idx = win_top();
 				return 1;
 			}
-			if (layout == 1 && x >= o.x + 40 && x < o.x + 62 &&
-			    y >= o.y + 8 && y < o.y + 22)
-				return 1; /* green light: no-op for now */
+			/* Title-bar double tap maximizes a normal
+			 * window. A maximized / snapped window is
+			 * restored by the drag below instead, and that
+			 * first tap does not count as a double-tap
+			 * candidate — otherwise the second tap of the
+			 * same gesture would maximize it right back. */
+			long now = wm_now_ms();
+			if (w->state == BD_WM_NORMAL && dtap_idx == order[oi] &&
+			    now - dtap_ms < 400) {
+				win_set_state(w, BD_WM_MAX);
+				dtap_idx = -1;
+				return 1;
+			}
+			dtap_idx = w->state == BD_WM_NORMAL ? order[oi] : -1;
+			dtap_ms = now;
+			/* dragging a maximized / snapped window first
+			 * restores it under the pointer */
+			if (w->state != BD_WM_NORMAL) {
+				win_set_state(w, BD_WM_NORMAL);
+				w->x = x - w->w / 2;
+				w->y = workarea.y;
+				win_clamp(w);
+			}
 			drag_idx = order[oi];
 			drag_dx = x - w->x;
 			drag_dy = y - w->y;
+			drag_preview = BD_WM_NORMAL;
 			return 1;
 		}
-		bu_rect ct = win_content(w);
 		capture_idx = order[oi];
-		win_send_event(w, type, 0, 0, x - ct.x, y - ct.y);
+		{
+			int bx, by;
+			content_xy(w, x, y, &bx, &by);
+			win_send_event(w, type, 0, 0, bx, by);
+		}
 		return 1;
 	}
 	return 0;

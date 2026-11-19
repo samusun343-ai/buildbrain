@@ -21,6 +21,17 @@
 #include <glob.h>
 
 static bu_theme *T;
+
+/* scenes.c overlay hooks: task switcher, control centre and
+ * toasts. Their state lives inside scenes.c, so they are
+ * declared here instead of in scenes.h. */
+extern void bd_scenes_tick(bd_state *s, bool *changed);
+extern void bd_toast_push(const char *text);
+extern void bd_switcher_cycle(void);
+extern int bd_switcher_is_open(void);
+extern void bd_switcher_open(void);
+extern void bd_cc_show(void);
+
 #include <sys/utsname.h>
 #include <linux/uinput.h>
 #include <fcntl.h>
@@ -454,6 +465,19 @@ int main(int argc, char **argv)
 		if (getenv("BD_SHOT_ASSIST")) s.assist_on = true;
 		if (getenv("BD_SHOT_ASSIST_OPEN")) { s.assist_on = true; s.assist_open = true; }
 		if (getenv("BD_SHOT_VOLPOP")) s.vol_popup = true;
+		if (getenv("BD_SHOT_CC")) {
+			bd_cc_show();
+			s.mode_count = 4;
+			const char *ids[4] = { "normal", "deck", "server", "share" };
+			const char *nms[4] = { "通常", "デッキ", "サーバ", "共有" };
+			for (int i = 0; i < 4; i++) {
+				snprintf(s.mode_ids[i], 24, "%s", ids[i]);
+				snprintf(s.mode_names[i], 40, "%s", nms[i]);
+			}
+			snprintf(s.mode_name, sizeof(s.mode_name), "deck");
+		}
+		if (getenv("BD_SHOT_TOAST"))
+			bd_toast_push("音量 45%");
 		if (getenv("BD_SHOT_MODE")) {
 			s.settings_open = true; s.settings_cat = 8;
 			s.mode_count = 4;
@@ -527,6 +551,16 @@ int main(int argc, char **argv)
 			bd_wm_poll();
 			usleep(100000);
 		}
+		if (getenv("BD_SHOT_WM_MAX")) {
+			bd_wm_set_state(0, BD_WM_MAX);
+			bd_wm_raise_task(0);
+		}
+		if (getenv("BD_SHOT_WM_SNAP")) {
+			bd_wm_set_state(0, BD_WM_SNAP_L);
+			bd_wm_set_state(1, BD_WM_SNAP_R);
+		}
+		if (getenv("BD_SHOT_SWITCHER"))
+			bd_switcher_open();
 		bd_draw_shell(canvas, T, &s);
 		bu_display_present(disp, canvas, (bu_rect){ 0, 0, W, H });
 		bu_display_dump_ppm(disp, shot_path);
@@ -548,6 +582,8 @@ int main(int argc, char **argv)
 	apply_kbd_repeat(input, &s);
 	float last_brightness = s.brightness;
 	float last_volume = s.volume;
+	bool alt_held = false;
+	time_t last_toast_poll = 0;
 	for (;;) {
 		bu_event ev;
 		bool changed = false;
@@ -559,13 +595,26 @@ int main(int argc, char **argv)
 				return 0;
 			int act = BD_ACT_NONE;
 			bool forwarded = false;
-			if (ev.type == BU_EV_KEY && ev.code != 139 /* MENU */ &&
-			    s.view == BD_VIEW_DESKTOP && !s.settings_open)
-				forwarded = bd_wm_key(ev.code, ev.value) != 0;
-			if (forwarded)
+			bool consumed = false;
+			if (ev.type == BU_EV_KEY && (ev.code == 56 || ev.code == 100))
+				alt_held = ev.value != 0;
+			if (ev.type == BU_EV_KEY && ev.code == 15 /* TAB */ &&
+			    ev.value == 1 && alt_held) {
+				/* Alt+Tab opens / cycles the task switcher */
+				bd_switcher_cycle();
 				changed = true;
-			else
-				act = bd_handle_event(&s, ev.type, ev.code, ev.value, ev.x, ev.y, &changed);
+				consumed = true;
+			}
+			if (!consumed) {
+				if (ev.type == BU_EV_KEY && ev.code != 139 /* MENU */ &&
+				    s.view == BD_VIEW_DESKTOP && !s.settings_open &&
+				    !bd_switcher_is_open())
+					forwarded = bd_wm_key(ev.code, ev.value) != 0;
+				if (forwarded)
+					changed = true;
+				else
+					act = bd_handle_event(&s, ev.type, ev.code, ev.value, ev.x, ev.y, &changed);
+			}
 			if (act == BD_ACT_ASSIST) {
 				if (s.assist_action == BD_ASSIST_PGUP)
 					uinput_key(KEY_PAGEUP);
@@ -595,6 +644,27 @@ int main(int argc, char **argv)
 					while (bu_input_next(input, &drop, 0))
 						;
 				}
+				changed = true;
+			}
+		}
+		bd_scenes_tick(&s, &changed);
+		/* Toast drop file: external tools (brain-usb-mount and
+		 * friends) post one notification per line; the shell
+		 * picks them up about once a second and shows them. */
+		if (time(NULL) != last_toast_poll) {
+			last_toast_poll = time(NULL);
+			const char *tf = getenv("BRAINDESK_TOAST_FILE");
+			if (!tf) tf = "/tmp/braindesk.toast";
+			FILE *tfp = fopen(tf, "r");
+			if (tfp) {
+				char line[128];
+				while (fgets(line, sizeof(line), tfp)) {
+					line[strcspn(line, "\r\n")] = 0;
+					if (line[0])
+						bd_toast_push(line);
+				}
+				fclose(tfp);
+				remove(tf);
 				changed = true;
 			}
 		}
@@ -649,8 +719,12 @@ int main(int argc, char **argv)
 		if (s.mode_set >= 0 && s.mode_set < s.mode_count) {
 			char cmd[96];
 			snprintf(cmd, sizeof(cmd), "brain-mode set %s >/dev/null 2>&1", s.mode_ids[s.mode_set]);
-			if (system(cmd) == 0)
+			if (system(cmd) == 0) {
+				char tb[96];
+				snprintf(tb, sizeof(tb), "モード: %s", s.mode_names[s.mode_set]);
+				bd_toast_push(tb);
 				snprintf(s.mode_name, sizeof(s.mode_name), "%s", s.mode_ids[s.mode_set]);
+			}
 			s.mode_set = -1;
 			changed = true;
 		}
