@@ -7,6 +7,7 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <linux/fb.h>
+#include <linux/kd.h>
 
 struct bu_display {
 	int w, h;
@@ -19,6 +20,7 @@ struct bu_display {
 	int xres, yres, yres_virtual;
 	int cur_page;
 	uint32_t *shadow;	/* last presented frame (memory backend) */
+	int tty_fd;		/* console tty held in KD_GRAPHICS mode */
 };
 
 bu_display *bu_display_open(int w, int h)
@@ -26,6 +28,7 @@ bu_display *bu_display_open(int w, int h)
 	bu_display *d = calloc(1, sizeof(*d));
 	d->w = w; d->h = h;
 	d->fd = -1;
+	d->tty_fd = -1;
 	const char *path = getenv("BUI_FB");
 	if (!path) path = "/dev/fb0";
 	int fd = open(path, O_RDWR);
@@ -51,6 +54,19 @@ bu_display *bu_display_open(int w, int h)
 				d->mem = NULL;
 			} else {
 				d->w = v.xres; d->h = v.yres;
+				/*
+				 * Take the console tty into graphics mode so
+				 * fbcon stops painting boot text over our
+				 * frames. Restored in bu_display_close().
+				 */
+				d->tty_fd = open("/dev/tty1", O_RDWR);
+				if (d->tty_fd < 0)
+					d->tty_fd = open("/dev/console", O_RDWR);
+				if (d->tty_fd >= 0 &&
+				    ioctl(d->tty_fd, KDSETMODE, KD_GRAPHICS) < 0) {
+					close(d->tty_fd);
+					d->tty_fd = -1;
+				}
 				return d;
 			}
 		} else {
@@ -64,6 +80,10 @@ bu_display *bu_display_open(int w, int h)
 void bu_display_close(bu_display *d)
 {
 	if (!d) return;
+	if (d->tty_fd >= 0) {
+		ioctl(d->tty_fd, KDSETMODE, KD_TEXT);
+		close(d->tty_fd);
+	}
 	if (d->mem) munmap(d->mem, d->screensize);
 	if (d->fd >= 0) close(d->fd);
 	free(d->shadow);
