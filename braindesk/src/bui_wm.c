@@ -180,7 +180,11 @@ void bd_wm_client_close(bd_wm_client *cl)
 /* ================= server ================= */
 
 #define WM_MAX_WIN 8
-#define WM_CHROME 30
+static int wm_chrome_h(void)
+{
+	int l = bd_skin_get()->layout;
+	return l == 1 ? 28 : l == 3 ? 32 : 30;	/* macOS 28 / Win11 32 / others 30 */
+}
 
 typedef struct {
 	int used;
@@ -213,11 +217,11 @@ void bd_wm_set_workarea(int x, int y, int w, int h)
 
 static bu_rect win_outer(const wm_win *w)
 {
-	return (bu_rect){ w->x, w->y, w->w, w->h + WM_CHROME };
+	return (bu_rect){ w->x, w->y, w->w, w->h + wm_chrome_h() };
 }
 static bu_rect win_content(const wm_win *w)
 {
-	return (bu_rect){ w->x, w->y + WM_CHROME, w->w, w->h };
+	return (bu_rect){ w->x, w->y + wm_chrome_h(), w->w, w->h };
 }
 
 /* Keep the whole outer window inside the work area, so a new
@@ -324,6 +328,16 @@ int bd_wm_poll(void)
 		for (int i = 0; i < WM_MAX_WIN; i++) if (wins[i].used) n++;
 		w->x = 56 + (n % 5) * 38;
 		w->y = 44 + (n % 5) * 30;
+		/* keep the whole window inside the work area */
+		if (w->h + wm_chrome_h() > 480 - 52)
+			w->h = 480 - 52 - wm_chrome_h();
+		{
+			int maxx = 854 - w->w, maxy = 480 - 44 - (w->h + wm_chrome_h());
+			if (maxx < 0) maxx = 0;
+			if (maxy < 0) maxy = 0;
+			if (w->x > maxx) w->x = maxx;
+			if (w->y > maxy) w->y = maxy;
+		}
 		win_clamp(w);
 		snprintf(w->title, sizeof(w->title), "%s", hello.title);
 		w->memfd = memfd_create("bdwm", 0);
@@ -393,8 +407,8 @@ static bu_rect chrome_btn(const wm_win *w, int kind, int layout)
 {
 	bu_rect o = win_outer(w);
 	if (layout == 1 /* MAC */) {
-		/* traffic lights: red close, yellow min */
-		return (bu_rect){ o.x + 8 + kind * 20, o.y + 9, 13, 13 };
+		/* traffic lights: red close, yellow min (12px, centres 18/38) */
+		return (bu_rect){ o.x + 11 + kind * 20, o.y + wm_chrome_h() / 2 - 7, 14, 14 };
 	}
 	/* Windows/BD families: right side caption buttons */
 	if (kind == 0)
@@ -433,17 +447,18 @@ void bd_wm_draw(bu_canvas *c, bu_theme *t)
 			for (int x = x0; x < xn; x++) dst[x] = src[x] | 0xFF000000u;
 		}
 		/* chrome */
-		bu_rect bar = { o.x, o.y, o.w, WM_CHROME };
+		bu_rect bar = { o.x, o.y, o.w, wm_chrome_h() };
 		bu_color bc = active ? t->surface2 : t->surface3;
 		if (sk->chrome == 2 /* LUNA */ && active) bc = t->accent;
-		bu_fill_round_rect(c, (bu_rect){ o.x, o.y, o.w, WM_CHROME + 8 }, 8, bc);
-		bu_fill_rect(c, (bu_rect){ o.x, o.y + WM_CHROME - 1, o.w, 1 }, t->line);
+		bu_fill_round_rect(c, (bu_rect){ o.x, o.y, o.w, wm_chrome_h() + 8 }, 8, bc);
+		bu_fill_rect(c, (bu_rect){ o.x, o.y + wm_chrome_h() - 1, o.w, 1 }, t->line);
 		bu_color ink = (sk->chrome == 2 && active) ? BU_RGB(255, 255, 255)
 				   : active ? t->text : t->text_dim;
 		if (layout == 1) {
-			bu_fill_circle(c, o.x + 14, o.y + 15, 6, BU_RGB(255, 95, 87));
-			bu_fill_circle(c, o.x + 34, o.y + 15, 6, BU_RGB(254, 188, 46));
-			bu_fill_circle(c, o.x + 54, o.y + 15, 6, BU_RGB(40, 200, 64));
+			int lcy = o.y + wm_chrome_h() / 2;
+			bu_fill_circle(c, o.x + 18, lcy, 6, BU_RGB(255, 95, 87));
+			bu_fill_circle(c, o.x + 38, lcy, 6, BU_RGB(254, 188, 46));
+			bu_fill_circle(c, o.x + 58, lcy, 6, BU_RGB(40, 200, 64));
 			bu_draw_text_centered(c, t->font, (bu_rect){ o.x, o.y + 6, o.w, 18 },
 					      w->title, 12.5, ink);
 		} else {
@@ -559,7 +574,7 @@ int bd_wm_pointer(int type, int x, int y)
 		bu_rect o = win_outer(w);
 		if (!in_rect(o, x, y)) continue;
 		win_raise(order[oi]);
-		if (y < o.y + WM_CHROME) {
+		if (y < o.y + wm_chrome_h()) {
 			if (in_rect(chrome_btn(w, 0, layout), x, y)) {
 				send_msg(w->fd, WM_CLOSE, NULL, 0, -1);
 				return 1;

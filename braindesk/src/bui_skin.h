@@ -22,6 +22,7 @@ typedef struct {
 	bu_color panel;
 	bu_color wall_top, wall_bottom, wall_glow;
 	int radius;
+	int panel_h;		/* default bar height for this family (0 = shell default) */
 	int chrome;		/* BU_CHROME_* */
 	int layout;		/* BD_LAYOUT_* : bar/dock/window arrangement */
 } bd_skin;

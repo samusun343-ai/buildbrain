@@ -16,7 +16,7 @@ static int PANEL_H = 42;
  * on top; MAC adds a floating dock at the bottom. */
 static int skin_layout(void) { return bd_skin_get()->layout; }
 static bool top_bar(void) { int l = skin_layout(); return l == BD_LAYOUT_MAC || l == BD_LAYOUT_CLASSIC; }
-static int topbar_h(void) { return skin_layout() == BD_LAYOUT_MAC ? 28 : 26; }
+static int topbar_h(void) { return skin_layout() == BD_LAYOUT_MAC ? 24 : 20; }
 
 /* Desktop work area for the window manager: the screen minus the
  * bottom panel, or minus the top bar for the Mac families. The
@@ -257,7 +257,7 @@ void bd_state_init(bd_state *s)
 	snprintf(s->clock, sizeof(s->clock), "10:42");
 	snprintf(s->date, sizeof(s->date), "1月1日 木曜日");
 	s->battery_pct = 78;
-	s->panel_h = 42;
+	s->panel_h = 0;	/* 0 = follow the skin family */
 	s->wifi_on = true;
 	s->mode_set = -1;
 	snprintf(s->mode_name, sizeof(s->mode_name), "normal");
@@ -266,9 +266,28 @@ void bd_state_init(bd_state *s)
 	snprintf(s->ip_addr, sizeof(s->ip_addr), "—");
 }
 
+static const char *asset_dir(void);
 static void wallpaper(bu_canvas *c)
 {
 	const bd_skin *sk = bd_skin_get();
+	/* Real wallpaper artwork per family (size-optimised JPEGs in
+	 * assets/wall/); the gradient stays as the fallback. */
+	const char *wall = NULL;
+	if (sk->layout == BD_LAYOUT_MAC) wall = "mac";
+	else if (sk->layout == BD_LAYOUT_WIN11) wall = "win11";
+	else if (!strcmp(sk->name, "Windows XP")) wall = "xp";
+	else if (!strcmp(sk->name, "Windows 10")) wall = "win10";
+	else if (!strcmp(sk->name, "Windows Vista")) wall = "vista";
+	else if (!strcmp(sk->name, "Windows 7")) wall = "win7";
+	if (wall) {
+		const char *dir = asset_dir();
+		if (dir) {
+			char path[512];
+			snprintf(path, sizeof(path), "%s/wall/%s.jpg", dir, wall);
+			if (bu_draw_image(c, path, 0, 0, PW, PH))
+				return;
+		}
+	}
 	bu_gradient_v(c, (bu_rect){ 0, 0, PW, PH }, sk->wall_top, sk->wall_bottom);
 	bu_color glow = sk->wall_glow;
 	glow.a = 7;
@@ -791,7 +810,7 @@ static void draw_settings(bu_canvas *c, bu_theme *t, bd_state *s)
 		bu_rect pr = panel_size_row();
 		bu_fill_round_rect(c, pr, 8, t->surface2);
 		bu_draw_text(c, t->font, pr.x + 14, pr.y + (pr.h - 22) / 2, "パネルの大きさ", 15, t->text);
-		const char *sz = s->panel_h <= 36 ? "小" : s->panel_h >= 52 ? "大" : "中";
+		const char *sz = PANEL_H <= 36 ? "小" : PANEL_H >= 52 ? "大" : "中";
 		bu_draw_text_right(c, t->font, (bu_rect){ pr.x, pr.y + (pr.h - 22) / 2, pr.w - 14, 22 }, sz, 14, t->text_dim);
 		bu_rect ar = assist_row();
 		bu_fill_round_rect(c, ar, 8, t->surface2);
@@ -914,6 +933,15 @@ static void draw_settings(bu_canvas *c, bu_theme *t, bd_state *s)
 	}
 }
 
+
+static int eff_panel_h(bd_state *s)
+{
+	if (s->panel_h > 0)
+		return s->panel_h;
+	int ph = bd_skin_get()->panel_h;
+	return ph > 0 ? ph : 42;
+}
+
 void bd_draw_shell(bu_canvas *c, bu_theme *t, bd_state *s)
 {
 	PANEL_H = s->panel_h > 0 ? s->panel_h : 42;
@@ -984,7 +1012,7 @@ static float slider_frac(bu_rect r, int x)
 
 int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y, bool *changed)
 {
-	PANEL_H = s->panel_h > 0 ? s->panel_h : 42;
+	PANEL_H = eff_panel_h(s);
 	*changed = false;
 	if (ev_type == BU_EV_POINTER_MOVE || ev_type == BU_EV_POINTER_UP) {
 		if (bd_wm_pointer(ev_type, x, y)) {
