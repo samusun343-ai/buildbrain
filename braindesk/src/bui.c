@@ -708,3 +708,68 @@ void bu_icon_keyboard(bu_canvas *c, int cx, int cy, bu_color col)
 			bu_fill_rect(c, (bu_rect){ cx - 9 + i * 5, cy - 4 + r * 5, 3, 2 }, col);
 	bu_fill_rect(c, (bu_rect){ cx - 5, cy + 3, 10, 2 }, col);
 }
+
+/* ---------- raster image assets (PNG icons) ---------- */
+
+#define STB_IMAGE_STATIC
+#define STB_IMAGE_IMPLEMENTATION
+#include "../third_party/stb_image.h"
+
+typedef struct {
+	char path[256];
+	unsigned char *px; /* RGBA */
+	int w, h;
+} bu_img_slot;
+static bu_img_slot bu_img_cache[40];
+static int bu_img_n;
+
+static bu_img_slot *bu_img_load(const char *path)
+{
+	for (int i = 0; i < bu_img_n; i++)
+		if (!strcmp(bu_img_cache[i].path, path))
+			return bu_img_cache[i].px ? &bu_img_cache[i] : NULL;
+	if (bu_img_n >= 40) return NULL;
+	bu_img_slot *s = &bu_img_cache[bu_img_n++];
+	snprintf(s->path, sizeof(s->path), "%s", path);
+	s->px = stbi_load(path, &s->w, &s->h, NULL, 4);
+	return s->px ? s : NULL;
+}
+
+int bu_draw_image(bu_canvas *c, const char *path, int x, int y, int w, int h)
+{
+	bu_img_slot *s = bu_img_load(path);
+	if (!s) return 0;
+	for (int dy = 0; dy < h; dy++) {
+		/* bilinear sample */
+		float fy = (dy + 0.5f) * s->h / h - 0.5f;
+		int y0 = (int)floorf(fy); float ty = fy - y0;
+		if (y0 < 0) { y0 = 0; ty = 0; }
+		if (y0 > s->h - 2) { y0 = s->h - 2; ty = 1; }
+		if (s->h == 1) { y0 = 0; ty = 0; }
+		for (int dx = 0; dx < w; dx++) {
+			float fx = (dx + 0.5f) * s->w / w - 0.5f;
+			int x0 = (int)floorf(fx); float tx = fx - x0;
+			if (x0 < 0) { x0 = 0; tx = 0; }
+			if (x0 > s->w - 2) { x0 = s->w - 2; tx = 1; }
+			if (s->w == 1) { x0 = 0; tx = 0; }
+			const unsigned char *p00 = s->px + ((y0 * s->w + x0) * 4);
+			const unsigned char *p10 = p00 + 4;
+			const unsigned char *p01 = p00 + s->w * 4;
+			const unsigned char *p11 = p01 + 4;
+			if (s->w == 1) { p10 = p00; p11 = p01; }
+			if (s->h == 1) { p01 = p00; p11 = p10; }
+			bu_color col;
+			float ch[4];
+			for (int k = 0; k < 4; k++)
+				ch[k] = (p00[k] * (1 - tx) + p10[k] * tx) * (1 - ty) +
+					(p01[k] * (1 - tx) + p11[k] * tx) * ty;
+			col.r = (uint8_t)(ch[0] + 0.5f);
+			col.g = (uint8_t)(ch[1] + 0.5f);
+			col.b = (uint8_t)(ch[2] + 0.5f);
+			col.a = (uint8_t)(ch[3] + 0.5f);
+			if (col.a)
+				blend_px(c, x + dx, y + dy, col);
+		}
+	}
+	return 1;
+}

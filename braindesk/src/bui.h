@@ -103,3 +103,6 @@ void bu_icon_box(bu_canvas *c, int cx, int cy, bu_color col);
 void bu_icon_keyboard(bu_canvas *c, int cx, int cy, bu_color col);
 
 #endif
+
+/* Draw a PNG asset scaled into the rect; 1 if the file existed. Cached. */
+int bu_draw_image(bu_canvas *c, const char *path, int x, int y, int w, int h);

@@ -282,6 +282,65 @@ static void draw_panes(bu_canvas *c, int x, int y, int s, int gap, bu_color col)
 	bu_fill_rect(c, (bu_rect){ x + s + gap, y + s + gap, s, s }, col);
 }
 
+
+/* ---------- raster icon assets (real artwork, size-optimized) ---------- */
+static const char *asset_dir(void)
+{
+	static char dir[256];
+	static int done;
+	if (done) return dir;
+	done = 1;
+	const char *cands[4];
+	cands[0] = getenv("BRAINDESK_ASSETS");
+	cands[1] = "/usr/share/braindesk/assets";
+	cands[2] = "assets";
+	cands[3] = "../assets";
+	for (int i = 0; i < 4; i++) {
+		if (!cands[i]) continue;
+		char probe[320];
+		snprintf(probe, sizeof(probe), "%s/mac/files.png", cands[i]);
+		FILE *f = fopen(probe, "rb");
+		if (f) { fclose(f); snprintf(dir, sizeof(dir), "%s", cands[i]); return dir; }
+	}
+	dir[0] = 0;
+	return dir;
+}
+static const char *asset_fam(void)
+{
+	int l = skin_layout();
+	if (l == BD_LAYOUT_MAC) return "mac";
+	if (l == BD_LAYOUT_WIN11) return "win11";
+	if (bu_chrome == BU_CHROME_LUNA) return "xp";
+	return NULL;
+}
+static const char *app_asset_name(int idx)
+{
+	switch (idx) {
+	case 0: return "settings"; case 1: return "files"; case 2: return "tasks";
+	case 3: return "notes"; case 4: return "clock"; case 5: return "calc";
+	case 6: return "music"; case 7: return "recorder"; case 8: return "browser";
+	case 10: return "pkg"; case 12: return "terminal";
+	}
+	return NULL;
+}
+static int draw_named_asset(bu_canvas *c, const char *fam, const char *name, int x, int y, int sz)
+{
+	const char *dir = asset_dir();
+	if (!dir[0]) return 0;
+	char path[320];
+	snprintf(path, sizeof(path), "%s/%s/%s.png", dir, fam, name);
+	return bu_draw_image(c, path, x, y, sz, sz);
+}
+static int draw_app_asset(bu_canvas *c, int idx, int x, int y, int sz)
+{
+	const char *fam = asset_fam();
+	const char *name = app_asset_name(idx);
+	if (!fam || !name) return 0;
+	if (!strcmp(fam, "xp")) return 0; /* XP set covers start/browser/files only */
+	return draw_named_asset(c, fam, name, x, y, sz);
+}
+static const int QL_APP_IDX[3] = { 0, 1, 8 };
+
 /* Apple-ish mark for the Mac-family menu bar, drawn from
  * circles: two-lobed body, leaf, and a bite taken out of the
  * right side in the bar colour. */
@@ -316,7 +375,8 @@ static void draw_top_bar(bu_canvas *c, bu_theme *t, bd_state *s, int l)
 		pc.a = 228;
 	bu_fill_rect(c, (bu_rect){ 0, 0, PW, h }, pc);
 	bu_fill_rect(c, (bu_rect){ 0, h - 1, PW, 1 }, l == BD_LAYOUT_CLASSIC ? BU_RGB(0, 0, 0) : t->line);
-	draw_apple(c, 20, h / 2, t->text, pc);
+	if (!draw_named_asset(c, "mac", "apple", 9, h / 2 - 10, 20))
+		draw_apple(c, 20, h / 2, t->text, pc);
 	bu_draw_text(c, t->font, 38, (h - 18) / 2, "braindesk", 13, t->text);
 	/* right side: wifi, volume, battery %, battery, then the
 	 * date/time as the rightmost item (macOS order) */
@@ -345,16 +405,18 @@ static void draw_dock(bu_canvas *c, bu_theme *t, bd_state *s)
 	bu_fill_round_rect(c, sb, 10, t->surface2);
 	if (s->start_pressed)
 		bu_fill_round_rect(c, sb, 10, t->surface3);
-	/* Launchpad glyph: 3x3 grid */
-	for (int gy = 0; gy < 3; gy++)
-		for (int gx = 0; gx < 3; gx++)
-			bu_fill_round_rect(c, (bu_rect){ sb.x + 8 + gx * 9, sb.y + 8 + gy * 9, 6, 6 }, 2, t->text_dim);
+	if (!draw_named_asset(c, "mac", "launchpad", sb.x + 2, sb.y + 2, 30)) {
+		for (int gy = 0; gy < 3; gy++)
+			for (int gx = 0; gx < 3; gx++)
+				bu_fill_round_rect(c, (bu_rect){ sb.x + 8 + gx * 9, sb.y + 8 + gy * 9, 6, 6 }, 2, t->text_dim);
+	}
 	for (int i = 0; i < 3; i++) {
 		bu_rect chip = ql_rect(i);
 		bool active = (i == 0 && s->settings_open);
 		if (active)
 			bu_fill_round_rect(c, chip, 10, t->surface3);
-		QL_ICONS[i].icon(c, chip.x + chip.w / 2, chip.y + chip.h / 2, QL_ICONS[i].tint);
+		if (!draw_app_asset(c, QL_APP_IDX[i], chip.x + 3, chip.y + 3, 28))
+			QL_ICONS[i].icon(c, chip.x + chip.w / 2, chip.y + chip.h / 2, QL_ICONS[i].tint);
 		if (active)
 			bu_fill_circle(c, chip.x + chip.w / 2, d.y + d.h - 4, 2, t->text_dim);
 	}
@@ -406,22 +468,26 @@ static void panel(bu_canvas *c, bu_theme *t, bd_state *s)
 		bu_fill_rect(c, sb, t->surface2);
 		bu_bevel_rect(c, sb, !s->start_pressed);
 		bu_color ink = t->text;
-		bu_fill_rect(c, (bu_rect){ sb.x + 10, sb.y + 10, 6, 6 }, ink);
+		bu_fill_rect(c, (bu_rect){ sb.x + 34000, sb.y + 10, 6, 6 }, ink);
 		bu_fill_rect(c, (bu_rect){ sb.x + 18, sb.y + 10, 6, 6 }, ink);
 		bu_fill_rect(c, (bu_rect){ sb.x + 10, sb.y + 18, 6, 6 }, ink);
 		bu_fill_rect(c, (bu_rect){ sb.x + 18, sb.y + 18, 6, 6 }, ink);
 		bu_draw_text(c, t->font, sb.x + 32, sb.y + (sb.h - 19) / 2, "Start", 14, t->text);
+		draw_named_asset(c, "xp", "start", sb.x + 4, sb.y + 3, 28);
 	} else if (bu_chrome == BU_CHROME_LUNA) {
 		bu_fill_round_rect(c, sb, 10, s->start_pressed ? t->accent : t->accent2);
-		bu_fill_rect(c, (bu_rect){ sb.x + 14, sb.y + 13, 6, 6 }, BU_RGB(255, 255, 255));
+		bu_fill_rect(c, (bu_rect){ sb.x + 34000, sb.y + 13, 6, 6 }, BU_RGB(255, 255, 255));
 		bu_fill_rect(c, (bu_rect){ sb.x + 22, sb.y + 13, 6, 6 }, BU_RGBA(255, 255, 255, 200));
 		bu_fill_rect(c, (bu_rect){ sb.x + 14, sb.y + 21, 6, 6 }, BU_RGBA(255, 255, 255, 200));
 		bu_fill_rect(c, (bu_rect){ sb.x + 22, sb.y + 21, 6, 6 }, BU_RGBA(255, 255, 255, 150));
+		if (!draw_named_asset(c, "xp", "start", sb.x + 5, sb.y + 3, 28))
+			;
 		bu_draw_text(c, t->font, sb.x + 38, sb.y + (sb.h - 21) / 2, "start", 16, BU_RGB(255, 255, 255));
 	} else if (skin_layout() == BD_LAYOUT_WIN11) {
 		if (s->start_pressed)
 			bu_fill_round_rect(c, sb, 6, t->surface3);
-		draw_panes(c, sb.x + 9, sb.y + 8, 8, 2, t->accent);
+		if (!draw_named_asset(c, "win11", "start", sb.x + 6, sb.y + 6, 22))
+			draw_panes(c, sb.x + 9, sb.y + 8, 8, 2, t->accent);
 	} else if (bu_chrome == BU_CHROME_METRO) {
 		/* Win8/10: bare white panes, no button box */
 		if (s->start_pressed)
@@ -460,9 +526,15 @@ static void panel(bu_canvas *c, bu_theme *t, bd_state *s)
 		} else {
 			bu_fill_round_rect(c, chip, 8, active ? t->surface3 : t->surface);
 		}
-		QL_ICONS[i].icon(c, chip.x + chip.w / 2, chip.y + chip.h / 2,
-				 bu_chrome == BU_CHROME_LUNA ? BU_RGB(255, 255, 255)
-							     : active ? t->text : t->text_dim);
+		int drawn = draw_app_asset(c, QL_APP_IDX[i], chip.x + 4, chip.y + 3, 26);
+		if (!drawn && bu_chrome == BU_CHROME_LUNA && QL_APP_IDX[i] == 1)
+			drawn = draw_named_asset(c, "xp", "files", chip.x + 4, chip.y + 3, 26);
+		if (!drawn && bu_chrome == BU_CHROME_LUNA && QL_APP_IDX[i] == 8)
+			drawn = draw_named_asset(c, "xp", "browser", chip.x + 4, chip.y + 3, 26);
+		if (!drawn)
+			QL_ICONS[i].icon(c, chip.x + chip.w / 2, chip.y + chip.h / 2,
+					 bu_chrome == BU_CHROME_LUNA ? BU_RGB(255, 255, 255)
+								     : active ? t->text : t->text_dim);
 		if (active)
 			bu_fill_round_rect(c, (bu_rect){ chip.x + chip.w / 2 - 10, PH - 8, 20, 3 }, 1, t->accent);
 	}
@@ -532,8 +604,10 @@ static void draw_launcher(bu_canvas *c, bu_theme *t, bd_state *s)
 	for (int i = 0; i < NAPPS; i++) {
 		bu_rect tr = tile_rect(i);
 		int cx = tr.x + tr.w / 2, cy = tr.y + 40;
-		bu_fill_round_rect(c, (bu_rect){ cx - 23, cy - 23, 46, 46 }, 12, APPS[i].tint);
-		APPS[i].icon(c, cx, cy, BU_RGB(255, 255, 255));
+		if (!draw_app_asset(c, i, cx - 24, cy - 24, 48)) {
+			bu_fill_round_rect(c, (bu_rect){ cx - 23, cy - 23, 46, 46 }, 12, APPS[i].tint);
+			APPS[i].icon(c, cx, cy, BU_RGB(255, 255, 255));
+		}
 		bu_draw_text_centered(c, t->font, (bu_rect){ tr.x, cy + 28, tr.w, 20 }, APPS[i].name, 12.5, t->text);
 	}
 	bu_fill_circle(c, PW / 2 - 10, sheet.y + sheet.h - 18, 3, t->text);

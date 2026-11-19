@@ -117,6 +117,9 @@ for app in bd-files bd-tasks bd-notes bd-clock bd-calc bd-player bd-recorder bd-
     install -m 0755 /opt/braindesk/$app /usr/local/bin/$app
 done
 install -m 0755 /opt/braindesk/brainctl /usr/local/bin/brainctl
+# real icon assets for the skin families (launcher/dock/taskbar)
+install -d -m 0755 /usr/share/braindesk/assets
+cp -a /opt/braindesk/assets/. /usr/share/braindesk/assets/
 # Not enabled yet: ly stays the default greeter until braindesk is
 # verified on the image. Enable with:
 #   systemctl disable ly && systemctl enable braindesk-session
