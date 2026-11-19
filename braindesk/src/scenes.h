@@ -18,6 +18,7 @@ typedef struct {
 	bool lid_sleep;
 	bool key_sound;
 	char clock[8];
+	char date[40];
 	int battery_pct;
 	/* interaction */
 	int drag_slider;	/* 0 none, 1 brightness, 2 volume */
@@ -25,6 +26,7 @@ typedef struct {
 } bd_state;
 
 void bd_state_init(bd_state *s);
+void bd_update_datetime(bd_state *s); /* fills clock + date from local time */
 void bd_draw_login(bu_canvas *c, bu_theme *t, bd_state *s, const char *user);
 void bd_draw_shell(bu_canvas *c, bu_theme *t, bd_state *s);
 /* Feed one pointer/key event; returns an action for the caller. */

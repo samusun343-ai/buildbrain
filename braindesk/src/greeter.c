@@ -151,12 +151,7 @@ int main(int argc, char **argv)
 	bu_canvas *canvas = bu_canvas_new(W, H);
 	bd_state s;
 	bd_state_init(&s);
-	{
-		time_t now = time(NULL);
-		struct tm tm;
-		localtime_r(&now, &tm);
-		snprintf(s.clock, sizeof(s.clock), "%02d:%02d", tm.tm_hour, tm.tm_min);
-	}
+	bd_update_datetime(&s);
 
 	char pass[65] = "";
 	char masked[256] = "";
@@ -177,10 +172,7 @@ int main(int argc, char **argv)
 			/* refresh the clock once in a while */
 			char before[8];
 			strcpy(before, s.clock);
-			time_t now = time(NULL);
-			struct tm tm;
-			localtime_r(&now, &tm);
-			snprintf(s.clock, sizeof(s.clock), "%02d:%02d", tm.tm_hour, tm.tm_min);
+			bd_update_datetime(&s);
 			if (strcmp(before, s.clock) != 0) {
 				draw_login_state(canvas, &s, user, masked, error);
 				bu_display_present(disp, canvas, (bu_rect){ 0, 0, W, H });

@@ -1,4 +1,5 @@
 #include "scenes.h"
+#include <time.h>
 #include "bui_input.h"
 #include <string.h>
 #include <stdio.h>
@@ -74,6 +75,17 @@ static bu_rect tile_rect(int i)
 	return (bu_rect){ cx - cell_w / 2, cy - 40, cell_w, cell_h - 8 };
 }
 
+void bd_update_datetime(bd_state *s)
+{
+	static const char *wday[] = { "日", "月", "火", "水", "木", "金", "土" };
+	time_t now = time(NULL);
+	struct tm tm;
+	localtime_r(&now, &tm);
+	snprintf(s->clock, sizeof(s->clock), "%02d:%02d", tm.tm_hour, tm.tm_min);
+	snprintf(s->date, sizeof(s->date), "%d月%d日 %s曜日",
+		 tm.tm_mon + 1, tm.tm_mday, wday[tm.tm_wday % 7]);
+}
+
 void bd_state_init(bd_state *s)
 {
 	memset(s, 0, sizeof(*s));
@@ -83,6 +95,7 @@ void bd_state_init(bd_state *s)
 	s->lid_sleep = true;
 	s->key_sound = false;
 	snprintf(s->clock, sizeof(s->clock), "10:42");
+	snprintf(s->date, sizeof(s->date), "1月1日 木曜日");
 	s->battery_pct = 78;
 }
 
@@ -204,7 +217,7 @@ void bd_draw_login(bu_canvas *c, bu_theme *t, bd_state *s, const char *user)
 {
 	wallpaper(c);
 	bu_draw_text_centered(c, t->font, (bu_rect){ 0, 58, PW, 90 }, s->clock, 64, t->text);
-	bu_draw_text_centered(c, t->font, (bu_rect){ 0, 138, PW, 30 }, "11月19日 水曜日", 16, t->text_dim);
+	bu_draw_text_centered(c, t->font, (bu_rect){ 0, 138, PW, 30 }, s->date, 16, t->text_dim);
 	bu_rect card = { PW / 2 - 170, 196, 340, 216 };
 	bu_card(c, t, card);
 	bu_fill_circle(c, PW / 2, 240, 26, t->accent);

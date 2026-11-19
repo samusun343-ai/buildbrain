@@ -38,15 +38,12 @@ static void apply_brightness(float frac)
 
 static void update_clock(bd_state *s, bool *changed)
 {
-	time_t now = time(NULL);
-	struct tm tm;
-	localtime_r(&now, &tm);
-	char buf[8];
-	snprintf(buf, sizeof(buf), "%02d:%02d", tm.tm_hour, tm.tm_min);
-	if (strcmp(buf, s->clock) != 0) {
-		strcpy(s->clock, buf);
+	char before_c[8], before_d[40];
+	strcpy(before_c, s->clock);
+	strcpy(before_d, s->date);
+	bd_update_datetime(s);
+	if (strcmp(before_c, s->clock) != 0 || strcmp(before_d, s->date) != 0)
 		*changed = true;
-	}
 }
 
 int main(int argc, char **argv)
