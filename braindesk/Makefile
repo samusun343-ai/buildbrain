@@ -2,7 +2,15 @@ CC ?= gcc
 CFLAGS ?= -O2 -Wall -Wextra -Wno-unused-parameter
 SRC = src/bui.c src/scenes.c src/bui_fb.c src/bui_input.c src/bui_alsa.c
 
-all: demo shell test_events greeter
+APPS = bd-files bd-tasks bd-notes bd-clock bd-calc bd-player bd-recorder bd-devices bd-pkg
+APPSRC = src/bui.c src/bui_fb.c src/bui_input.c src/bui_alsa.c
+
+all: demo shell test_events greeter apps
+
+apps: $(APPS)
+
+bd-%: src/apps/bd-%.c src/apps/bdapp.h $(APPSRC)
+	$(CC) $(CFLAGS) -o $@ $(APPSRC) $< -lm
 
 greeter: $(SRC) src/greeter.c
 	$(CC) $(CFLAGS) -o $@ $(SRC) src/greeter.c -lm -lcrypt
@@ -21,6 +29,6 @@ arm:
 	arm-buildroot-linux-gnueabi-gcc -O2 -static -Wall -Wextra -Wno-unused-parameter -o braindesk-shell-arm $(SRC) src/shell.c -lm
 
 clean:
-	rm -f demo shell test_events *.ppm
+	rm -f demo shell test_events greeter $(APPS) *.ppm
 
 .PHONY: all arm clean

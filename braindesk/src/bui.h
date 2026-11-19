@@ -89,5 +89,10 @@ void bu_icon_music(bu_canvas *c, int cx, int cy, bu_color col);
 void bu_icon_calc(bu_canvas *c, int cx, int cy, bu_color col);
 void bu_icon_globe(bu_canvas *c, int cx, int cy, bu_color col);
 void bu_icon_chip(bu_canvas *c, int cx, int cy, bu_color col);
+void bu_icon_tasks(bu_canvas *c, int cx, int cy, bu_color col);
+void bu_icon_clock(bu_canvas *c, int cx, int cy, bu_color col);
+void bu_icon_mic(bu_canvas *c, int cx, int cy, bu_color col);
+void bu_icon_box(bu_canvas *c, int cx, int cy, bu_color col);
+void bu_icon_keyboard(bu_canvas *c, int cx, int cy, bu_color col);
 
 #endif

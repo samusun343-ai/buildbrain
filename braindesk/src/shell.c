@@ -8,6 +8,9 @@
 #include "scenes.h"
 #include "bui_alsa.h"
 #include <stdio.h>
+#include <errno.h>
+#include <unistd.h>
+#include <sys/wait.h>
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
@@ -101,7 +104,28 @@ int main(int argc, char **argv)
 			 * poweroff/reboot decisions at the greeter. */
 			if (ev.type == BU_EV_KEY && ev.code == 116 && ev.value == 1)
 				return 0;
-			bd_handle_event(&s, ev.type, ev.code, ev.value, ev.x, ev.y, &changed);
+			int act = bd_handle_event(&s, ev.type, ev.code, ev.value, ev.x, ev.y, &changed);
+			if (act == BD_ACT_LAUNCH) {
+				/* Run the app in the foreground; it opens the
+				 * display itself. Afterwards take the console
+				 * back (the app restores KD_TEXT on exit) and
+				 * drop input events queued while it ran. */
+				pid_t pid = fork();
+				if (pid == 0) {
+					execl(s.launch_path, s.launch_path, (char *)NULL);
+					_exit(127);
+				}
+				if (pid > 0) {
+					int st;
+					while (waitpid(pid, &st, 0) < 0 && errno == EINTR)
+						;
+				}
+				bu_display_regrab(disp);
+				bu_event drop;
+				while (bu_input_next(input, &drop, 0))
+					;
+				changed = true;
+			}
 		}
 		update_clock(&s, &changed);
 		if (s.brightness != last_brightness) {

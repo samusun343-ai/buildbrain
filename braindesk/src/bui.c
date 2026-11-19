@@ -598,3 +598,47 @@ void bu_icon_chip(bu_canvas *c, int cx, int cy, bu_color col)
 		bu_line(c, cx + 7, cy + i * 5, cx + 11, cy + i * 5, 2, col);
 	}
 }
+
+void bu_icon_tasks(bu_canvas *c, int cx, int cy, bu_color col)
+{
+	for (int i = 0; i < 3; i++) {
+		int y = cy - 8 + i * 8;
+		bu_line(c, cx - 10, y, cx - 6, y + 3, 2, col);
+		bu_line(c, cx - 6, y + 3, cx - 3, y - 3, 2, col);
+		bu_fill_rect(c, (bu_rect){ cx - 1, y - 1, 11, 2 }, col);
+	}
+}
+
+void bu_icon_clock(bu_canvas *c, int cx, int cy, bu_color col)
+{
+	bu_stroke_round_rect(c, (bu_rect){ cx - 10, cy - 10, 20, 20 }, 9, 2, col);
+	bu_line(c, cx, cy, cx, cy - 6, 2, col);
+	bu_line(c, cx, cy, cx + 5, cy + 2, 2, col);
+}
+
+void bu_icon_mic(bu_canvas *c, int cx, int cy, bu_color col)
+{
+	bu_fill_round_rect(c, (bu_rect){ cx - 3, cy - 11, 6, 12 }, 3, col);
+	bu_stroke_round_rect(c, (bu_rect){ cx - 7, cy - 6, 14, 11 }, 5, 2, col);
+	bu_line(c, cx, cy + 5, cx, cy + 9, 2, col);
+	bu_fill_rect(c, (bu_rect){ cx - 4, cy + 9, 8, 2 }, col);
+}
+
+void bu_icon_box(bu_canvas *c, int cx, int cy, bu_color col)
+{
+	bu_stroke_round_rect(c, (bu_rect){ cx - 10, cy - 6, 20, 13 }, 2, 2, col);
+	bu_line(c, cx - 10, cy - 6, cx, cy - 11, 2, col);
+	bu_line(c, cx + 10, cy - 6, cx, cy - 11, 2, col);
+	bu_line(c, cx, cy - 11, cx, cy - 1, 2, col);
+	bu_line(c, cx - 10, cy - 1, cx, cy + 4, 2, col);
+	bu_line(c, cx + 10, cy - 1, cx, cy + 4, 2, col);
+}
+
+void bu_icon_keyboard(bu_canvas *c, int cx, int cy, bu_color col)
+{
+	bu_stroke_round_rect(c, (bu_rect){ cx - 12, cy - 7, 24, 14 }, 2, 2, col);
+	for (int r = 0; r < 2; r++)
+		for (int i = 0; i < 4; i++)
+			bu_fill_rect(c, (bu_rect){ cx - 9 + i * 5, cy - 4 + r * 5, 3, 2 }, col);
+	bu_fill_rect(c, (bu_rect){ cx - 5, cy + 3, 10, 2 }, col);
+}

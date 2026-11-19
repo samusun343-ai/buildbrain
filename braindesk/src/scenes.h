@@ -7,7 +7,7 @@
 #include "bui.h"
 
 enum { BD_VIEW_DESKTOP = 0, BD_VIEW_LAUNCHER = 1 };
-enum { BD_ACT_NONE = 0, BD_ACT_QUIT = 1, BD_ACT_LOGIN = 2 };
+enum { BD_ACT_NONE = 0, BD_ACT_QUIT = 1, BD_ACT_LOGIN = 2, BD_ACT_LAUNCH = 3 };
 
 typedef struct {
 	int view;
@@ -20,6 +20,7 @@ typedef struct {
 	char clock[8];
 	char date[40];
 	int battery_pct;
+	char launch_path[128];	/* set when BD_ACT_LAUNCH is returned */
 	/* interaction */
 	int drag_slider;	/* 0 none, 1 brightness, 2 volume */
 	bool start_pressed;

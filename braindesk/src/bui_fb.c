@@ -90,6 +90,12 @@ void bu_display_close(bu_display *d)
 	free(d);
 }
 
+void bu_display_regrab(bu_display *d)
+{
+	if (d && d->real && d->tty_fd >= 0)
+		ioctl(d->tty_fd, KDSETMODE, KD_GRAPHICS);
+}
+
 int bu_display_width(bu_display *d) { return d->w; }
 int bu_display_height(bu_display *d) { return d->h; }
 bool bu_display_is_real(bu_display *d) { return d->real; }

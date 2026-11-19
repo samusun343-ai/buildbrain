@@ -11,6 +11,8 @@ typedef struct bu_display bu_display;
  * to a memory surface of the requested size. */
 bu_display *bu_display_open(int w, int h);
 void bu_display_close(bu_display *d);
+/* Re-assert KD_GRAPHICS after a child app restored KD_TEXT on exit. */
+void bu_display_regrab(bu_display *d);
 int bu_display_width(bu_display *d);
 int bu_display_height(bu_display *d);
 bool bu_display_is_real(bu_display *d);

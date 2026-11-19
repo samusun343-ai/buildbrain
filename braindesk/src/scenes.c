@@ -48,22 +48,26 @@ static bool in_rect(bu_rect r, int x, int y)
 }
 
 typedef void (*icon_fn)(bu_canvas *, int, int, bu_color);
-struct app { const char *name; icon_fn icon; bu_color tint; };
+struct app { const char *name; icon_fn icon; bu_color tint; const char *exec; };
 static const struct app APPS[] = {
-	{ "辞書", bu_icon_book, { 45, 156, 219, 255 } },
-	{ "設定", bu_icon_gear, { 134, 142, 150, 255 } },
-	{ "ファイル", bu_icon_folder, { 250, 176, 5, 255 } },
-	{ "ブラウザ", bu_icon_globe, { 32, 201, 151, 255 } },
-	{ "端末", bu_icon_terminal, { 90, 100, 116, 255 } },
-	{ "メモ", bu_icon_note, { 255, 212, 59, 255 } },
-	{ "電卓", bu_icon_calc, { 116, 192, 252, 255 } },
-	{ "音楽", bu_icon_music, { 240, 101, 149, 255 } },
-	{ "ホーム", bu_icon_home, { 129, 230, 168, 255 } },
-	{ "システム", bu_icon_chip, { 178, 140, 240, 255 } },
-	{ "明るさ", bu_icon_brightness, { 255, 224, 102, 255 } },
-	{ "音量", bu_icon_volume, { 99, 230, 190, 255 } },
+	{ "設定", bu_icon_gear, { 134, 142, 150, 255 }, NULL },
+	{ "ファイル", bu_icon_folder, { 250, 176, 5, 255 }, "/usr/local/bin/bd-files" },
+	{ "タスク", bu_icon_tasks, { 255, 135, 135, 255 }, "/usr/local/bin/bd-tasks" },
+	{ "メモ", bu_icon_note, { 255, 212, 59, 255 }, "/usr/local/bin/bd-notes" },
+	{ "時計", bu_icon_clock, { 130, 200, 255, 255 }, "/usr/local/bin/bd-clock" },
+	{ "電卓", bu_icon_calc, { 116, 192, 252, 255 }, "/usr/local/bin/bd-calc" },
+	{ "音楽", bu_icon_music, { 240, 101, 149, 255 }, "/usr/local/bin/bd-player" },
+	{ "録音", bu_icon_mic, { 255, 110, 110, 255 }, "/usr/local/bin/bd-recorder" },
+	{ "ブラウザ", bu_icon_globe, { 32, 201, 151, 255 }, "/usr/local/bin/netsurf-fb" },
+	{ "デバイス", bu_icon_chip, { 178, 140, 240, 255 }, "/usr/local/bin/bd-devices" },
+	{ "パッケージ", bu_icon_box, { 165, 215, 130, 255 }, "/usr/local/bin/bd-pkg" },
+	{ "辞書", bu_icon_book, { 45, 156, 219, 255 }, NULL },
+	{ "端末", bu_icon_terminal, { 90, 100, 116, 255 }, NULL },
+	{ "ホーム", bu_icon_home, { 129, 230, 168, 255 }, NULL },
+	{ "明るさ", bu_icon_brightness, { 255, 224, 102, 255 }, NULL },
+	{ "音量", bu_icon_volume, { 99, 230, 190, 255 }, NULL },
 };
-#define NAPPS 12
+#define NAPPS 16
 
 static bu_rect tile_rect(int i)
 {
@@ -286,6 +290,10 @@ int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y,
 						s->settings_open = true;
 					s->view = BD_VIEW_DESKTOP;
 					*changed = true;
+					if (APPS[i].exec) {
+						snprintf(s->launch_path, sizeof(s->launch_path), "%s", APPS[i].exec);
+						return BD_ACT_LAUNCH;
+					}
 					return BD_ACT_NONE;
 				}
 			}
