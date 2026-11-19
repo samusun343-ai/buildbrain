@@ -34,3 +34,8 @@ install -g root -o root -m 0644 $SRC/lib/systemd/system/brain-server.target $DST
 for mode in normal deck server share; do
     install -g root -o root -m 0644 -D $SRC/usr/share/brain-modes/$mode.conf $DST/usr/share/brain-modes/$mode.conf
 done
+
+# USB mass storage: host-role automount + partition diagnostics
+install -g root -o root -m 0755 $SRC/usr/local/bin/brain-usb-mount $DST/usr/local/bin/brain-usb-mount
+install -g root -o root -m 0644 -D $SRC/etc/udev/rules.d/99-brain-usb.rules $DST/etc/udev/rules.d/99-brain-usb.rules
+install -g root -o root -m 0755 $SRC/usr/local/bin/brain-part-report $DST/usr/local/bin/brain-part-report

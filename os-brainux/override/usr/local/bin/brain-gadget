@@ -88,8 +88,15 @@ add_acm() {
 }
 
 add_msc() {
-    # Present /srv/usb-share.img if it exists; skip silently otherwise.
-    [ -f /srv/usb-share.img ] || return 0
+    # Present /srv/usb-share.img as the shared volume. Create it on
+    # first use (sparse 256MB, FAT-formatted when mkfs.vfat exists;
+    # otherwise the host PC can format it on first mount).
+    if [ ! -f /srv/usb-share.img ]; then
+        mkdir -p /srv
+        truncate -s 256M /srv/usb-share.img || return 0
+        command -v mkfs.vfat >/dev/null && \
+            mkfs.vfat -n BRAINSHARE /srv/usb-share.img >/dev/null 2>&1 || true
+    fi
     mkdir -p "$G/functions/mass_storage.usb0"
     echo 1 > "$G/functions/mass_storage.usb0/stall"
     echo /srv/usb-share.img > "$G/functions/mass_storage.usb0/lun.0/file"

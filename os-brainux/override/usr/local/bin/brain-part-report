@@ -1,0 +1,37 @@
+#!/bin/sh
+# brain-part-report - collect the values that decide whether Linux
+# recognises the internal storage's partitions (esp. the WinCE FAT
+# volumes), for diagnosing "the WinCE partition is not recognised
+# from Linux" on a real device. Read-only; mount tests are ro.
+# Usage: sudo brain-part-report   (paste the whole output back)
+echo "== kernel =="
+uname -a
+for blk in /sys/block/mmcblk[0-9]; do
+    [ -d "$blk" ] || continue
+    dev=$(basename "$blk")
+    echo "== $dev: size_sectors=$(cat "$blk/size" 2>/dev/null) =="
+    for p in "$blk"/"$dev"p[0-9]*; do
+        [ -d "$p" ] || continue
+        echo "  $(basename "$p"): start=$(cat "$p/start") size=$(cat "$p/size")"
+    done
+    echo "-- MBR partition entries (type / start / count) --"
+    dd if="/dev/$dev" bs=512 count=1 2>/dev/null | od -A n -t u1 -j 446 -N 66 | \
+        tr -s ' ' | sed 's/^ //'
+    for part in /dev/"$dev"p[0-9]*; do
+        [ -b "$part" ] || continue
+        echo "-- $part: first 96 bytes (BPB if FAT) --"
+        dd if="$part" bs=512 count=1 2>/dev/null | od -A x -t x1z -N 96
+        echo "-- $part: vfat ro mount test --"
+        mkdir -p /tmp/bpr-mnt
+        if mount -t vfat -o ro "$part" /tmp/bpr-mnt 2>/tmp/bpr-err; then
+            echo "  MOUNT OK"
+            umount /tmp/bpr-mnt
+        else
+            echo "  MOUNT FAILED: $(cat /tmp/bpr-err)"
+        fi
+    done
+done
+echo "== dmesg (mmc / partition / FAT) =="
+dmesg | grep -i -E "mmcblk|beyond EOD|FAT-fs|VFS:|partition" | tail -30
+echo "== /proc/partitions =="
+cat /proc/partitions

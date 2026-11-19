@@ -1,0 +1,39 @@
+#!/bin/sh
+# brain-usb-mount - automount USB mass-storage partitions (host role).
+# Called from udev (99-brain-usb.rules) with the kernel device name
+# (e.g. sda1) as $1 and "add"/"remove" as $2. Mounts under
+# /media/usb-<dev> so bd-files and other file managers see the
+# device in the usual removable-media place. FAT/exFAT volumes are
+# mounted for the console user; others with default options.
+set -u
+DEV=${1:-}
+ACT=${2:-add}
+[ -n "$DEV" ] || exit 0
+MNT="/media/usb-$DEV"
+
+case "$ACT" in
+add)
+    [ -b "/dev/$DEV" ] || exit 0
+    # filesystem type from blkid when available, else let mount guess
+    FSTYPE=""
+    if command -v blkid >/dev/null; then
+        FSTYPE=$(blkid -o value -s TYPE "/dev/$DEV" 2>/dev/null || true)
+    fi
+    mkdir -p "$MNT"
+    case "$FSTYPE" in
+        vfat|exfat|ntfs*)
+            mount -t "$FSTYPE" -o uid=1000,gid=1000,umask=0022 \
+                "/dev/$DEV" "$MNT" 2>/dev/null || \
+            mount "/dev/$DEV" "$MNT" 2>/dev/null || rmdir "$MNT"
+            ;;
+        *)
+            mount "/dev/$DEV" "$MNT" 2>/dev/null || rmdir "$MNT"
+            ;;
+    esac
+    ;;
+remove)
+    umount "$MNT" 2>/dev/null || umount -l "$MNT" 2>/dev/null || true
+    rmdir "$MNT" 2>/dev/null || true
+    ;;
+esac
+exit 0

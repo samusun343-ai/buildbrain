@@ -1,0 +1,5 @@
+# Automount USB mass-storage partitions when the OTG port is in
+# host role (see brain-usb-mount). Whole-disk devices without a
+# partition table are handled too (KERNEL=="sd[a-z]").
+ACTION=="add", SUBSYSTEM=="block", ENV{ID_BUS}=="usb", KERNEL=="sd[a-z]*", RUN+="/usr/local/bin/brain-usb-mount %k add"
+ACTION=="remove", SUBSYSTEM=="block", ENV{ID_BUS}=="usb", KERNEL=="sd[a-z]*", RUN+="/usr/local/bin/brain-usb-mount %k remove"
