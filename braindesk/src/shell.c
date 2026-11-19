@@ -6,6 +6,7 @@
 #include "bui_fb.h"
 #include "bui_input.h"
 #include "scenes.h"
+#include "bui_alsa.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -74,6 +75,12 @@ int main(int argc, char **argv)
 	bd_state s;
 	bd_state_init(&s);
 	update_clock(&s, &(bool){ 0 });
+	bu_alsa *alsa = bu_alsa_open();
+	if (alsa) {
+		float v = bu_alsa_get_volume(alsa);
+		if (v >= 0)
+			s.volume = v;
+	}
 
 	bd_draw_shell(canvas, T, &s);
 	bu_display_present(disp, canvas, (bu_rect){ 0, 0, W, H });
@@ -87,6 +94,7 @@ int main(int argc, char **argv)
 
 	bu_input *input = bu_input_open(W, H);
 	float last_brightness = s.brightness;
+	float last_volume = s.volume;
 	for (;;) {
 		bu_event ev;
 		bool changed = false;
@@ -102,6 +110,10 @@ int main(int argc, char **argv)
 		if (s.brightness != last_brightness) {
 			apply_brightness(s.brightness);
 			last_brightness = s.brightness;
+		}
+		if (alsa && s.volume != last_volume) {
+			bu_alsa_set_volume(alsa, s.volume);
+			last_volume = s.volume;
 		}
 		if (changed) {
 			bd_draw_shell(canvas, T, &s);

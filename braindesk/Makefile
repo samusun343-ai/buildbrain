@@ -1,6 +1,6 @@
 CC ?= gcc
 CFLAGS ?= -O2 -Wall -Wextra -Wno-unused-parameter
-SRC = src/bui.c src/scenes.c src/bui_fb.c src/bui_input.c
+SRC = src/bui.c src/scenes.c src/bui_fb.c src/bui_input.c src/bui_alsa.c
 
 all: demo shell test_events greeter
 
