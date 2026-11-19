@@ -31,7 +31,7 @@ typedef struct {
 
 static inline bu_rect bdapp_content(bdapp *a)
 {
-	return (bu_rect){ 0, 44, a->w, a->h - 44 };
+	return (bu_rect){ 0, 36, a->w, a->h - 36 };
 }
 
 static inline void bdapp_frame(bdapp *a)
@@ -41,18 +41,42 @@ static inline void bdapp_frame(bdapp *a)
 	const bd_skin *sk = bd_skin_get();
 	bu_gradient_v(c, (bu_rect){ 0, 0, a->w, a->h }, sk->wall_top, sk->wall_bottom);
 	bu_color pc = t->panel; pc.a = 235;
-	bu_fill_rect(c, (bu_rect){ 0, 0, a->w, 44 }, pc);
-	bu_fill_rect(c, (bu_rect){ 0, 43, a->w, 1 }, BU_RGBA(255, 255, 255, 26));
-	bu_draw_text(c, t->font, 16, 8, a->title, 17, t->text);
-	/* close button */
-	bu_fill_round_rect(c, (bu_rect){ a->w - 40, 7, 32, 30 }, 8, t->surface);
-	bu_line(c, a->w - 31, 15, a->w - 17, 29, 2, t->text);
-	bu_line(c, a->w - 17, 15, a->w - 31, 29, 2, t->text);
+	bu_fill_rect(c, (bu_rect){ 0, 0, a->w, 36 }, pc);
+	bu_fill_rect(c, (bu_rect){ 0, 35, a->w, 1 }, t->line);
+	int l = sk->layout;
+	if (l == BD_LAYOUT_MAC) {
+		/* traffic lights left, title centred */
+		bu_fill_circle(c, 16, 18, 6, BU_RGB(255, 95, 87));
+		bu_fill_circle(c, 36, 18, 6, BU_RGB(254, 188, 46));
+		bu_fill_circle(c, 56, 18, 6, BU_RGB(40, 200, 64));
+		bu_draw_text_centered(c, t->font, (bu_rect){ 0, 8, a->w, 20 }, a->title, 13.5, t->text);
+	} else if (l == BD_LAYOUT_CLASSIC) {
+		bu_stroke_round_rect(c, (bu_rect){ 12, 13, 10, 10 }, 0, 1, t->text_dim);
+		bu_draw_text_centered(c, t->font, (bu_rect){ 0, 8, a->w, 20 }, a->title, 13.5, t->text);
+	} else if (l >= BD_LAYOUT_WIN11) {
+		bu_color ink = (bu_chrome == BU_CHROME_BEVEL || bu_chrome == BU_CHROME_LUNA)
+			? BU_RGB(255, 255, 255) : t->text;
+		bu_draw_text(c, t->font, 14, 9, a->title, 13.5, ink);
+		bu_line(c, a->w - 32, 13, a->w - 22, 23, 1, ink);
+		bu_line(c, a->w - 22, 13, a->w - 32, 23, 1, ink);
+	} else {
+		bu_draw_text(c, t->font, 14, 8, a->title, 15, t->text);
+		bu_fill_round_rect(c, (bu_rect){ a->w - 36, 5, 28, 26 }, 7, t->surface);
+		bu_line(c, a->w - 29, 12, a->w - 15, 26, 2, t->text);
+		bu_line(c, a->w - 15, 12, a->w - 29, 26, 2, t->text);
+	}
 }
 
 static inline bool bdapp_close_hit(bdapp *a, int x, int y)
 {
-	return x >= a->w - 44 && x < a->w - 4 && y >= 4 && y < 40;
+	int l = bd_skin_get()->layout;
+	if (l == BD_LAYOUT_MAC)
+		return x >= 4 && x < 30 && y >= 4 && y < 32;
+	if (l == BD_LAYOUT_CLASSIC)
+		return x >= 6 && x < 30 && y >= 6 && y < 30;
+	if (l >= BD_LAYOUT_WIN11)
+		return x >= a->w - 46 && x < a->w && y >= 0 && y < 36;
+	return x >= a->w - 40 && x < a->w - 4 && y >= 3 && y < 34;
 }
 
 /* draw + present one frame (app calls its own draw first) */

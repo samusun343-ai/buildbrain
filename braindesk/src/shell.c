@@ -79,7 +79,7 @@ static void panel_prefs_load(bd_state *s)
 	if (reg_ph || reg_as) {
 		if (reg_ph) {
 			int ph = atoi(reg_ph);
-			if (ph == 40 || ph == 52 || ph == 64)
+			if (ph == 36 || ph == 42 || ph == 52)
 				s->panel_h = ph;
 		}
 		if (reg_as)
@@ -96,7 +96,7 @@ static void panel_prefs_load(bd_state *s)
 		return;
 	int ph, as;
 	if (fscanf(fp, "%d %d", &ph, &as) == 2) {
-		if (ph == 40 || ph == 52 || ph == 64)
+		if (ph == 36 || ph == 42 || ph == 52)
 			s->panel_h = ph;
 		s->assist_on = as != 0;
 	}

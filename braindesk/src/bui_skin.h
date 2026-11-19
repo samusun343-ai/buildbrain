@@ -23,7 +23,19 @@ typedef struct {
 	bu_color wall_top, wall_bottom, wall_glow;
 	int radius;
 	int chrome;		/* BU_CHROME_* */
+	int layout;		/* BD_LAYOUT_* : bar/dock/window arrangement */
 } bd_skin;
+
+/* Layout families: the arrangement of the bar, start control,
+ * tray and window controls follows the system each skin
+ * evokes, not just its colours. */
+enum {
+	BD_LAYOUT_BD = 0,	/* bottom panel, start left (braindesk) */
+	BD_LAYOUT_MAC = 1,	/* top menu bar + floating dock */
+	BD_LAYOUT_CLASSIC = 2,	/* top menu bar only */
+	BD_LAYOUT_WIN11 = 3,	/* bottom taskbar, centred icons */
+	BD_LAYOUT_WIN = 4,	/* bottom taskbar, start left */
+};
 
 extern const bd_skin BD_SKINS[];
 extern const int BD_NSKINS;

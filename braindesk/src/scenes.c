@@ -7,24 +7,94 @@
 
 #define PW 854
 #define PH 480
-static int PANEL_H = 46;
+static int PANEL_H = 42;
 
-static int dock_x0(void) { return bu_chrome == BU_CHROME_DOCK ? (PW - 600) / 2 : 0; }
-static int panel_rx(void) { return bu_chrome == BU_CHROME_DOCK ? (PW - 600) / 2 + 600 : PW; }
-static bu_rect start_btn(void) { return (bu_rect){ dock_x0() + 8, PH - PANEL_H + (PANEL_H - 34) / 2, 34, 34 }; }
-static bu_rect ql_rect(int i) { return (bu_rect){ dock_x0() + 48 + i * 40, PH - PANEL_H + (PANEL_H - 32) / 2, 34, 32 }; }
-static bu_rect vol_icon_rect(void) { return (bu_rect){ panel_rx() - 168, PH - PANEL_H, 34, PANEL_H }; }
-static bu_rect clock_rect(void) { return (bu_rect){ panel_rx() - 96, PH - PANEL_H, 96, PANEL_H }; }
-static bu_rect vol_popup_rect(void) { return (bu_rect){ PW - 268, PH - PANEL_H - 66, 256, 58 }; }
+/* Skin layout family: bar placement and control arrangement
+ * follow it (see bui_skin.h). MAC/CLASSIC put a slim menu bar
+ * on top; MAC adds a floating dock at the bottom. */
+static int skin_layout(void) { return bd_skin_get()->layout; }
+static bool top_bar(void) { int l = skin_layout(); return l == BD_LAYOUT_MAC || l == BD_LAYOUT_CLASSIC; }
+static int topbar_h(void) { return skin_layout() == BD_LAYOUT_MAC ? 28 : 26; }
+#define DOCK_W 208
+#define DOCK_H 54
+static bu_rect dock_rect(void) { return (bu_rect){ (PW - DOCK_W) / 2, PH - DOCK_H - 8, DOCK_W, DOCK_H }; }
+
+static int dock_x0(void) { return bu_chrome == BU_CHROME_DOCK && !top_bar() ? (PW - 600) / 2 : 0; }
+static int panel_rx(void) { return bu_chrome == BU_CHROME_DOCK && !top_bar() ? (PW - 600) / 2 + 600 : PW; }
+static bu_rect start_btn(void)
+{
+	int l = skin_layout();
+	if (l == BD_LAYOUT_MAC) {
+		bu_rect d = dock_rect();
+		return (bu_rect){ d.x + 8, d.y + 7, 40, 40 };
+	}
+	if (l == BD_LAYOUT_CLASSIC)
+		return (bu_rect){ 4, 0, 30, topbar_h() };
+	if (l == BD_LAYOUT_WIN11)
+		return (bu_rect){ (PW - 168) / 2, PH - PANEL_H + (PANEL_H - 34) / 2, 36, 34 };
+	if (bu_chrome == BU_CHROME_LUNA)
+		return (bu_rect){ 0, PH - PANEL_H, 98, PANEL_H };
+	if (bu_chrome == BU_CHROME_BEVEL)
+		return (bu_rect){ 4, PH - PANEL_H + 3, 86, PANEL_H - 6 };
+	if (bu_chrome == BU_CHROME_AERO)
+		return (bu_rect){ 6, PH - PANEL_H - 6, 44, 44 };
+	return (bu_rect){ dock_x0() + 8, PH - PANEL_H + (PANEL_H - 34) / 2, 34, 34 };
+}
+static bu_rect ql_rect(int i)
+{
+	int l = skin_layout();
+	if (l == BD_LAYOUT_MAC) {
+		bu_rect d = dock_rect();
+		return (bu_rect){ d.x + 52 + i * 44, d.y + 7, 40, 40 };
+	}
+	if (l == BD_LAYOUT_CLASSIC)
+		return (bu_rect){ 0, -100, 0, 0 };	/* no quick launch */
+	if (l == BD_LAYOUT_WIN11) {
+		bu_rect sb = start_btn();
+		return (bu_rect){ sb.x + 44 + i * 42, sb.y, 36, 34 };
+	}
+	if (bu_chrome == BU_CHROME_LUNA || bu_chrome == BU_CHROME_BEVEL ||
+	    bu_chrome == BU_CHROME_AERO) {
+		bu_rect sb = start_btn();
+		return (bu_rect){ sb.x + sb.w + 6 + i * 40, PH - PANEL_H + (PANEL_H - 32) / 2, 34, 32 };
+	}
+	return (bu_rect){ dock_x0() + 48 + i * 40, PH - PANEL_H + (PANEL_H - 32) / 2, 34, 32 };
+}
+static bu_rect vol_icon_rect(void)
+{
+	if (top_bar())
+		return (bu_rect){ PW - 254, 0, 28, topbar_h() };
+	return (bu_rect){ panel_rx() - 168, PH - PANEL_H, 34, PANEL_H };
+}
+static bu_rect clock_rect(void)
+{
+	if (top_bar())
+		return (bu_rect){ PW - 184, 0, 180, topbar_h() };
+	return (bu_rect){ panel_rx() - 96, PH - PANEL_H, 96, PANEL_H };
+}
+static bu_rect vol_popup_rect(void)
+{
+	if (skin_layout() == BD_LAYOUT_MAC)
+		return (bu_rect){ PW - 268, PH - DOCK_H - 84, 256, 58 };
+	return (bu_rect){ PW - 268, PH - PANEL_H - 66, 256, 58 };
+}
 static bu_rect vol_popup_slider(void) { bu_rect p = vol_popup_rect(); return (bu_rect){ p.x + 44, p.y + 16, p.w - 90, 26 }; }
 static bu_rect assist_btn(void) { return (bu_rect){ PW - 72, PH - PANEL_H - 80, 54, 54 }; }
 static bu_rect assist_menu(void) { return (bu_rect){ PW - 292, PH - PANEL_H - 80 - 196, 274, 188 }; }
 static bu_rect assist_item(int i) { bu_rect m = assist_menu(); return (bu_rect){ m.x + 10 + (i % 2) * 130, m.y + 10 + (i / 2) * 44, 124, 38 }; }
-static bu_rect settings_win(void) { return (bu_rect){ 44, 24, PW - 88, PH - PANEL_H - 40 }; }
+static bu_rect settings_win(void)
+{
+	int l = skin_layout();
+	if (l == BD_LAYOUT_MAC)
+		return (bu_rect){ 36, topbar_h() + 12, PW - 72, PH - topbar_h() - 12 - DOCK_H - 20 };
+	if (l == BD_LAYOUT_CLASSIC)
+		return (bu_rect){ 36, topbar_h() + 12, PW - 72, PH - topbar_h() - 24 };
+	return (bu_rect){ 36, 16, PW - 72, PH - PANEL_H - 26 };
+}
 static bu_rect pane_rect(void)
 {
 	bu_rect w = settings_win();
-	return (bu_rect){ w.x + 176, w.y + 42, w.w - 176, w.h - 42 };
+	return (bu_rect){ w.x + 160, w.y + 36, w.w - 160, w.h - 36 };
 }
 static bu_rect brightness_slider(void)
 {
@@ -106,7 +176,12 @@ static bu_rect keysound_toggle_hit(void)
 static bu_rect settings_close(void)
 {
 	bu_rect w = settings_win();
-	return (bu_rect){ w.x + w.w - 34, w.y + 8, 26, 26 };
+	int l = skin_layout();
+	if (l == BD_LAYOUT_MAC || l == BD_LAYOUT_CLASSIC)
+		return (bu_rect){ w.x + 10, w.y + 9, 18, 18 };	/* red traffic light */
+	if (l >= BD_LAYOUT_WIN11)
+		return (bu_rect){ w.x + w.w - 46, w.y, 46, 36 };	/* caption button */
+	return (bu_rect){ w.x + w.w - 32, w.y + 6, 24, 24 };
 }
 static bu_rect launcher_sheet(void) { return (bu_rect){ 54, 26, PW - 108, PH - PANEL_H - 52 }; }
 
@@ -169,7 +244,7 @@ void bd_state_init(bd_state *s)
 	snprintf(s->clock, sizeof(s->clock), "10:42");
 	snprintf(s->date, sizeof(s->date), "1月1日 木曜日");
 	s->battery_pct = 78;
-	s->panel_h = 46;
+	s->panel_h = 42;
 	s->wifi_on = true;
 	s->mode_set = -1;
 	snprintf(s->mode_name, sizeof(s->mode_name), "normal");
@@ -192,9 +267,111 @@ static void wallpaper(bu_canvas *c)
 		bu_fill_circle(c, 90 + i * 4, 420 - i * 4, 100 - i * 3, glow2);
 }
 
+static const struct { icon_fn icon; bu_color tint; } QL_ICONS[] = {
+	{ bu_icon_gear, { 134, 142, 150, 255 } },
+	{ bu_icon_folder, { 250, 176, 5, 255 } },
+	{ bu_icon_globe, { 32, 201, 151, 255 } },
+};
+
+/* Four window panes (start / launch glyphs). */
+static void draw_panes(bu_canvas *c, int x, int y, int s, int gap, bu_color col)
+{
+	bu_fill_rect(c, (bu_rect){ x, y, s, s }, col);
+	bu_fill_rect(c, (bu_rect){ x + s + gap, y, s, s }, col);
+	bu_fill_rect(c, (bu_rect){ x, y + s + gap, s, s }, col);
+	bu_fill_rect(c, (bu_rect){ x + s + gap, y + s + gap, s, s }, col);
+}
+
+/* Apple-ish mark for the Mac-family menu bar, drawn from
+ * circles: two-lobed body, leaf, and a bite taken out of the
+ * right side in the bar colour. */
+static void draw_apple(bu_canvas *c, int cx, int cy, bu_color col, bu_color bar)
+{
+	bu_fill_circle(c, cx - 4, cy + 2, 7, col);
+	bu_fill_circle(c, cx + 4, cy + 2, 7, col);
+	bu_fill_circle(c, cx, cy - 2, 6, col);
+	bu_fill_circle(c, cx + 3, cy - 10, 3, col);	/* leaf */
+	bu_fill_circle(c, cx + 10, cy + 1, 4, bar);	/* bite */
+}
+
+static void draw_vol_popup(bu_canvas *c, bu_theme *t, bd_state *s)
+{
+	bu_rect p = vol_popup_rect();
+	bu_shadow_round_rect(c, p, 12, 8, BU_RGBA(0, 0, 0, 110));
+	bu_fill_round_rect(c, p, 12, t->surface);
+	bu_icon_volume(c, p.x + 24, p.y + p.h / 2, t->text_dim);
+	bu_slider(c, t, vol_popup_slider(), s->volume, s->drag_slider == 3);
+	char vp[8];
+	snprintf(vp, sizeof(vp), "%d%%", (int)(s->volume * 100 + 0.5f));
+	bu_draw_text_right(c, t->font, (bu_rect){ p.x, p.y + 16, p.w - 10, 24 }, vp, 12.5, t->text);
+}
+
+/* Mac-family top menu bar: mark + app name on the left,
+ * status icons and date/time on the right. */
+static void draw_top_bar(bu_canvas *c, bu_theme *t, bd_state *s, int l)
+{
+	int h = topbar_h();
+	bu_color pc = t->panel;
+	if (l == BD_LAYOUT_MAC)
+		pc.a = 228;
+	bu_fill_rect(c, (bu_rect){ 0, 0, PW, h }, pc);
+	bu_fill_rect(c, (bu_rect){ 0, h - 1, PW, 1 }, l == BD_LAYOUT_CLASSIC ? BU_RGB(0, 0, 0) : t->line);
+	draw_apple(c, 20, h / 2, t->text, pc);
+	bu_draw_text(c, t->font, 38, (h - 18) / 2, "braindesk", 13, t->text);
+	/* right side: wifi, volume, battery %, battery, then the
+	 * date/time as the rightmost item (macOS order) */
+	bu_icon_wifi(c, PW - 266, h / 2, t->text_dim);
+	bu_rect vr = vol_icon_rect();
+	bu_icon_volume(c, vr.x + vr.w / 2, h / 2, s->vol_popup ? t->accent : t->text_dim);
+	char pct[8];
+	snprintf(pct, sizeof(pct), "%d%%", s->battery_pct);
+	bu_draw_text_right(c, t->font, (bu_rect){ 0, (h - 16) / 2, PW - 200, 16 }, pct, 11.5, t->text_dim);
+	bu_icon_battery(c, PW - 196, h / 2 - 6, s->battery_pct / 100.0f, false, t->text_dim);
+	char clk[64];
+	snprintf(clk, sizeof(clk), "%s  %s", s->date, s->clock);
+	bu_draw_text_right(c, t->font, (bu_rect){ PW - 168, (h - 17) / 2, 160, 17 }, clk, 12, t->text);
+}
+
+/* macOS-style floating dock: launcher tile + quick launch. */
+static void draw_dock(bu_canvas *c, bu_theme *t, bd_state *s)
+{
+	bu_rect d = dock_rect();
+	bu_shadow_round_rect(c, d, 16, 8, BU_RGBA(0, 0, 0, 100));
+	bu_color pc = t->surface;
+	pc.a = 235;
+	bu_fill_round_rect(c, d, 16, pc);
+	bu_stroke_round_rect(c, d, 16, 1, t->line);
+	bu_rect sb = start_btn();
+	bu_fill_round_rect(c, sb, 10, t->surface2);
+	if (s->start_pressed)
+		bu_fill_round_rect(c, sb, 10, t->surface3);
+	/* Launchpad glyph: 3x3 grid */
+	for (int gy = 0; gy < 3; gy++)
+		for (int gx = 0; gx < 3; gx++)
+			bu_fill_round_rect(c, (bu_rect){ sb.x + 8 + gx * 9, sb.y + 8 + gy * 9, 6, 6 }, 2, t->text_dim);
+	for (int i = 0; i < 3; i++) {
+		bu_rect chip = ql_rect(i);
+		bool active = (i == 0 && s->settings_open);
+		if (active)
+			bu_fill_round_rect(c, chip, 10, t->surface3);
+		QL_ICONS[i].icon(c, chip.x + chip.w / 2, chip.y + chip.h / 2, QL_ICONS[i].tint);
+		if (active)
+			bu_fill_circle(c, chip.x + chip.w / 2, d.y + d.h - 4, 2, t->text_dim);
+	}
+}
+
 static void panel(bu_canvas *c, bu_theme *t, bd_state *s)
 {
 	int RX = panel_rx();
+	int l = skin_layout();
+	if (l == BD_LAYOUT_MAC || l == BD_LAYOUT_CLASSIC) {
+		draw_top_bar(c, t, s, l);
+		if (l == BD_LAYOUT_MAC)
+			draw_dock(c, t, s);
+		if (s->vol_popup)
+			draw_vol_popup(c, t, s);
+		return;
+	}
 	bu_rect bar = { 0, PH - PANEL_H, PW, PANEL_H };
 	if (bu_chrome == BU_CHROME_DOCK) {
 		bu_rect dock = { dock_x0(), PH - PANEL_H - 4, 600, PANEL_H };
@@ -218,25 +395,38 @@ static void panel(bu_canvas *c, bu_theme *t, bd_state *s)
 	} else {
 		bu_color pc = t->panel; pc.a = 235;
 		bu_fill_rect(c, bar, pc);
-		/* accent hairline: accent -> accent2 across the panel top */
-		bu_fill_rect(c, (bu_rect){ 0, PH - PANEL_H, PW / 2, 2 }, t->accent);
-		bu_fill_rect(c, (bu_rect){ PW / 2, PH - PANEL_H, PW - PW / 2, 2 }, t->accent2);
+		if (skin_layout() == BD_LAYOUT_BD) {
+			/* accent hairline: accent -> accent2 across the panel top */
+			bu_fill_rect(c, (bu_rect){ 0, PH - PANEL_H, PW / 2, 2 }, t->accent);
+			bu_fill_rect(c, (bu_rect){ PW / 2, PH - PANEL_H, PW - PW / 2, 2 }, t->accent2);
+		}
 	}
 	bu_rect sb = start_btn();
 	if (bu_chrome == BU_CHROME_BEVEL) {
 		bu_fill_rect(c, sb, t->surface2);
 		bu_bevel_rect(c, sb, !s->start_pressed);
 		bu_color ink = t->text;
-		bu_fill_rect(c, (bu_rect){ sb.x + 11, sb.y + 11, 5, 5 }, ink);
-		bu_fill_rect(c, (bu_rect){ sb.x + 18, sb.y + 11, 5, 5 }, ink);
-		bu_fill_rect(c, (bu_rect){ sb.x + 11, sb.y + 18, 5, 5 }, ink);
-		bu_fill_rect(c, (bu_rect){ sb.x + 18, sb.y + 18, 5, 5 }, ink);
+		bu_fill_rect(c, (bu_rect){ sb.x + 10, sb.y + 10, 6, 6 }, ink);
+		bu_fill_rect(c, (bu_rect){ sb.x + 18, sb.y + 10, 6, 6 }, ink);
+		bu_fill_rect(c, (bu_rect){ sb.x + 10, sb.y + 18, 6, 6 }, ink);
+		bu_fill_rect(c, (bu_rect){ sb.x + 18, sb.y + 18, 6, 6 }, ink);
+		bu_draw_text(c, t->font, sb.x + 32, sb.y + (sb.h - 19) / 2, "Start", 14, t->text);
 	} else if (bu_chrome == BU_CHROME_LUNA) {
 		bu_fill_round_rect(c, sb, 10, s->start_pressed ? t->accent : t->accent2);
-		bu_fill_rect(c, (bu_rect){ sb.x + 11, sb.y + 11, 5, 5 }, BU_RGB(255, 255, 255));
-		bu_fill_rect(c, (bu_rect){ sb.x + 18, sb.y + 11, 5, 5 }, BU_RGBA(255, 255, 255, 200));
-		bu_fill_rect(c, (bu_rect){ sb.x + 11, sb.y + 18, 5, 5 }, BU_RGBA(255, 255, 255, 200));
-		bu_fill_rect(c, (bu_rect){ sb.x + 18, sb.y + 18, 5, 5 }, BU_RGBA(255, 255, 255, 150));
+		bu_fill_rect(c, (bu_rect){ sb.x + 14, sb.y + 13, 6, 6 }, BU_RGB(255, 255, 255));
+		bu_fill_rect(c, (bu_rect){ sb.x + 22, sb.y + 13, 6, 6 }, BU_RGBA(255, 255, 255, 200));
+		bu_fill_rect(c, (bu_rect){ sb.x + 14, sb.y + 21, 6, 6 }, BU_RGBA(255, 255, 255, 200));
+		bu_fill_rect(c, (bu_rect){ sb.x + 22, sb.y + 21, 6, 6 }, BU_RGBA(255, 255, 255, 150));
+		bu_draw_text(c, t->font, sb.x + 38, sb.y + (sb.h - 21) / 2, "start", 16, BU_RGB(255, 255, 255));
+	} else if (skin_layout() == BD_LAYOUT_WIN11) {
+		if (s->start_pressed)
+			bu_fill_round_rect(c, sb, 6, t->surface3);
+		draw_panes(c, sb.x + 9, sb.y + 8, 8, 2, t->accent);
+	} else if (bu_chrome == BU_CHROME_METRO) {
+		/* Win8/10: bare white panes, no button box */
+		if (s->start_pressed)
+			bu_fill_rect(c, sb, t->surface3);
+		draw_panes(c, sb.x + 9, sb.y + 9, 7, 2, BU_RGB(255, 255, 255));
 	} else if (bu_chrome == BU_CHROME_AERO) {
 		bu_fill_circle(c, sb.x + sb.w / 2, sb.y + sb.h / 2, 16, t->accent);
 		bu_fill_circle(c, sb.x + sb.w / 2, sb.y + sb.h / 2, 12, t->accent2);
@@ -247,28 +437,32 @@ static void panel(bu_canvas *c, bu_theme *t, bd_state *s)
 	} else {
 		bu_fill_round_rect(c, sb, 9, s->start_pressed ? t->accent2 : t->accent);
 	}
-	if (bu_chrome != BU_CHROME_BEVEL && bu_chrome != BU_CHROME_LUNA && bu_chrome != BU_CHROME_AERO) {
+	if (bu_chrome != BU_CHROME_BEVEL && bu_chrome != BU_CHROME_LUNA && bu_chrome != BU_CHROME_AERO &&
+	    bu_chrome != BU_CHROME_METRO && skin_layout() != BD_LAYOUT_WIN11) {
 		bu_fill_rect(c, (bu_rect){ sb.x + 11, sb.y + 11, 5, 5 }, BU_RGB(255, 255, 255));
 		bu_fill_rect(c, (bu_rect){ sb.x + 18, sb.y + 11, 5, 5 }, BU_RGBA(255, 255, 255, 200));
 		bu_fill_rect(c, (bu_rect){ sb.x + 11, sb.y + 18, 5, 5 }, BU_RGBA(255, 255, 255, 200));
 		bu_fill_rect(c, (bu_rect){ sb.x + 18, sb.y + 18, 5, 5 }, BU_RGBA(255, 255, 255, 150));
 	}
 	/* quick launch: settings (toggle), files, browser */
-	static const struct { icon_fn icon; bu_color tint; } QL[] = {
-		{ bu_icon_gear, { 134, 142, 150, 255 } },
-		{ bu_icon_folder, { 250, 176, 5, 255 } },
-		{ bu_icon_globe, { 32, 201, 151, 255 } },
-	};
 	for (int i = 0; i < 3; i++) {
 		bu_rect chip = ql_rect(i);
 		bool active = (i == 0 && s->settings_open);
 		if (bu_chrome == BU_CHROME_BEVEL) {
 			bu_fill_rect(c, chip, t->surface2);
 			bu_bevel_rect(c, chip, !active);
+		} else if (skin_layout() == BD_LAYOUT_WIN11) {
+			if (active)
+				bu_fill_round_rect(c, chip, 6, t->surface3);
+		} else if (bu_chrome == BU_CHROME_LUNA) {
+			if (active)
+				bu_fill_round_rect(c, chip, 6, BU_RGBA(255, 255, 255, 40));
 		} else {
 			bu_fill_round_rect(c, chip, 8, active ? t->surface3 : t->surface);
 		}
-		QL[i].icon(c, chip.x + chip.w / 2, chip.y + chip.h / 2, active ? t->text : t->text_dim);
+		QL_ICONS[i].icon(c, chip.x + chip.w / 2, chip.y + chip.h / 2,
+				 bu_chrome == BU_CHROME_LUNA ? BU_RGB(255, 255, 255)
+							     : active ? t->text : t->text_dim);
 		if (active)
 			bu_fill_round_rect(c, (bu_rect){ chip.x + chip.w / 2 - 10, PH - 8, 20, 3 }, 1, t->accent);
 	}
@@ -283,27 +477,20 @@ static void panel(bu_canvas *c, bu_theme *t, bd_state *s)
 	snprintf(pct, sizeof(pct), "%d%%", s->battery_pct);
 	bu_draw_text_right(c, t->font, (bu_rect){ 0, PH - PANEL_H, RX - 100, PANEL_H }, pct, 13, tray);
 	bu_icon_battery(c, RX - 96, PH - PANEL_H / 2 - 7, s->battery_pct / 100.0f, false, tray);
-	if (PANEL_H >= 52) {
+	if (PANEL_H >= 52 || skin_layout() == BD_LAYOUT_WIN11) {
 		/* two-line clock: time over date */
 		char dbuf[40];
 		const char *sp = strchr(s->date, ' ');
 		snprintf(dbuf, sizeof(dbuf), "%.*s", sp ? (int)(sp - s->date) : (int)strlen(s->date), s->date);
-		bu_draw_text_right(c, t->font, (bu_rect){ 0, PH - PANEL_H + 4, RX - 10, 24 }, s->clock, 16, tray_main);
+		bool w11 = skin_layout() == BD_LAYOUT_WIN11;
+		bu_draw_text_right(c, t->font, (bu_rect){ 0, PH - PANEL_H + 4, RX - 10, 24 }, s->clock, w11 ? 12.5 : 16, tray_main);
 		bu_draw_text_right(c, t->font, (bu_rect){ 0, PH - 22, RX - 10, 18 }, dbuf, 10.5, tray);
 	} else {
 		bu_draw_text_right(c, t->font, (bu_rect){ 0, PH - PANEL_H, RX - 10, PANEL_H }, s->clock, 14, tray_main);
 	}
 	/* volume popup */
-	if (s->vol_popup) {
-		bu_rect p = vol_popup_rect();
-		bu_shadow_round_rect(c, p, 12, 8, BU_RGBA(0, 0, 0, 110));
-		bu_fill_round_rect(c, p, 12, t->surface);
-		bu_icon_volume(c, p.x + 24, p.y + p.h / 2, t->text_dim);
-		bu_slider(c, t, vol_popup_slider(), s->volume, s->drag_slider == 3);
-		char vp[8];
-		snprintf(vp, sizeof(vp), "%d%%", (int)(s->volume * 100 + 0.5f));
-		bu_draw_text_right(c, t->font, (bu_rect){ p.x, p.y + 16, p.w - 10, 24 }, vp, 12.5, t->text);
-	}
+	if (s->vol_popup)
+		draw_vol_popup(c, t, s);
 }
 
 static void draw_assist(bu_canvas *c, bu_theme *t, bd_state *s)
@@ -342,9 +529,9 @@ static void draw_launcher(bu_canvas *c, bu_theme *t, bd_state *s)
 	for (int i = 0; i < NAPPS; i++) {
 		bu_rect tr = tile_rect(i);
 		int cx = tr.x + tr.w / 2, cy = tr.y + 40;
-		bu_fill_round_rect(c, (bu_rect){ cx - 26, cy - 26, 52, 52 }, 14, APPS[i].tint);
+		bu_fill_round_rect(c, (bu_rect){ cx - 23, cy - 23, 46, 46 }, 12, APPS[i].tint);
 		APPS[i].icon(c, cx, cy, BU_RGB(255, 255, 255));
-		bu_draw_text_centered(c, t->font, (bu_rect){ tr.x, cy + 32, tr.w, 20 }, APPS[i].name, 13, t->text);
+		bu_draw_text_centered(c, t->font, (bu_rect){ tr.x, cy + 28, tr.w, 20 }, APPS[i].name, 12.5, t->text);
 	}
 	bu_fill_circle(c, PW / 2 - 10, sheet.y + sheet.h - 18, 3, t->text);
 	bu_fill_circle(c, PW / 2 + 4, sheet.y + sheet.h - 18, 3, t->text_faint);
@@ -354,21 +541,71 @@ static void draw_launcher(bu_canvas *c, bu_theme *t, bd_state *s)
 static void draw_settings(bu_canvas *c, bu_theme *t, bd_state *s)
 {
 	bu_rect win = settings_win();
-	bu_shadow_round_rect(c, win, 14, 10, BU_RGBA(0, 0, 0, 120));
-	bu_fill_round_rect(c, win, 14, t->surface);
-	bu_rect tb = { win.x, win.y, win.w, 42 };
-	bu_gradient_round_v(c, tb, 14, BU_RGB(44, 53, 69), BU_RGB(36, 44, 58));
-	bu_fill_rect(c, (bu_rect){ win.x, win.y + 28, win.w, 14 }, BU_RGB(36, 44, 58));
-	bu_icon_gear(c, win.x + 24, win.y + 21, t->text_dim);
-	bu_draw_text(c, t->font, win.x + 44, win.y + 10, "設定", 15, t->text);
-	bu_fill_circle(c, win.x + win.w - 24, win.y + 21, 7, t->danger);
-	bu_fill_circle(c, win.x + win.w - 48, win.y + 21, 7, t->warn);
-	bu_fill_circle(c, win.x + win.w - 72, win.y + 21, 7, t->ok);
-	bu_rect side = { win.x, win.y + 42, 176, win.h - 42 };
+	int rad = t->radius > 0 ? t->radius + 2 : 0;
+	bu_shadow_round_rect(c, win, rad, 10, BU_RGBA(0, 0, 0, 120));
+	bu_fill_round_rect(c, win, rad, t->surface);
+	bu_rect tb = { win.x, win.y, win.w, 36 };
+	bool bevel = bu_chrome == BU_CHROME_BEVEL && skin_layout() != BD_LAYOUT_CLASSIC;
+	bool luna = bu_chrome == BU_CHROME_LUNA;
+	if (bevel || luna) {
+		/* classic caption: coloured gradient, white text */
+		bu_color bot = t->accent;
+		bot.g = bot.g + 90 > 255 ? 255 : bot.g + 90;
+		bot.b = bot.b + 120 > 255 ? 255 : bot.b + 120;
+		if (luna) {
+			bot = t->accent;
+			bot.r = bot.r * 70 / 100; bot.g = bot.g * 70 / 100; bot.b = bot.b * 80 / 100;
+		}
+		bu_gradient_round_v(c, tb, rad, t->accent, bot);
+		bu_fill_rect(c, (bu_rect){ win.x, win.y + 22, win.w, 14 }, bot);
+	} else {
+		bu_fill_round_rect(c, tb, rad, t->surface2);
+		bu_fill_rect(c, (bu_rect){ win.x, win.y + 22, win.w, 14 }, t->surface2);
+		bu_fill_rect(c, (bu_rect){ win.x, win.y + 35, win.w, 1 }, t->line);
+	}
+	int l = skin_layout();
+	if (l == BD_LAYOUT_MAC) {
+		/* traffic lights on the left, title centred */
+		bu_fill_circle(c, win.x + 19, win.y + 18, 6, BU_RGB(255, 95, 87));
+		bu_fill_circle(c, win.x + 39, win.y + 18, 6, BU_RGB(254, 188, 46));
+		bu_fill_circle(c, win.x + 59, win.y + 18, 6, BU_RGB(40, 200, 64));
+		bu_draw_text_centered(c, t->font, (bu_rect){ win.x, win.y + 8, win.w, 20 }, "設定", 13.5, t->text);
+	} else if (l == BD_LAYOUT_CLASSIC) {
+		/* pinstriped caption, close box on the left */
+		for (int i = 0; i < 3; i++)
+			bu_fill_rect(c, (bu_rect){ win.x + 70, win.y + 10 + i * 6, win.w - 140, 1 }, t->line);
+		bu_stroke_round_rect(c, (bu_rect){ win.x + 14, win.y + 13, 10, 10 }, 0, 1, t->text_dim);
+		bu_draw_text_centered(c, t->font, (bu_rect){ win.x, win.y + 8, win.w, 20 }, "設定", 13.5, t->text);
+	} else if (l >= BD_LAYOUT_WIN11) {
+		/* caption glyphs on the right: min / max / close */
+		bu_color ink = (bevel || luna) ? BU_RGB(255, 255, 255) : t->text;
+		bu_color inkd = (bevel || luna) ? BU_RGB(255, 255, 255) : t->text_dim;
+		bu_icon_gear(c, win.x + 20, win.y + 18, inkd);
+		bu_draw_text(c, t->font, win.x + 36, win.y + 9, "設定", 13.5, ink);
+		int cx0 = win.x + win.w - 46;
+		bu_line(c, cx0 - 82, win.y + 18, cx0 - 72, win.y + 18, 1, inkd);
+		bu_stroke_round_rect(c, (bu_rect){ cx0 - 41, win.y + 13, 10, 10 }, 0, 1, inkd);
+		if (luna) {
+			/* Luna close: red-orange rounded box */
+			bu_fill_round_rect(c, (bu_rect){ cx0 + 8, win.y + 7, 22, 22 }, 4, BU_RGB(232, 108, 84));
+			bu_line(c, cx0 + 14, win.y + 13, cx0 + 24, win.y + 23, 2, BU_RGB(255, 255, 255));
+			bu_line(c, cx0 + 24, win.y + 13, cx0 + 14, win.y + 23, 2, BU_RGB(255, 255, 255));
+		} else {
+			bu_line(c, cx0 + 14, win.y + 13, cx0 + 24, win.y + 23, 1, ink);
+			bu_line(c, cx0 + 24, win.y + 13, cx0 + 14, win.y + 23, 1, ink);
+		}
+	} else {
+		bu_icon_gear(c, win.x + 20, win.y + 18, t->text_dim);
+		bu_draw_text(c, t->font, win.x + 36, win.y + 9, "設定", 13.5, t->text);
+		bu_fill_circle(c, win.x + win.w - 20, win.y + 18, 6, t->danger);
+		bu_fill_circle(c, win.x + win.w - 40, win.y + 18, 6, t->warn);
+		bu_fill_circle(c, win.x + win.w - 60, win.y + 18, 6, t->ok);
+	}
+	bu_rect side = { win.x, win.y + 36, 160, win.h - 36 };
 	bu_fill_rect(c, side, BU_RGBA(255, 255, 255, 7));
 	const char *cats[] = { "画面", "スキン", "音声", "キーボード", "ネットワーク", "バッテリー", "入力と日本語", "システム", "モード" };
 	for (int i = 0; i < 9; i++) {
-		bu_rect row = { side.x + 10, side.y + 10 + i * 36, side.w - 20, 31 };
+		bu_rect row = { side.x + 8, side.y + 8 + i * 32, side.w - 16, 27 };
 		bu_list_row(c, t, row, cats[i], NULL, false, i == s->settings_cat);
 	}
 	bu_rect pane = pane_rect();
@@ -443,7 +680,7 @@ static void draw_settings(bu_canvas *c, bu_theme *t, bd_state *s)
 		bu_rect pr = panel_size_row();
 		bu_fill_round_rect(c, pr, 8, t->surface2);
 		bu_draw_text(c, t->font, pr.x + 14, pr.y + (pr.h - 22) / 2, "パネルの大きさ", 15, t->text);
-		const char *sz = s->panel_h <= 40 ? "小" : s->panel_h >= 64 ? "大" : "中";
+		const char *sz = s->panel_h <= 36 ? "小" : s->panel_h >= 52 ? "大" : "中";
 		bu_draw_text_right(c, t->font, (bu_rect){ pr.x, pr.y + (pr.h - 22) / 2, pr.w - 14, 22 }, sz, 14, t->text_dim);
 		bu_rect ar = assist_row();
 		bu_fill_round_rect(c, ar, 8, t->surface2);
@@ -568,7 +805,7 @@ static void draw_settings(bu_canvas *c, bu_theme *t, bd_state *s)
 
 void bd_draw_shell(bu_canvas *c, bu_theme *t, bd_state *s)
 {
-	PANEL_H = s->panel_h > 0 ? s->panel_h : 46;
+	PANEL_H = s->panel_h > 0 ? s->panel_h : 42;
 	wallpaper(c);
 	if (s->view == BD_VIEW_LAUNCHER)
 		draw_launcher(c, t, s);
@@ -612,7 +849,7 @@ static float slider_frac(bu_rect r, int x)
 
 int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y, bool *changed)
 {
-	PANEL_H = s->panel_h > 0 ? s->panel_h : 46;
+	PANEL_H = s->panel_h > 0 ? s->panel_h : 42;
 	*changed = false;
 	if (ev_type == BU_EV_KEY) {
 		if (value == 1 && code == 1 /* KEY_ESC */) {
@@ -753,7 +990,7 @@ int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y,
 				if (in_rect(brightness_slider(), x, y)) { s->drag_slider = 1; s->brightness = slider_frac(brightness_slider(), x); *changed = true; return BD_ACT_NONE; }
 				if (in_rect(lid_toggle_hit(), x, y)) { s->lid_sleep = !s->lid_sleep; *changed = true; return BD_ACT_NONE; }
 				if (in_rect(panel_size_row(), x, y)) {
-					s->panel_h = s->panel_h <= 40 ? 52 : s->panel_h >= 64 ? 40 : 64;
+					s->panel_h = s->panel_h <= 36 ? 42 : s->panel_h >= 52 ? 36 : 52;
 					PANEL_H = s->panel_h;
 					*changed = true;
 					return BD_ACT_NONE;
@@ -798,7 +1035,7 @@ int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y,
 			/* sidebar categories */
 			bu_rect w = settings_win();
 			for (int i = 0; i < 9; i++) {
-				bu_rect row = { w.x + 10, w.y + 42 + 10 + i * 36, 156, 31 };
+				bu_rect row = { w.x + 8, w.y + 36 + 8 + i * 32, 144, 27 };
 				if (in_rect(row, x, y)) { s->settings_cat = i; if (i == 4) s->net_scan_req++; if (i == 8) s->mode_poll_req++; *changed = true; return BD_ACT_NONE; }
 			}
 			return BD_ACT_NONE; /* clicks inside the window don't fall through */
