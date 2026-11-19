@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <string.h>
+#include <dirent.h>
 #include <stdlib.h>
 #include <time.h>
 #include <glob.h>
@@ -192,6 +193,105 @@ static void fill_sysinfo(bd_state *s)
 	snprintf(s->sysinfo[5], 96, "セッション   braindesk (fbdev / libbrainui)");
 }
 
+static long ps_read_long(const char *dir, const char *name)
+{
+	char path[320];
+	snprintf(path, sizeof(path), "%s/%s", dir, name);
+	FILE *fp = fopen(path, "r");
+	if (!fp)
+		return -1;
+	long v = -1;
+	if (fscanf(fp, "%ld", &v) != 1)
+		v = -1;
+	fclose(fp);
+	return v;
+}
+
+static void ps_read_str(const char *dir, const char *name, char *out, size_t n)
+{
+	char path[320];
+	snprintf(path, sizeof(path), "%s/%s", dir, name);
+	FILE *fp = fopen(path, "r");
+	if (!fp) {
+		out[0] = 0;
+		return;
+	}
+	if (!fgets(out, n, fp))
+		out[0] = 0;
+	fclose(fp);
+	out[strcspn(out, "\n")] = 0;
+}
+
+/* Battery state from /sys/class/power_supply. The Brain's gauge
+ * may expose charge_* (uAh) or only capacity (%); the time
+ * estimate is computed only when both charge and current are
+ * available, and the page degrades gracefully without them. */
+static void fill_battery(bd_state *s)
+{
+	s->batt_present = 0;
+	s->batt_pct = 0;
+	s->ac_online = 0;
+	s->batt_status[0] = 0;
+	s->batt_line1[0] = 0;
+	s->batt_line2[0] = 0;
+	DIR *d = opendir("/sys/class/power_supply");
+	if (!d)
+		return;
+	struct dirent *e;
+	while ((e = readdir(d))) {
+		if (e->d_name[0] == '.')
+			continue;
+		char dir[280], type[32];
+		snprintf(dir, sizeof(dir), "/sys/class/power_supply/%s", e->d_name);
+		ps_read_str(dir, "type", type, sizeof(type));
+		if (!strcmp(type, "Battery")) {
+			char st[32];
+			ps_read_str(dir, "status", st, sizeof(st));
+			long cap = ps_read_long(dir, "capacity");
+			long volt = ps_read_long(dir, "voltage_now");
+			long cur = ps_read_long(dir, "current_now");
+			long chg = ps_read_long(dir, "charge_now");
+			long full = ps_read_long(dir, "charge_full");
+			s->batt_present = 1;
+			s->batt_pct = cap < 0 ? 0 : cap > 100 ? 100 : (int)cap;
+			const char *jp = "不明";
+			if (!strcmp(st, "Charging"))
+				jp = "充電中";
+			else if (!strcmp(st, "Discharging"))
+				jp = "放電中 (バッテリー駆動)";
+			else if (!strcmp(st, "Full"))
+				jp = "満充電";
+			else if (!strcmp(st, "Not charging"))
+				jp = "充電していません";
+			snprintf(s->batt_status, sizeof(s->batt_status), "%s", jp);
+			if (volt > 0 && cur >= 0)
+				snprintf(s->batt_line1, sizeof(s->batt_line1),
+					 "電圧 %.2f V   電流 %.0f mA   消費 %.1f W",
+					 volt / 1e6, cur / 1e3,
+					 volt / 1e6 * cur / 1e6);
+			else if (volt > 0)
+				snprintf(s->batt_line1, sizeof(s->batt_line1),
+					 "電圧 %.2f V", volt / 1e6);
+			if (cur > 0 && chg > 0 && !strcmp(st, "Discharging")) {
+				double h = (double)chg / cur;
+				snprintf(s->batt_line2, sizeof(s->batt_line2),
+					 "推定残り時間: 約 %d 時間 %02d 分",
+					 (int)h, (int)((h - (int)h) * 60));
+			} else if (cur > 0 && chg > 0 && full > chg &&
+				   !strcmp(st, "Charging")) {
+				double h = (double)(full - chg) / cur;
+				snprintf(s->batt_line2, sizeof(s->batt_line2),
+					 "満充電まで: 約 %d 時間 %02d 分",
+					 (int)h, (int)((h - (int)h) * 60));
+			}
+		} else if (!strcmp(type, "Mains") || !strcmp(type, "USB")) {
+			if (ps_read_long(dir, "online") == 1)
+				s->ac_online = 1;
+		}
+	}
+	closedir(d);
+}
+
 static void fill_netinfo(bd_state *s)
 {
 	FILE *pp = popen("nmcli -t -f ACTIVE,SSID dev wifi 2>/dev/null | grep '^yes' | cut -d: -f2", "r");
@@ -320,14 +420,24 @@ int main(int argc, char **argv)
 			snprintf(s.mode_launch_label[1], 48, "コントロールデッキを開く");
 			snprintf(s.mode_name, sizeof(s.mode_name), "deck");
 		}
+		if (getenv("BD_SHOT_BATT")) {
+			s.settings_open = true; s.settings_cat = 5;
+			s.batt_present = 1; s.batt_pct = 68; s.ac_online = 0;
+			snprintf(s.batt_status, sizeof(s.batt_status), "放電中 (バッテリー駆動)");
+			snprintf(s.batt_line1, sizeof(s.batt_line1), "電圧 3.92 V   電流 412 mA   消費 1.6 W");
+			snprintf(s.batt_line2, sizeof(s.batt_line2), "推定残り時間: 約 2 時間 41 分");
+		}
 	}
 	fill_mode(&s);
 	fill_sysinfo(&s);
+	if (!getenv("BD_SHOT_BATT"))
+		fill_battery(&s);
 	int last_panel_h = s.panel_h;
 	bool last_assist_on = s.assist_on;
 	int last_scan_req = 0, last_connect = -1, last_mode_poll = 0;
 	bool last_wifi_on = s.wifi_on;
 	time_t last_net_poll = 0;
+	time_t last_batt_poll = 0;
 	update_clock(&s, &(bool){ 0 });
 	bu_alsa *alsa = bu_alsa_open();
 	if (alsa) {
@@ -399,6 +509,12 @@ int main(int argc, char **argv)
 			last_scan_req = s.net_scan_req;
 			last_net_poll = time(NULL);
 			fill_netinfo(&s);
+			changed = true;
+		}
+		if (s.settings_open && s.settings_cat == 5 &&
+		    time(NULL) - last_batt_poll > 5) {
+			last_batt_poll = time(NULL);
+			fill_battery(&s);
 			changed = true;
 		}
 		if (s.wifi_on != last_wifi_on) {

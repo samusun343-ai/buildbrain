@@ -43,6 +43,14 @@ typedef struct {
 	char net_status[96];
 	/* system page (filled by the shell) */
 	char sysinfo[6][96];
+	/* battery page (filled by the shell from
+	 * /sys/class/power_supply) */
+	int batt_present;
+	int batt_pct;
+	int ac_online;
+	char batt_status[40];
+	char batt_line1[96];	/* voltage / current */
+	char batt_line2[96];	/* time estimate */
 	/* mode page: profiles are user-defined files (brain-mode list);
 	 * the shell fills these arrays, scenes only displays them */
 	char mode_name[24];	/* active profile id */

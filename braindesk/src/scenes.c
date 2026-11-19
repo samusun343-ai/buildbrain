@@ -477,6 +477,33 @@ static void draw_settings(bu_canvas *c, bu_theme *t, bd_state *s)
 			bu_button(c, t, mode_deck_btn(), s->mode_launch_label[cur][0] ? s->mode_launch_label[cur] : "アプリを開く", BU_BTN_PRIMARY, false);
 		return;
 	}
+	if (s->settings_cat == 5) {
+		bu_draw_text(c, t->font, pane.x + 22, pane.y + 16, "バッテリー", 19, t->text);
+		if (!s->batt_present) {
+			bu_draw_text(c, t->font, pane.x + 22, pane.y + 64, "バッテリーが検出されません。", 14, t->text_dim);
+			bu_draw_text(c, t->font, pane.x + 22, pane.y + 92,
+				     s->ac_online ? "AC アダプタが接続されています。" : "AC アダプタも接続されていません。",
+				     13, t->text_faint);
+			return;
+		}
+		char pct[16];
+		snprintf(pct, sizeof(pct), "%d%%", s->batt_pct);
+		bu_draw_text(c, t->font, pane.x + 22, pane.y + 56, pct, 34, t->text);
+		bu_draw_text(c, t->font, pane.x + 130, pane.y + 74, s->batt_status, 14, t->text_dim);
+		bu_rect bar = { pane.x + 22, pane.y + 116, pane.w - 44, 24 };
+		bu_stroke_round_rect(c, bar, 6, 2, t->line);
+		bu_rect fill = { bar.x + 3, bar.y + 3, (bar.w - 6) * s->batt_pct / 100, bar.h - 6 };
+		if (fill.w > 6)
+			bu_fill_round_rect(c, fill, 4,
+					   s->batt_pct <= 20 ? t->warn : t->accent);
+		if (s->batt_line1[0])
+			bu_draw_text(c, t->font, pane.x + 22, pane.y + 164, s->batt_line1, 13.5, t->text);
+		if (s->batt_line2[0])
+			bu_draw_text(c, t->font, pane.x + 22, pane.y + 192, s->batt_line2, 13.5, t->text_dim);
+		bu_draw_text(c, t->font, pane.x + 22, pane.y + 232,
+			     s->ac_online ? "AC アダプタ: 接続中" : "AC アダプタ: 未接続", 13, t->text_dim);
+		return;
+	}
 	{
 		static const char *names[] = { "画面", "スキン", "音声", "キーボード", "ネットワーク", "バッテリー", "入力と日本語", "システム", "モード" };
 		int ci = s->settings_cat >= 0 && s->settings_cat < 9 ? s->settings_cat : 0;
