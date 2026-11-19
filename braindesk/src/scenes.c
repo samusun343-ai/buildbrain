@@ -4,6 +4,7 @@
 #include "bui_input.h"
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #define PW 854
 #define PH 480
