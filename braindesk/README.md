@@ -14,7 +14,15 @@ braindesk is designed only for this machine:
   TrueType text (stb_truetype), drawn vector icons (zero image
   assets), a single theme. On device it blits to the LCD
   framebuffer; there is no display server at all.
-- **braingreeter**: the login screen (docs/login.png).
+- **braingreeter**: the login screen (docs/login.png). Real
+  authentication against /etc/shadow via crypt() — Debian's
+  libxcrypt covers the yescrypt ($y$) hashes Brainux uses.
+  The greeter picks the first regular user automatically,
+  reports poweroff/reboot requests through its exit code, and
+  hands the session user to the shell via
+  /run/braindesk/session-user. Like ly, it is built inside the
+  Brainux chroot during image creation, where the target's own
+  headers and libraries are available.
 - **braindesk shell**: panel/taskbar/tray + launcher
   (docs/desktop.png). Familiar desktop grammar, nothing exotic.
 - **brainsettings**: the settings app (docs/settings.png),

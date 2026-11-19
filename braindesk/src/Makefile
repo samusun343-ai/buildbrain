@@ -2,7 +2,10 @@ CC ?= gcc
 CFLAGS ?= -O2 -Wall -Wextra -Wno-unused-parameter
 SRC = src/bui.c src/scenes.c src/bui_fb.c src/bui_input.c
 
-all: demo shell test_events
+all: demo shell test_events greeter
+
+greeter: $(SRC) src/greeter.c
+	$(CC) $(CFLAGS) -o $@ $(SRC) src/greeter.c -lm -lcrypt
 
 demo: $(SRC) src/demo.c
 	$(CC) $(CFLAGS) -o $@ $(SRC) src/demo.c -lm
