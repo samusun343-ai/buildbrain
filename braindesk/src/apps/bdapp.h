@@ -12,6 +12,7 @@
 #include "../bui.h"
 #include "../bui_fb.h"
 #include "../bui_input.h"
+#include "../bui_skin.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -37,7 +38,8 @@ static inline void bdapp_frame(bdapp *a)
 {
 	bu_canvas *c = a->canvas;
 	bu_theme *t = a->theme;
-	bu_gradient_v(c, (bu_rect){ 0, 0, a->w, a->h }, BU_RGB(13, 27, 46), BU_RGB(10, 44, 54));
+	const bd_skin *sk = bd_skin_get();
+	bu_gradient_v(c, (bu_rect){ 0, 0, a->w, a->h }, sk->wall_top, sk->wall_bottom);
 	bu_fill_rect(c, (bu_rect){ 0, 0, a->w, 44 }, BU_RGBA(18, 23, 33, 235));
 	bu_fill_rect(c, (bu_rect){ 0, 43, a->w, 1 }, BU_RGBA(255, 255, 255, 26));
 	bu_draw_text(c, t->font, 16, 8, a->title, 17, t->text);
@@ -74,6 +76,8 @@ static inline int bdapp_run(const char *title, const char *shot_path,
 	a.h = bu_display_height(a.disp);
 	a.canvas = bu_canvas_new(a.w, a.h);
 	a.theme = &bu_theme_dark;
+	bd_skin_load();
+	bd_skin_apply(a.theme);
 	a.theme->font = bu_font_load(BDAPP_FONT);
 	if (!a.theme->font) {
 		fprintf(stderr, "font load failed\n");

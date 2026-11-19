@@ -21,6 +21,7 @@ typedef struct {
 	char date[40];
 	int battery_pct;
 	char launch_path[128];	/* set when BD_ACT_LAUNCH is returned */
+	int skin;		/* current skin index (bui_skin) */
 	/* interaction */
 	int drag_slider;	/* 0 none, 1 brightness, 2 volume */
 	bool start_pressed;

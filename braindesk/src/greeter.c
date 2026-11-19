@@ -15,6 +15,7 @@
 #include "bui_fb.h"
 #include "bui_input.h"
 #include "scenes.h"
+#include "bui_skin.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -141,6 +142,8 @@ int main(int argc, char **argv)
 	if (!user)
 		user = pick_user();
 	T = &bu_theme_dark;
+	bd_skin_load();
+	bd_skin_apply(T);
 	T->font = bu_font_load(font_path);
 	if (!T->font) {
 		fprintf(stderr, "braingreeter: font load failed: %s\n", font_path);

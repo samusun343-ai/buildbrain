@@ -1,4 +1,5 @@
 #include "scenes.h"
+#include "bui_skin.h"
 #include <time.h>
 #include "bui_input.h"
 #include <string.h>
@@ -105,11 +106,16 @@ void bd_state_init(bd_state *s)
 
 static void wallpaper(bu_canvas *c)
 {
-	bu_gradient_v(c, (bu_rect){ 0, 0, PW, PH }, BU_RGB(13, 27, 46), BU_RGB(10, 44, 54));
+	const bd_skin *sk = bd_skin_get();
+	bu_gradient_v(c, (bu_rect){ 0, 0, PW, PH }, sk->wall_top, sk->wall_bottom);
+	bu_color glow = sk->wall_glow;
+	glow.a = 7;
+	bu_color glow2 = sk->accent;
+	glow2.a = 6;
 	for (int i = 0; i < 26; i++)
-		bu_fill_circle(c, 700 - i * 6, 60 + i * 3, 120 - i * 3, BU_RGBA(45, 156, 219, 7));
+		bu_fill_circle(c, 700 - i * 6, 60 + i * 3, 120 - i * 3, glow);
 	for (int i = 0; i < 20; i++)
-		bu_fill_circle(c, 90 + i * 4, 420 - i * 4, 100 - i * 3, BU_RGBA(32, 201, 151, 6));
+		bu_fill_circle(c, 90 + i * 4, 420 - i * 4, 100 - i * 3, glow2);
 }
 
 static void panel(bu_canvas *c, bu_theme *t, bd_state *s)
@@ -177,12 +183,26 @@ static void draw_settings(bu_canvas *c, bu_theme *t, bd_state *s)
 	bu_fill_circle(c, win.x + win.w - 72, win.y + 21, 7, t->ok);
 	bu_rect side = { win.x, win.y + 42, 176, win.h - 42 };
 	bu_fill_rect(c, side, BU_RGBA(255, 255, 255, 7));
-	const char *cats[] = { "画面", "音声", "キーボード", "ネットワーク", "バッテリー", "入力と日本語", "システム" };
-	for (int i = 0; i < 7; i++) {
+	const char *cats[] = { "画面", "スキン", "音声", "キーボード", "ネットワーク", "バッテリー", "入力と日本語", "システム" };
+	for (int i = 0; i < 8; i++) {
 		bu_rect row = { side.x + 10, side.y + 12 + i * 40, side.w - 20, 34 };
 		bu_list_row(c, t, row, cats[i], NULL, false, i == s->settings_cat);
 	}
 	bu_rect pane = pane_rect();
+	if (s->settings_cat == 1) {
+		bu_draw_text(c, t->font, pane.x + 22, pane.y + 16, "スキン", 19, t->text);
+		bu_draw_text(c, t->font, pane.x + 22, pane.y + 48, "テーマと壁紙の配色を切り替えます。全アプリに反映されます。", 12.5, t->text_dim);
+		for (int i = 0; i < BD_NSKINS; i++) {
+			bu_rect row = { pane.x + 8, pane.y + 76 + i * 46, pane.w - 16, 42 };
+			bu_fill_round_rect(c, row, 8, i == s->skin ? t->surface3 : t->surface2);
+			bu_fill_circle(c, row.x + 26, row.y + row.h / 2, 11, BD_SKINS[i].accent);
+			bu_fill_circle(c, row.x + 40, row.y + row.h / 2, 7, BD_SKINS[i].wall_bottom);
+			bu_draw_text(c, t->font, row.x + 58, row.y + 10, BD_SKINS[i].name, 15, t->text);
+			if (i == s->skin)
+				bu_draw_text_right(c, t->font, (bu_rect){ row.x, row.y + 10, row.w - 16, 22 }, "使用中", 12.5, t->accent);
+		}
+		return;
+	}
 	bu_draw_text(c, t->font, pane.x + 22, pane.y + 16, "画面", 19, t->text);
 	bu_draw_text(c, t->font, pane.x + 22, pane.y + 52, "明るさ", 13, t->text_dim);
 	bu_icon_brightness(c, pane.x + 36, pane.y + 92, t->text_dim);
@@ -271,13 +291,21 @@ int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y,
 		}
 		if (s->settings_open) {
 			if (in_rect(settings_close(), x, y)) { s->settings_open = false; *changed = true; return BD_ACT_NONE; }
+			if (s->settings_cat == 1) {
+				bu_rect pane = pane_rect();
+				for (int i = 0; i < BD_NSKINS; i++) {
+					bu_rect row = { pane.x + 8, pane.y + 76 + i * 46, pane.w - 16, 42 };
+					if (in_rect(row, x, y)) { s->skin = i; *changed = true; return BD_ACT_NONE; }
+				}
+				return BD_ACT_NONE; /* skin page swallows other pane taps */
+			}
 			if (in_rect(brightness_slider(), x, y)) { s->drag_slider = 1; s->brightness = slider_frac(brightness_slider(), x); *changed = true; return BD_ACT_NONE; }
 			if (in_rect(volume_slider(), x, y)) { s->drag_slider = 2; s->volume = slider_frac(volume_slider(), x); *changed = true; return BD_ACT_NONE; }
 			if (in_rect(lid_toggle_hit(), x, y)) { s->lid_sleep = !s->lid_sleep; *changed = true; return BD_ACT_NONE; }
 			if (in_rect(keysound_toggle_hit(), x, y)) { s->key_sound = !s->key_sound; *changed = true; return BD_ACT_NONE; }
 			/* sidebar categories */
 			bu_rect w = settings_win();
-			for (int i = 0; i < 7; i++) {
+			for (int i = 0; i < 8; i++) {
 				bu_rect row = { w.x + 10, w.y + 42 + 12 + i * 40, 156, 34 };
 				if (in_rect(row, x, y)) { s->settings_cat = i; *changed = true; return BD_ACT_NONE; }
 			}

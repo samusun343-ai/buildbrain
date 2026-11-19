@@ -7,6 +7,7 @@
 #include "bui_input.h"
 #include "scenes.h"
 #include "bui_alsa.h"
+#include "bui_skin.h"
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
@@ -72,8 +73,12 @@ int main(int argc, char **argv)
 	bu_display *disp = bu_display_open(854, 480);
 	int W = bu_display_width(disp), H = bu_display_height(disp);
 	bu_canvas *canvas = bu_canvas_new(W, H);
+	bd_skin_load();
+	bd_skin_apply(T);
 	bd_state s;
 	bd_state_init(&s);
+	s.skin = bd_skin_current;
+	int last_skin = s.skin;
 	update_clock(&s, &(bool){ 0 });
 	bu_alsa *alsa = bu_alsa_open();
 	if (alsa) {
@@ -131,6 +136,12 @@ int main(int argc, char **argv)
 		if (s.brightness != last_brightness) {
 			apply_brightness(s.brightness);
 			last_brightness = s.brightness;
+		}
+		if (s.skin != last_skin) {
+			bd_skin_set(s.skin);
+			bd_skin_apply(T);
+			bd_skin_save(s.skin);
+			last_skin = s.skin;
 		}
 		if (alsa && s.volume != last_volume) {
 			bu_alsa_set_volume(alsa, s.volume);
