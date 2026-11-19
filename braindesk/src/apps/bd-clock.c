@@ -44,16 +44,34 @@ static void tick(bdapp *a, void *ctx, bool *changed)
 
 static const char *TABS[] = { "時計", "世界時計", "ストップウォッチ", "タイマー" };
 
-static bu_rect tab_rect(int i) { return (bu_rect){ 16 + i * 208, 52, 200, 40 }; }
+/* The tab row shares the actual window width (16 px margins,
+ * 8 px gaps) instead of assuming the 864 px design width, so all
+ * four tabs stay on screen when the WM opens the app narrower
+ * (560 px). Draw and hit-test both go through tab_rect(), so
+ * their rects always agree. */
+static bu_rect tab_rect(int i, int w)
+{
+	int tw = (w - 32 - 3 * 8) / 4;
+	if (tw < 48)
+		tw = 48;
+	return (bu_rect){ 16 + i * (tw + 8), 52, tw, 40 };
+}
 
 static void draw_tabs(bdapp *a, struct clockapp *k)
 {
 	bu_canvas *c = a->canvas;
 	bu_theme *t = a->theme;
+	/* shrink the label font until the longest label fits its tab */
+	float fs = 14;
+	int tw = tab_rect(0, a->w).w;
+	while (fs > 9 && bu_text_width(t->font, "ストップウォッチ", fs) > tw - 12)
+		fs -= 0.5f;
 	for (int i = 0; i < 4; i++) {
-		bu_rect r = tab_rect(i);
-		bu_fill_round_rect(c, r, 9, i == k->tab ? t->accent : t->surface);
-		bu_draw_text_centered(c, t->font, r, TABS[i], 14, i == k->tab ? BU_RGB(255, 255, 255) : t->text_dim);
+		bu_rect r = tab_rect(i, a->w);
+		/* surface2: in WM windows the frame fills the canvas with
+		 * surface, so surface tabs would be invisible there */
+		bu_fill_round_rect(c, r, 9, i == k->tab ? t->accent : t->surface2);
+		bu_draw_text_centered(c, t->font, r, TABS[i], fs, i == k->tab ? BU_RGB(255, 255, 255) : t->text_dim);
 	}
 }
 
@@ -161,7 +179,7 @@ static void onevent(bdapp *a, void *ctx, bu_event *ev, bool *changed, bool *quit
 	int x = ev->x, y = ev->y;
 	*changed = true;
 	for (int i = 0; i < 4; i++)
-		if (inr(x, y, tab_rect(i))) {
+		if (inr(x, y, tab_rect(i, a->w))) {
 			k->tab = i;
 			return;
 		}
