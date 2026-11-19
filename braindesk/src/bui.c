@@ -138,7 +138,8 @@ void bu_gradient_round_v(bu_canvas *c, bu_rect r, int radius, bu_color top, bu_c
 	float hw = r.w / 2.0f, hh = r.h / 2.0f;
 	for (int y = r.y - 1; y < r.y + r.h + 1; y++) {
 		float f = r.h > 1 ? (float)(y - r.y) / (r.h - 1) : 0;
-		if (f < 0) f = 0; if (f > 1) f = 1;
+		if (f < 0) f = 0;
+		if (f > 1) f = 1;
 		bu_color col = BU_RGBA(
 			(uint8_t)(top.r + (bottom.r - top.r) * f),
 			(uint8_t)(top.g + (bottom.g - top.g) * f),

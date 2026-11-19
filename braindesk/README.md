@@ -27,8 +27,13 @@ power button). Existing X applications are not the target —
 braindesk apps are native libbrainui programs, and the SDK is
 the toolkit itself plus templates.
 
-Status: toolkit core + the three scenes above render today
-(host build: `gcc -O2 -o demo src/bui.c src/demo.c -lm`, then
-`./demo <font.ttc>`). Next: fbdev backend + evdev input on the
-device image, the compositor loop, then the settings pages
-wired to real backends (backlight PWM, ALSA, logind, fcitx).
+Status: toolkit core + scenes render today; the shell binary
+(src/shell.c) runs an evdev event loop over an fbdev backend
+(RGB565 conversion, page flipping when available) and applies
+the brightness slider to /sys/class/backlight for real.
+Interaction is covered by src/test_events.c (synthetic taps and
+drags: launcher, settings, slider, toggles, close). A static ARM
+build is ~1.0 MiB (`make arm`). Host build: `make`, then
+`./demo`, `./test_events`, `./shell --shot`.
+Next: run it on the device image in QEMU and on hardware, wire
+volume to ALSA, add the greeter binary, then real apps.
