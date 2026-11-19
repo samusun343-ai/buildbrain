@@ -106,6 +106,19 @@ cd /
 rm -r ly
 systemctl enable ly
 
+
+# braindesk (from-scratch desktop: greeter + shell, libbrainui)
+DEBIAN_FRONTEND=noninteractive \
+    apt install -y libcrypt-dev
+make -C /opt/braindesk -j$(nproc) shell greeter
+install -m 0755 /opt/braindesk/shell /usr/local/bin/braindesk
+install -m 0755 /opt/braindesk/greeter /usr/local/bin/braingreeter
+# the shell reads evdev directly
+usermod -a -G input user
+# Not enabled yet: ly stays the default greeter until braindesk is
+# verified on the image. Enable with:
+#   systemctl disable ly && systemctl enable braindesk-session
+
 # Create editable xorg.conf.d
 install -m 0777 -d /etc/X11/xorg.conf.d
 

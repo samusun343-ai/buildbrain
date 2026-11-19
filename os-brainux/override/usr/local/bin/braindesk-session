@@ -1,0 +1,24 @@
+#!/bin/sh
+# braindesk session wrapper: greeter -> shell -> greeter ...
+# braingreeter exit codes: 0 logged in, 10 poweroff, 11 reboot.
+while true; do
+	/usr/local/bin/braingreeter
+	rc=$?
+	case $rc in
+	0)
+		user=$(cat /run/braindesk/session-user 2>/dev/null || echo user)
+		runuser -u "$user" -- /usr/local/bin/braindesk
+		;;
+	10)
+		systemctl poweroff
+		exit 0
+		;;
+	11)
+		systemctl reboot
+		exit 0
+		;;
+	*)
+		sleep 1
+		;;
+	esac
+done

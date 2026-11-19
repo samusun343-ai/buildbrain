@@ -1,0 +1,15 @@
+[Unit]
+Description=braindesk session (greeter + shell)
+After=systemd-user-sessions.service
+Conflicts=getty@tty1.service ly.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/braindesk-session
+Restart=always
+TTYPath=/dev/tty1
+StandardInput=tty
+StandardOutput=tty
+
+[Install]
+WantedBy=multi-user.target

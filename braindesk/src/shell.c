@@ -91,6 +91,11 @@ int main(int argc, char **argv)
 		bu_event ev;
 		bool changed = false;
 		if (bu_input_next(input, &ev, 250)) {
+			/* Power button (PSWITCH) leaves the session, back
+			 * to the greeter (lock). The session wrapper owns
+			 * poweroff/reboot decisions at the greeter. */
+			if (ev.type == BU_EV_KEY && ev.code == 116 && ev.value == 1)
+				return 0;
 			bd_handle_event(&s, ev.type, ev.code, ev.value, ev.x, ev.y, &changed);
 		}
 		update_clock(&s, &changed);
