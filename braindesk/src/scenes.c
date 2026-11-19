@@ -2,6 +2,7 @@
 #include "bui_skin.h"
 #include <time.h>
 #include "bui_input.h"
+#include "bui_wm.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,6 +17,17 @@ static int PANEL_H = 42;
 static int skin_layout(void) { return bd_skin_get()->layout; }
 static bool top_bar(void) { int l = skin_layout(); return l == BD_LAYOUT_MAC || l == BD_LAYOUT_CLASSIC; }
 static int topbar_h(void) { return skin_layout() == BD_LAYOUT_MAC ? 28 : 26; }
+
+/* Desktop work area for the window manager: the screen minus the
+ * bottom panel, or minus the top bar for the Mac families. The
+ * macOS dock floats, so it does not shrink the area. */
+void bd_workarea(bu_rect *r)
+{
+	if (top_bar())
+		*r = (bu_rect){ 0, topbar_h(), PW, PH - topbar_h() };
+	else
+		*r = (bu_rect){ 0, 0, PW, PH - PANEL_H };
+}
 #define DOCK_W 208
 #define DOCK_H 54
 static bu_rect dock_rect(void) { return (bu_rect){ (PW - DOCK_W) / 2, PH - DOCK_H - 8, DOCK_W, DOCK_H }; }
@@ -423,6 +435,19 @@ static void draw_dock(bu_canvas *c, bu_theme *t, bd_state *s)
 	}
 }
 
+
+/* Panel task-button area (running WM windows). */
+static void task_area(int *x0, int *x1)
+{
+	if (skin_layout() == BD_LAYOUT_WIN11) {
+		*x0 = PW / 2 + 118;
+	} else {
+		bu_rect q2 = ql_rect(2);
+		*x0 = q2.x + q2.w + 12;
+	}
+	*x1 = panel_rx() - 208;
+}
+
 static void panel(bu_canvas *c, bu_theme *t, bd_state *s)
 {
 	int RX = panel_rx();
@@ -539,6 +564,12 @@ static void panel(bu_canvas *c, bu_theme *t, bd_state *s)
 		if (active)
 			bu_fill_round_rect(c, (bu_rect){ chip.x + chip.w / 2 - 10, PH - 8, 20, 3 }, 1, t->accent);
 	}
+	{
+		int tx0, tx1;
+		task_area(&tx0, &tx1);
+		if (tx1 > tx0)
+			bd_wm_draw_tasks(c, t, tx0, tx1, PH - PANEL_H, PANEL_H);
+	}
 	/* tray ink: light on dark panels (XP/Win8), theme text otherwise */
 	int lum = (t->panel.r * 3 + t->panel.g * 5 + t->panel.b * 2) / 10;
 	bu_color tray = lum < 110 ? BU_RGB(255, 255, 255) : t->text_dim;
@@ -565,6 +596,8 @@ static void panel(bu_canvas *c, bu_theme *t, bd_state *s)
 	if (s->vol_popup)
 		draw_vol_popup(c, t, s);
 }
+
+
 
 static void draw_assist(bu_canvas *c, bu_theme *t, bd_state *s)
 {
@@ -884,7 +917,13 @@ static void draw_settings(bu_canvas *c, bu_theme *t, bd_state *s)
 void bd_draw_shell(bu_canvas *c, bu_theme *t, bd_state *s)
 {
 	PANEL_H = s->panel_h > 0 ? s->panel_h : 42;
+	/* Keep the WM's work area in sync every frame, so a skin
+	 * change (bottom panel vs top bar) applies at once. */
+	bu_rect wa;
+	bd_workarea(&wa);
+	bd_wm_set_workarea(wa.x, wa.y, wa.w, wa.h);
 	wallpaper(c);
+	bd_wm_draw(c, t);
 	if (s->view == BD_VIEW_LAUNCHER)
 		draw_launcher(c, t, s);
 	if (s->settings_open)
@@ -947,6 +986,36 @@ int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y,
 {
 	PANEL_H = s->panel_h > 0 ? s->panel_h : 42;
 	*changed = false;
+	if (ev_type == BU_EV_POINTER_MOVE || ev_type == BU_EV_POINTER_UP) {
+		if (bd_wm_pointer(ev_type, x, y)) {
+			*changed = true;
+			return BD_ACT_NONE;
+		}
+	}
+	if (ev_type == BU_EV_POINTER_DOWN && !s->settings_open &&
+	    s->view == BD_VIEW_DESKTOP && !s->assist_open) {
+		/* panel task buttons raise windows */
+		{
+			int tx0, tx1;
+			task_area(&tx0, &tx1);
+			int ti = bd_wm_task_hit(x, y, tx0, tx1, PH - PANEL_H, PANEL_H);
+			if (ti >= 0) {
+				bd_wm_raise_task(ti);
+				*changed = true;
+				return BD_ACT_NONE;
+			}
+		}
+		bool on_shell_chrome;
+		if (top_bar())
+			on_shell_chrome = y < topbar_h() ||
+				(skin_layout() == BD_LAYOUT_MAC && in_rect(dock_rect(), x, y));
+		else
+			on_shell_chrome = y >= PH - PANEL_H;
+		if (!on_shell_chrome && bd_wm_pointer(ev_type, x, y)) {
+			*changed = true;
+			return BD_ACT_NONE;
+		}
+	}
 	if (ev_type == BU_EV_KEY) {
 		if (value == 1 && code == 1 /* KEY_ESC */) {
 			if (s->settings_open) { s->settings_open = false; *changed = true; }

@@ -22,11 +22,30 @@ bu_canvas *bu_canvas_new(int w, int h)
 	return c;
 }
 
+static uint32_t *wrapped_px[16];
+static int wrapped_n;
 void bu_canvas_free(bu_canvas *c)
 {
 	if (!c) return;
-	free(c->px);
+	int is_wrapped = 0;
+	for (int i = 0; i < wrapped_n; i++)
+		if (wrapped_px[i] == c->px) is_wrapped = 1;
+	if (!is_wrapped)
+		free(c->px);
 	free(c);
+}
+
+/* Wrap caller-owned pixels (e.g. a WM shared-memory buffer).
+ * bu_canvas_free on a wrapped canvas frees only the struct. */
+bu_canvas *bu_canvas_wrap(int w, int h, uint32_t *px)
+{
+	bu_canvas *c = calloc(1, sizeof(*c));
+	c->w = w; c->h = h;
+	c->px = px;
+	c->clip = (bu_rect){ 0, 0, w, h };
+	if (wrapped_n < 16)
+		wrapped_px[wrapped_n++] = px;
+	return c;
 }
 
 static inline uint32_t pack(bu_color col)

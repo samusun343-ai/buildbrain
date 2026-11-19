@@ -78,6 +78,9 @@ void bd_state_init(bd_state *s);
 void bd_update_datetime(bd_state *s); /* fills clock + date from local time */
 void bd_draw_login(bu_canvas *c, bu_theme *t, bd_state *s, const char *user);
 void bd_draw_shell(bu_canvas *c, bu_theme *t, bd_state *s);
+/* Desktop work area for the window manager (screen minus the
+ * panel / top bar for the current skin). */
+void bd_workarea(bu_rect *r);
 /* Feed one pointer/key event; returns an action for the caller. */
 int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y, bool *changed);
 

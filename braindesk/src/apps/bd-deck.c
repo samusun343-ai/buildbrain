@@ -280,6 +280,7 @@ static void tick(bdapp *a, void *ctx, bool *changed)
 
 int main(int argc, char **argv)
 {
+	unsetenv("BRAINDESK_WM"); /* full-screen deck: never windowed */
 	struct deck d;
 	memset(&d, 0, sizeof(d));
 	d.kbd_fd = d.cc_fd = -1;

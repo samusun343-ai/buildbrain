@@ -6,6 +6,7 @@
 #include "bui_fb.h"
 #include "bui_input.h"
 #include "scenes.h"
+#include "bui_wm.h"
 #include "bui_alsa.h"
 #include "bui_skin.h"
 #include "brainreg.h"
@@ -503,6 +504,36 @@ int main(int argc, char **argv)
 			s.volume = v;
 	}
 
+	bd_wm_server_start(NULL);
+	{
+		/* Push the work area before any window can be placed
+		 * (the smoke test launches apps before the first draw). */
+		bu_rect wa;
+		bd_workarea(&wa);
+		bd_wm_set_workarea(wa.x, wa.y, wa.w, wa.h);
+	}
+	if (shot && getenv("BD_SHOT_WM")) {
+		/* WM smoke test: launch two apps windowed, let them
+		 * draw, and dump the composited desktop. */
+		const char *apps[2] = { "./bd-calc", "./bd-clock" };
+		for (int i = 0; i < 2; i++) {
+			pid_t p = fork();
+			if (p == 0) {
+				execl(apps[i], apps[i], (char *)NULL);
+				_exit(127);
+			}
+		}
+		for (int i = 0; i < 50; i++) {
+			bd_wm_poll();
+			usleep(100000);
+		}
+		bd_draw_shell(canvas, T, &s);
+		bu_display_present(disp, canvas, (bu_rect){ 0, 0, W, H });
+		bu_display_dump_ppm(disp, shot_path);
+		fprintf(stderr, "braindesk: WM test frame, %d windows\n",
+			bd_wm_window_count());
+		return 0;
+	}
 	bd_draw_shell(canvas, T, &s);
 	bu_display_present(disp, canvas, (bu_rect){ 0, 0, W, H });
 	if (shot) {
@@ -526,7 +557,15 @@ int main(int argc, char **argv)
 			 * poweroff/reboot decisions at the greeter. */
 			if (ev.type == BU_EV_KEY && ev.code == 116 && ev.value == 1)
 				return 0;
-			int act = bd_handle_event(&s, ev.type, ev.code, ev.value, ev.x, ev.y, &changed);
+			int act = BD_ACT_NONE;
+			bool forwarded = false;
+			if (ev.type == BU_EV_KEY && ev.code != 139 /* MENU */ &&
+			    s.view == BD_VIEW_DESKTOP && !s.settings_open)
+				forwarded = bd_wm_key(ev.code, ev.value) != 0;
+			if (forwarded)
+				changed = true;
+			else
+				act = bd_handle_event(&s, ev.type, ev.code, ev.value, ev.x, ev.y, &changed);
 			if (act == BD_ACT_ASSIST) {
 				if (s.assist_action == BD_ASSIST_PGUP)
 					uinput_key(KEY_PAGEUP);
@@ -536,27 +575,33 @@ int main(int argc, char **argv)
 					return 0; /* back to the greeter */
 			}
 			if (act == BD_ACT_LAUNCH) {
-				/* Run the app in the foreground; it opens the
-				 * display itself. Afterwards take the console
-				 * back (the app restores KD_TEXT on exit) and
-				 * drop input events queued while it ran. */
+				bool fullscreen_app = strstr(s.launch_path, "bd-deck") != NULL;
 				pid_t pid = fork();
 				if (pid == 0) {
 					execl(s.launch_path, s.launch_path, (char *)NULL);
 					_exit(127);
 				}
-				if (pid > 0) {
+				if (pid > 0 && fullscreen_app) {
+					/* Full-screen apps (the control deck) own
+					 * the display directly, as before: wait,
+					 * then take the console back. Windowed
+					 * apps instead run concurrently under the
+					 * WM and are reaped in the loop. */
 					int st;
 					while (waitpid(pid, &st, 0) < 0 && errno == EINTR)
 						;
+					bu_display_regrab(disp);
+					bu_event drop;
+					while (bu_input_next(input, &drop, 0))
+						;
 				}
-				bu_display_regrab(disp);
-				bu_event drop;
-				while (bu_input_next(input, &drop, 0))
-					;
 				changed = true;
 			}
 		}
+		if (bd_wm_poll())
+			changed = true;
+		while (waitpid(-1, NULL, WNOHANG) > 0)
+			;
 		update_clock(&s, &changed);
 		if (s.brightness != last_brightness) {
 			apply_brightness(s.brightness);

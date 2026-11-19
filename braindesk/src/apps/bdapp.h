@@ -13,6 +13,7 @@
 #include "../bui_fb.h"
 #include "../bui_input.h"
 #include "../bui_skin.h"
+#include "../bui_wm.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -22,6 +23,7 @@
 
 typedef struct {
 	bu_display *disp;
+	bd_wm_client *wm;	/* non-NULL when running windowed under the shell */
 	bu_canvas *canvas;
 	bu_theme *theme;
 	bu_input *input;
@@ -31,6 +33,8 @@ typedef struct {
 
 static inline bu_rect bdapp_content(bdapp *a)
 {
+	if (a->wm)
+		return (bu_rect){ 0, 0, a->w, a->h };
 	return (bu_rect){ 0, 36, a->w, a->h - 36 };
 }
 
@@ -38,6 +42,12 @@ static inline void bdapp_frame(bdapp *a)
 {
 	bu_canvas *c = a->canvas;
 	bu_theme *t = a->theme;
+	if (a->wm) {
+		/* windowed: the shell draws the real window chrome;
+		 * the app paints only its content background */
+		bu_fill_rect(c, (bu_rect){ 0, 0, a->w, a->h }, t->surface);
+		return;
+	}
 	const bd_skin *sk = bd_skin_get();
 	bu_gradient_v(c, (bu_rect){ 0, 0, a->w, a->h }, sk->wall_top, sk->wall_bottom);
 	bu_color pc = t->panel; pc.a = 235;
@@ -82,6 +92,10 @@ static inline bool bdapp_close_hit(bdapp *a, int x, int y)
 /* draw + present one frame (app calls its own draw first) */
 static inline void bdapp_present(bdapp *a)
 {
+	if (a->wm) {
+		bd_wm_client_commit(a->wm);
+		return;
+	}
 	bu_display_present(a->disp, a->canvas, (bu_rect){ 0, 0, a->w, a->h });
 }
 
@@ -97,10 +111,19 @@ static inline int bdapp_run(const char *title, const char *shot_path,
 	bdapp a;
 	memset(&a, 0, sizeof(a));
 	a.title = title;
-	a.disp = bu_display_open(864, 480);
-	a.w = bu_display_width(a.disp);
-	a.h = bu_display_height(a.disp);
-	a.canvas = bu_canvas_new(a.w, a.h);
+	const char *wm_path = getenv("BRAINDESK_WM");
+	if (wm_path && !shot_path)
+		a.wm = bd_wm_client_open(wm_path, title, 560, 380);
+	if (a.wm) {
+		a.canvas = bd_wm_client_canvas(a.wm);
+		a.w = a.canvas->w;
+		a.h = a.canvas->h;
+	} else {
+		a.disp = bu_display_open(864, 480);
+		a.w = bu_display_width(a.disp);
+		a.h = bu_display_height(a.disp);
+		a.canvas = bu_canvas_new(a.w, a.h);
+	}
 	a.theme = &bu_theme_dark;
 	bd_skin_load();
 	bd_skin_apply(a.theme);
@@ -116,15 +139,24 @@ static inline int bdapp_run(const char *title, const char *shot_path,
 			bu_display_dump_ppm(a.disp, shot_path);
 		return 0;
 	}
-	a.input = bu_input_open(a.w, a.h);
+	if (!a.wm)
+		a.input = bu_input_open(a.w, a.h);
 	bool quit = false;
 	while (!quit) {
 		bu_event ev;
 		bool changed = false;
-		if (bu_input_next(a.input, &ev, 250)) {
-			if (ev.type == BU_EV_KEY && ev.code == 116 && ev.value == 1)
+		int got;
+		if (a.wm) {
+			got = bd_wm_client_next(a.wm, &ev, 250);
+			if (got < 0)
+				break; /* the shell closed this window */
+		} else {
+			got = bu_input_next(a.input, &ev, 250) ? 1 : 0;
+		}
+		if (got == 1) {
+			if (!a.wm && ev.type == BU_EV_KEY && ev.code == 116 && ev.value == 1)
 				break; /* power key: back to shell/greeter */
-			if (ev.type == BU_EV_POINTER_DOWN && bdapp_close_hit(&a, ev.x, ev.y))
+			if (!a.wm && ev.type == BU_EV_POINTER_DOWN && bdapp_close_hit(&a, ev.x, ev.y))
 				break;
 			onevent(&a, ctx, &ev, &changed, &quit);
 		}
@@ -135,8 +167,13 @@ static inline int bdapp_run(const char *title, const char *shot_path,
 			bdapp_present(&a);
 		}
 	}
-	bu_input_close(a.input);
-	bu_display_close(a.disp);
+	if (a.wm)
+		bd_wm_client_close(a.wm);
+	else {
+		bu_input_close(a.input);
+		bu_display_close(a.disp);
+		bu_canvas_free(a.canvas);
+	}
 	return 0;
 }
 

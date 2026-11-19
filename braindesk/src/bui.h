@@ -30,6 +30,7 @@ typedef struct {
 } bu_canvas;
 
 bu_canvas *bu_canvas_new(int w, int h);
+bu_canvas *bu_canvas_wrap(int w, int h, uint32_t *px);
 void bu_canvas_free(bu_canvas *c);
 void bu_canvas_clear(bu_canvas *c, bu_color col);
 bool bu_canvas_write_ppm(bu_canvas *c, const char *path);
