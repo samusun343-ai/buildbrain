@@ -339,6 +339,8 @@ void bu_draw_text_right(bu_canvas *c, bu_font *f, bu_rect r, const char *utf8, f
 
 /* ---------- theme ---------- */
 
+int bu_chrome = 0;
+
 bu_theme bu_theme_dark = {
 	.bg = { 16, 20, 28, 255 },
 	.surface = { 28, 34, 46, 255 },
@@ -360,8 +362,34 @@ bu_theme bu_theme_dark = {
 
 /* ---------- widgets ---------- */
 
+/* Classic raised/sunken bevel (Win95/CE/Classic Mac chrome). */
+void bu_bevel_rect(bu_canvas *c, bu_rect r, bool raised)
+{
+	bu_color hi = BU_RGB(255, 255, 255);
+	bu_color mid = BU_RGB(128, 128, 128);
+	bu_color lo = BU_RGB(32, 32, 32);
+	bu_color top = raised ? hi : mid;
+	bu_color bot = raised ? lo : hi;
+	bu_color top2 = raised ? BU_RGB(223, 223, 223) : lo;
+	bu_color bot2 = raised ? mid : BU_RGB(223, 223, 223);
+	bu_fill_rect(c, (bu_rect){ r.x, r.y, r.w, 1 }, top);
+	bu_fill_rect(c, (bu_rect){ r.x, r.y, 1, r.h }, top);
+	bu_fill_rect(c, (bu_rect){ r.x, r.y + r.h - 1, r.w, 1 }, bot);
+	bu_fill_rect(c, (bu_rect){ r.x + r.w - 1, r.y, 1, r.h }, bot);
+	bu_fill_rect(c, (bu_rect){ r.x + 1, r.y + 1, r.w - 2, 1 }, top2);
+	bu_fill_rect(c, (bu_rect){ r.x + 1, r.y + 1, 1, r.h - 2 }, top2);
+	bu_fill_rect(c, (bu_rect){ r.x + 1, r.y + r.h - 2, r.w - 2, 1 }, bot2);
+	bu_fill_rect(c, (bu_rect){ r.x + r.w - 2, r.y + 1, 1, r.h - 2 }, bot2);
+}
+
 void bu_button(bu_canvas *c, bu_theme *t, bu_rect r, const char *label, bu_btn_style style, bool pressed)
 {
+	if (bu_chrome == BU_CHROME_BEVEL && style == BU_BTN_NORMAL) {
+		bu_fill_rect(c, r, t->surface2);
+		bu_bevel_rect(c, r, !pressed);
+		bu_draw_text_centered(c, t->font, (bu_rect){ r.x + (pressed ? 1 : 0), r.y + 2, r.w, r.h - 4 }, label, 13.5, t->text);
+		return;
+	}
 	bu_color fill, fg = t->text;
 	switch (style) {
 	case BU_BTN_PRIMARY: fill = t->accent; fg = BU_RGB(255, 255, 255); break;
@@ -403,12 +431,31 @@ void bu_slider(bu_canvas *c, bu_theme *t, bu_rect r, float frac, bool active)
 
 void bu_card(bu_canvas *c, bu_theme *t, bu_rect r)
 {
+	if (bu_chrome == BU_CHROME_BEVEL) {
+		bu_fill_rect(c, r, t->surface);
+		bu_bevel_rect(c, r, true);
+		return;
+	}
 	bu_shadow_round_rect(c, r, t->radius + 2, 6, BU_RGBA(0, 0, 0, 70));
 	bu_fill_round_rect(c, r, t->radius + 2, t->surface);
 }
 
 void bu_list_row(bu_canvas *c, bu_theme *t, bu_rect r, const char *title, const char *value, bool chevron, bool selected)
 {
+	if (bu_chrome == BU_CHROME_BEVEL) {
+		if (selected) {
+			bu_fill_rect(c, r, t->accent);
+			bu_draw_text(c, t->font, r.x + 12, r.y + (r.h - 20) / 2, title, 14, BU_RGB(255, 255, 255));
+			if (value)
+				bu_draw_text_right(c, t->font, (bu_rect){ r.x, r.y + (r.h - 20) / 2, r.w - 12, 20 }, value, 12.5, BU_RGB(255, 255, 255));
+			return;
+		}
+		bu_fill_rect(c, r, t->surface);
+		bu_draw_text(c, t->font, r.x + 12, r.y + (r.h - 20) / 2, title, 14, t->text);
+		if (value)
+			bu_draw_text_right(c, t->font, (bu_rect){ r.x, r.y + (r.h - 20) / 2, r.w - 12, 20 }, value, 12.5, t->text_dim);
+		return;
+	}
 	if (selected)
 		bu_fill_round_rect(c, r, 8, t->surface2);
 	bu_draw_text(c, t->font, r.x + 14, r.y + (r.h - 22) / 2, title, 15, t->text);

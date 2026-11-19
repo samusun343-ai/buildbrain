@@ -22,6 +22,7 @@ typedef struct {
 	bu_color panel;
 	bu_color wall_top, wall_bottom, wall_glow;
 	int radius;
+	int chrome;		/* BU_CHROME_* */
 } bd_skin;
 
 extern const bd_skin BD_SKINS[];

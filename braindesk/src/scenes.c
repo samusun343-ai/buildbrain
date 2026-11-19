@@ -9,10 +9,12 @@
 #define PH 480
 static int PANEL_H = 46;
 
-static bu_rect start_btn(void) { return (bu_rect){ 8, PH - PANEL_H + (PANEL_H - 34) / 2, 34, 34 }; }
-static bu_rect ql_rect(int i) { return (bu_rect){ 52 + i * 50, PH - PANEL_H + (PANEL_H - 36) / 2, 44, 36 }; }
-static bu_rect vol_icon_rect(void) { return (bu_rect){ PW - 168, PH - PANEL_H, 34, PANEL_H }; }
-static bu_rect clock_rect(void) { return (bu_rect){ PW - 96, PH - PANEL_H, 96, PANEL_H }; }
+static int dock_x0(void) { return bu_chrome == BU_CHROME_DOCK ? (PW - 600) / 2 : 0; }
+static int panel_rx(void) { return bu_chrome == BU_CHROME_DOCK ? (PW - 600) / 2 + 600 : PW; }
+static bu_rect start_btn(void) { return (bu_rect){ dock_x0() + 8, PH - PANEL_H + (PANEL_H - 34) / 2, 34, 34 }; }
+static bu_rect ql_rect(int i) { return (bu_rect){ dock_x0() + 48 + i * 40, PH - PANEL_H + (PANEL_H - 32) / 2, 34, 32 }; }
+static bu_rect vol_icon_rect(void) { return (bu_rect){ panel_rx() - 168, PH - PANEL_H, 34, PANEL_H }; }
+static bu_rect clock_rect(void) { return (bu_rect){ panel_rx() - 96, PH - PANEL_H, 96, PANEL_H }; }
 static bu_rect vol_popup_rect(void) { return (bu_rect){ PW - 268, PH - PANEL_H - 66, 256, 58 }; }
 static bu_rect vol_popup_slider(void) { bu_rect p = vol_popup_rect(); return (bu_rect){ p.x + 44, p.y + 16, p.w - 90, 26 }; }
 static bu_rect assist_btn(void) { return (bu_rect){ PW - 72, PH - PANEL_H - 80, 54, 54 }; }
@@ -158,18 +160,65 @@ static void wallpaper(bu_canvas *c)
 
 static void panel(bu_canvas *c, bu_theme *t, bd_state *s)
 {
+	int RX = panel_rx();
 	bu_rect bar = { 0, PH - PANEL_H, PW, PANEL_H };
-	bu_color pc = t->panel; pc.a = 235;
-	bu_fill_rect(c, bar, pc);
-	/* accent hairline: accent -> accent2 across the panel top */
-	bu_fill_rect(c, (bu_rect){ 0, PH - PANEL_H, PW / 2, 2 }, t->accent);
-	bu_fill_rect(c, (bu_rect){ PW / 2, PH - PANEL_H, PW - PW / 2, 2 }, t->accent2);
+	if (bu_chrome == BU_CHROME_DOCK) {
+		bu_rect dock = { dock_x0(), PH - PANEL_H - 4, 600, PANEL_H };
+		bu_shadow_round_rect(c, dock, 18, 8, BU_RGBA(0, 0, 0, 90));
+		bu_color pc = t->panel; pc.a = 225;
+		bu_fill_round_rect(c, dock, 18, pc);
+	} else if (bu_chrome == BU_CHROME_BEVEL) {
+		bu_fill_rect(c, bar, t->panel);
+		bu_fill_rect(c, (bu_rect){ 0, PH - PANEL_H, PW, 1 }, BU_RGB(255, 255, 255));
+		bu_fill_rect(c, (bu_rect){ 0, PH - PANEL_H + 1, PW, 1 }, BU_RGB(223, 223, 223));
+	} else if (bu_chrome == BU_CHROME_LUNA) {
+		bu_color deep = t->accent;
+		deep.r = deep.r * 55 / 100; deep.g = deep.g * 55 / 100; deep.b = deep.b * 72 / 100;
+		bu_gradient_v(c, bar, t->accent, deep);
+		bu_fill_rect(c, (bu_rect){ 0, PH - PANEL_H, PW, 1 }, BU_RGBA(255, 255, 255, 90));
+	} else if (bu_chrome == BU_CHROME_AERO) {
+		bu_color deep = t->panel;
+		deep.r = deep.r / 3; deep.g = deep.g / 3; deep.b = deep.b / 3;
+		bu_gradient_v(c, bar, t->panel, deep);
+		bu_fill_rect(c, (bu_rect){ 0, PH - PANEL_H, PW, 1 }, BU_RGBA(255, 255, 255, 60));
+	} else {
+		bu_color pc = t->panel; pc.a = 235;
+		bu_fill_rect(c, bar, pc);
+		/* accent hairline: accent -> accent2 across the panel top */
+		bu_fill_rect(c, (bu_rect){ 0, PH - PANEL_H, PW / 2, 2 }, t->accent);
+		bu_fill_rect(c, (bu_rect){ PW / 2, PH - PANEL_H, PW - PW / 2, 2 }, t->accent2);
+	}
 	bu_rect sb = start_btn();
-	bu_fill_round_rect(c, sb, 9, s->start_pressed ? t->accent2 : t->accent);
-	bu_fill_rect(c, (bu_rect){ sb.x + 11, sb.y + 11, 5, 5 }, BU_RGB(255, 255, 255));
-	bu_fill_rect(c, (bu_rect){ sb.x + 18, sb.y + 11, 5, 5 }, BU_RGBA(255, 255, 255, 200));
-	bu_fill_rect(c, (bu_rect){ sb.x + 11, sb.y + 18, 5, 5 }, BU_RGBA(255, 255, 255, 200));
-	bu_fill_rect(c, (bu_rect){ sb.x + 18, sb.y + 18, 5, 5 }, BU_RGBA(255, 255, 255, 150));
+	if (bu_chrome == BU_CHROME_BEVEL) {
+		bu_fill_rect(c, sb, t->surface2);
+		bu_bevel_rect(c, sb, !s->start_pressed);
+		bu_color ink = t->text;
+		bu_fill_rect(c, (bu_rect){ sb.x + 11, sb.y + 11, 5, 5 }, ink);
+		bu_fill_rect(c, (bu_rect){ sb.x + 18, sb.y + 11, 5, 5 }, ink);
+		bu_fill_rect(c, (bu_rect){ sb.x + 11, sb.y + 18, 5, 5 }, ink);
+		bu_fill_rect(c, (bu_rect){ sb.x + 18, sb.y + 18, 5, 5 }, ink);
+	} else if (bu_chrome == BU_CHROME_LUNA) {
+		bu_fill_round_rect(c, sb, 10, s->start_pressed ? t->accent : t->accent2);
+		bu_fill_rect(c, (bu_rect){ sb.x + 11, sb.y + 11, 5, 5 }, BU_RGB(255, 255, 255));
+		bu_fill_rect(c, (bu_rect){ sb.x + 18, sb.y + 11, 5, 5 }, BU_RGBA(255, 255, 255, 200));
+		bu_fill_rect(c, (bu_rect){ sb.x + 11, sb.y + 18, 5, 5 }, BU_RGBA(255, 255, 255, 200));
+		bu_fill_rect(c, (bu_rect){ sb.x + 18, sb.y + 18, 5, 5 }, BU_RGBA(255, 255, 255, 150));
+	} else if (bu_chrome == BU_CHROME_AERO) {
+		bu_fill_circle(c, sb.x + sb.w / 2, sb.y + sb.h / 2, 16, t->accent);
+		bu_fill_circle(c, sb.x + sb.w / 2, sb.y + sb.h / 2, 12, t->accent2);
+		bu_fill_rect(c, (bu_rect){ sb.x + 11, sb.y + 11, 5, 5 }, BU_RGB(255, 255, 255));
+		bu_fill_rect(c, (bu_rect){ sb.x + 18, sb.y + 11, 5, 5 }, BU_RGBA(255, 255, 255, 200));
+		bu_fill_rect(c, (bu_rect){ sb.x + 11, sb.y + 18, 5, 5 }, BU_RGBA(255, 255, 255, 200));
+		bu_fill_rect(c, (bu_rect){ sb.x + 18, sb.y + 18, 5, 5 }, BU_RGBA(255, 255, 255, 150));
+	} else {
+		bu_fill_round_rect(c, sb, 9, s->start_pressed ? t->accent2 : t->accent);
+	}
+	if (bu_chrome != BU_CHROME_BEVEL && bu_chrome != BU_CHROME_LUNA && bu_chrome != BU_CHROME_AERO) {
+		bu_fill_rect(c, (bu_rect){ sb.x + 11, sb.y + 11, 5, 5 }, BU_RGB(255, 255, 255));
+		bu_fill_rect(c, (bu_rect){ sb.x + 18, sb.y + 11, 5, 5 }, BU_RGBA(255, 255, 255, 200));
+		bu_fill_rect(c, (bu_rect){ sb.x + 11, sb.y + 18, 5, 5 }, BU_RGBA(255, 255, 255, 200));
+		bu_fill_rect(c, (bu_rect){ sb.x + 18, sb.y + 18, 5, 5 }, BU_RGBA(255, 255, 255, 150));
+	}
 	/* quick launch: settings (toggle), files, browser */
 	static const struct { icon_fn icon; bu_color tint; } QL[] = {
 		{ bu_icon_gear, { 134, 142, 150, 255 } },
@@ -179,7 +228,12 @@ static void panel(bu_canvas *c, bu_theme *t, bd_state *s)
 	for (int i = 0; i < 3; i++) {
 		bu_rect chip = ql_rect(i);
 		bool active = (i == 0 && s->settings_open);
-		bu_fill_round_rect(c, chip, 9, active ? t->surface3 : t->surface);
+		if (bu_chrome == BU_CHROME_BEVEL) {
+			bu_fill_rect(c, chip, t->surface2);
+			bu_bevel_rect(c, chip, !active);
+		} else {
+			bu_fill_round_rect(c, chip, 8, active ? t->surface3 : t->surface);
+		}
 		QL[i].icon(c, chip.x + chip.w / 2, chip.y + chip.h / 2, active ? t->text : t->text_dim);
 		if (active)
 			bu_fill_round_rect(c, (bu_rect){ chip.x + chip.w / 2 - 10, PH - 8, 20, 3 }, 1, t->accent);
@@ -188,22 +242,22 @@ static void panel(bu_canvas *c, bu_theme *t, bd_state *s)
 	int lum = (t->panel.r * 3 + t->panel.g * 5 + t->panel.b * 2) / 10;
 	bu_color tray = lum < 110 ? BU_RGB(255, 255, 255) : t->text_dim;
 	bu_color tray_main = lum < 110 ? BU_RGB(255, 255, 255) : t->text;
-	bu_icon_wifi(c, PW - 186, PH - PANEL_H / 2, tray);
+	bu_icon_wifi(c, RX - 186, PH - PANEL_H / 2, tray);
 	bu_rect vr = vol_icon_rect();
 	bu_icon_volume(c, vr.x + vr.w / 2, PH - PANEL_H / 2, s->vol_popup ? t->accent : tray);
 	char pct[8];
 	snprintf(pct, sizeof(pct), "%d%%", s->battery_pct);
-	bu_draw_text_right(c, t->font, (bu_rect){ 0, PH - PANEL_H, PW - 100, PANEL_H }, pct, 13, tray);
-	bu_icon_battery(c, PW - 96, PH - PANEL_H / 2 - 7, s->battery_pct / 100.0f, false, tray);
+	bu_draw_text_right(c, t->font, (bu_rect){ 0, PH - PANEL_H, RX - 100, PANEL_H }, pct, 13, tray);
+	bu_icon_battery(c, RX - 96, PH - PANEL_H / 2 - 7, s->battery_pct / 100.0f, false, tray);
 	if (PANEL_H >= 52) {
 		/* two-line clock: time over date */
 		char dbuf[40];
 		const char *sp = strchr(s->date, ' ');
 		snprintf(dbuf, sizeof(dbuf), "%.*s", sp ? (int)(sp - s->date) : (int)strlen(s->date), s->date);
-		bu_draw_text_right(c, t->font, (bu_rect){ 0, PH - PANEL_H + 4, PW - 10, 24 }, s->clock, 16, tray_main);
-		bu_draw_text_right(c, t->font, (bu_rect){ 0, PH - 22, PW - 10, 18 }, dbuf, 10.5, tray);
+		bu_draw_text_right(c, t->font, (bu_rect){ 0, PH - PANEL_H + 4, RX - 10, 24 }, s->clock, 16, tray_main);
+		bu_draw_text_right(c, t->font, (bu_rect){ 0, PH - 22, RX - 10, 18 }, dbuf, 10.5, tray);
 	} else {
-		bu_draw_text_right(c, t->font, (bu_rect){ 0, PH - PANEL_H, PW - 10, PANEL_H }, s->clock, 14, tray_main);
+		bu_draw_text_right(c, t->font, (bu_rect){ 0, PH - PANEL_H, RX - 10, PANEL_H }, s->clock, 14, tray_main);
 	}
 	/* volume popup */
 	if (s->vol_popup) {

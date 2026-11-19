@@ -42,6 +42,7 @@ void bu_gradient_v(bu_canvas *c, bu_rect r, bu_color top, bu_color bottom);
 void bu_gradient_round_v(bu_canvas *c, bu_rect r, int radius, bu_color top, bu_color bottom);
 void bu_shadow_round_rect(bu_canvas *c, bu_rect r, int radius, int blur, bu_color col);
 void bu_fill_circle(bu_canvas *c, int cx, int cy, int radius, bu_color col);
+void bu_bevel_rect(bu_canvas *c, bu_rect r, bool raised);	/* classic chrome bevel */
 void bu_line(bu_canvas *c, int x0, int y0, int x1, int y1, int width, bu_color col);
 
 /* text */
@@ -52,6 +53,11 @@ int bu_text_width(bu_font *f, const char *utf8, float px);
 void bu_draw_text(bu_canvas *c, bu_font *f, int x, int y, const char *utf8, float px, bu_color col);
 void bu_draw_text_centered(bu_canvas *c, bu_font *f, bu_rect r, const char *utf8, float px, bu_color col);
 void bu_draw_text_right(bu_canvas *c, bu_font *f, bu_rect r, const char *utf8, float px, bu_color col);
+
+/* skin chrome modes (set by bd_skin_apply) */
+enum { BU_CHROME_MODERN = 0, BU_CHROME_BEVEL = 1, BU_CHROME_LUNA = 2,
+       BU_CHROME_AERO = 3, BU_CHROME_METRO = 4, BU_CHROME_DOCK = 5 };
+extern int bu_chrome;
 
 /* theme */
 typedef struct {

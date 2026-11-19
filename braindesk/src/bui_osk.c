@@ -1,4 +1,5 @@
 #include "bui_osk.h"
+#include <stdio.h>
 #include <string.h>
 
 /* --- romaji -> hiragana (Hepburn, common syllables) --- */
