@@ -7,7 +7,9 @@
 #include "bui.h"
 
 enum { BD_VIEW_DESKTOP = 0, BD_VIEW_LAUNCHER = 1 };
-enum { BD_ACT_NONE = 0, BD_ACT_QUIT = 1, BD_ACT_LOGIN = 2, BD_ACT_LAUNCH = 3 };
+enum { BD_ACT_NONE = 0, BD_ACT_QUIT = 1, BD_ACT_LOGIN = 2, BD_ACT_LAUNCH = 3, BD_ACT_ASSIST = 4 };
+enum { BD_ASSIST_NONE = 0, BD_ASSIST_VOL_UP, BD_ASSIST_VOL_DOWN, BD_ASSIST_BRIGHT_UP,
+       BD_ASSIST_BRIGHT_DOWN, BD_ASSIST_PGUP, BD_ASSIST_PGDN, BD_ASSIST_LAUNCHER, BD_ASSIST_LOCK };
 
 typedef struct {
 	int view;
@@ -23,6 +25,12 @@ typedef struct {
 	char launch_path[128];	/* set when BD_ACT_LAUNCH is returned */
 	int skin;		/* current skin index (bui_skin) */
 	int skin_scroll;	/* skin page scroll offset */
+	/* panel + assist */
+	int panel_h;		/* panel height px: 40 / 52 / 64 */
+	bool vol_popup;
+	bool assist_on;
+	bool assist_open;
+	int assist_action;	/* BD_ASSIST_* when BD_ACT_ASSIST returns */
 	/* network page (filled by the shell from nmcli) */
 	bool wifi_on;
 	char wifi_ssid[64];

@@ -7,9 +7,17 @@
 
 #define PW 854
 #define PH 480
-#define PANEL_H 46
+static int PANEL_H = 46;
 
-static bu_rect start_btn(void) { return (bu_rect){ 8, PH - 40, 34, 34 }; }
+static bu_rect start_btn(void) { return (bu_rect){ 8, PH - PANEL_H + (PANEL_H - 34) / 2, 34, 34 }; }
+static bu_rect ql_rect(int i) { return (bu_rect){ 52 + i * 50, PH - PANEL_H + (PANEL_H - 36) / 2, 44, 36 }; }
+static bu_rect vol_icon_rect(void) { return (bu_rect){ PW - 168, PH - PANEL_H, 34, PANEL_H }; }
+static bu_rect clock_rect(void) { return (bu_rect){ PW - 96, PH - PANEL_H, 96, PANEL_H }; }
+static bu_rect vol_popup_rect(void) { return (bu_rect){ PW - 268, PH - PANEL_H - 66, 256, 58 }; }
+static bu_rect vol_popup_slider(void) { bu_rect p = vol_popup_rect(); return (bu_rect){ p.x + 44, p.y + 16, p.w - 90, 26 }; }
+static bu_rect assist_btn(void) { return (bu_rect){ PW - 72, PH - PANEL_H - 80, 54, 54 }; }
+static bu_rect assist_menu(void) { return (bu_rect){ PW - 292, PH - PANEL_H - 80 - 196, 274, 188 }; }
+static bu_rect assist_item(int i) { bu_rect m = assist_menu(); return (bu_rect){ m.x + 10 + (i % 2) * 130, m.y + 10 + (i / 2) * 44, 124, 38 }; }
 static bu_rect settings_win(void) { return (bu_rect){ 44, 24, PW - 88, PH - PANEL_H - 40 }; }
 static bu_rect pane_rect(void)
 {
@@ -25,6 +33,31 @@ static bu_rect volume_slider(void)
 {
 	bu_rect p = pane_rect();
 	return (bu_rect){ p.x + 58, p.y + 268, p.w - 150, 24 };
+}
+static bu_rect keysound_toggle_hit(void);
+static bu_rect volume_slider_for(bd_state *s)
+{
+	bu_rect p = pane_rect();
+	if (s->settings_cat == 2)
+		return (bu_rect){ p.x + 58, p.y + 80, p.w - 150, 24 };
+	return volume_slider();
+}
+static bu_rect keysound_hit_for(bd_state *s)
+{
+	bu_rect p = pane_rect();
+	if (s->settings_cat == 2)
+		return (bu_rect){ p.x + p.w - 76, p.y + 140, 62, 42 };
+	return keysound_toggle_hit();
+}
+static bu_rect panel_size_row(void)
+{
+	bu_rect p = pane_rect();
+	return (bu_rect){ p.x + 8, p.y + 208, p.w - 16, 42 };
+}
+static bu_rect assist_row(void)
+{
+	bu_rect p = pane_rect();
+	return (bu_rect){ p.x + 8, p.y + 256, p.w - 16, 42 };
 }
 static bu_rect lid_toggle_hit(void)
 {
@@ -102,6 +135,7 @@ void bd_state_init(bd_state *s)
 	snprintf(s->clock, sizeof(s->clock), "10:42");
 	snprintf(s->date, sizeof(s->date), "1月1日 木曜日");
 	s->battery_pct = 78;
+	s->panel_h = 46;
 	s->wifi_on = true;
 	s->net_connect = -1;
 	snprintf(s->wifi_ssid, sizeof(s->wifi_ssid), "—");
@@ -127,33 +161,85 @@ static void panel(bu_canvas *c, bu_theme *t, bd_state *s)
 	bu_rect bar = { 0, PH - PANEL_H, PW, PANEL_H };
 	bu_color pc = t->panel; pc.a = 235;
 	bu_fill_rect(c, bar, pc);
-	bu_fill_rect(c, (bu_rect){ 0, PH - PANEL_H, PW, 1 }, BU_RGBA(255, 255, 255, 26));
+	/* accent hairline: accent -> accent2 across the panel top */
+	bu_fill_rect(c, (bu_rect){ 0, PH - PANEL_H, PW / 2, 2 }, t->accent);
+	bu_fill_rect(c, (bu_rect){ PW / 2, PH - PANEL_H, PW - PW / 2, 2 }, t->accent2);
 	bu_rect sb = start_btn();
 	bu_fill_round_rect(c, sb, 9, s->start_pressed ? t->accent2 : t->accent);
 	bu_fill_rect(c, (bu_rect){ sb.x + 11, sb.y + 11, 5, 5 }, BU_RGB(255, 255, 255));
 	bu_fill_rect(c, (bu_rect){ sb.x + 18, sb.y + 11, 5, 5 }, BU_RGBA(255, 255, 255, 200));
 	bu_fill_rect(c, (bu_rect){ sb.x + 11, sb.y + 18, 5, 5 }, BU_RGBA(255, 255, 255, 200));
 	bu_fill_rect(c, (bu_rect){ sb.x + 18, sb.y + 18, 5, 5 }, BU_RGBA(255, 255, 255, 150));
-	const char *apps[] = { "設定", "ファイル", "端末" };
+	/* quick launch: settings (toggle), files, browser */
+	static const struct { icon_fn icon; bu_color tint; } QL[] = {
+		{ bu_icon_gear, { 134, 142, 150, 255 } },
+		{ bu_icon_folder, { 250, 176, 5, 255 } },
+		{ bu_icon_globe, { 32, 201, 151, 255 } },
+	};
 	for (int i = 0; i < 3; i++) {
-		bu_rect chip = { 54 + i * 118, PH - 39, 110, 32 };
-		bool active = s->settings_open && i == 0;
-		bu_fill_round_rect(c, chip, 8, active ? t->surface3 : t->surface);
-		bu_draw_text_centered(c, t->font, chip, apps[i], 13.5, active ? t->text : t->text_dim);
+		bu_rect chip = ql_rect(i);
+		bool active = (i == 0 && s->settings_open);
+		bu_fill_round_rect(c, chip, 9, active ? t->surface3 : t->surface);
+		QL[i].icon(c, chip.x + chip.w / 2, chip.y + chip.h / 2, active ? t->text : t->text_dim);
 		if (active)
-			bu_fill_round_rect(c, (bu_rect){ chip.x + chip.w / 2 - 12, PH - 9, 24, 3 }, 1, t->accent);
+			bu_fill_round_rect(c, (bu_rect){ chip.x + chip.w / 2 - 10, PH - 8, 20, 3 }, 1, t->accent);
 	}
 	/* tray ink: light on dark panels (XP/Win8), theme text otherwise */
 	int lum = (t->panel.r * 3 + t->panel.g * 5 + t->panel.b * 2) / 10;
 	bu_color tray = lum < 110 ? BU_RGB(255, 255, 255) : t->text_dim;
 	bu_color tray_main = lum < 110 ? BU_RGB(255, 255, 255) : t->text;
-	bu_icon_wifi(c, PW - 178, PH - 23, tray);
-	bu_icon_volume(c, PW - 148, PH - 23, tray);
+	bu_icon_wifi(c, PW - 186, PH - PANEL_H / 2, tray);
+	bu_rect vr = vol_icon_rect();
+	bu_icon_volume(c, vr.x + vr.w / 2, PH - PANEL_H / 2, s->vol_popup ? t->accent : tray);
 	char pct[8];
 	snprintf(pct, sizeof(pct), "%d%%", s->battery_pct);
-	bu_draw_text_right(c, t->font, (bu_rect){ 0, PH - PANEL_H, PW - 96, PANEL_H }, pct, 13, tray);
-	bu_icon_battery(c, PW - 92, PH - 30, s->battery_pct / 100.0f, false, tray);
-	bu_draw_text_right(c, t->font, (bu_rect){ 0, PH - PANEL_H, PW - 12, PANEL_H }, s->clock, 14, tray_main);
+	bu_draw_text_right(c, t->font, (bu_rect){ 0, PH - PANEL_H, PW - 100, PANEL_H }, pct, 13, tray);
+	bu_icon_battery(c, PW - 96, PH - PANEL_H / 2 - 7, s->battery_pct / 100.0f, false, tray);
+	if (PANEL_H >= 52) {
+		/* two-line clock: time over date */
+		char dbuf[40];
+		const char *sp = strchr(s->date, ' ');
+		snprintf(dbuf, sizeof(dbuf), "%.*s", sp ? (int)(sp - s->date) : (int)strlen(s->date), s->date);
+		bu_draw_text_right(c, t->font, (bu_rect){ 0, PH - PANEL_H + 4, PW - 10, 24 }, s->clock, 16, tray_main);
+		bu_draw_text_right(c, t->font, (bu_rect){ 0, PH - 22, PW - 10, 18 }, dbuf, 10.5, tray);
+	} else {
+		bu_draw_text_right(c, t->font, (bu_rect){ 0, PH - PANEL_H, PW - 10, PANEL_H }, s->clock, 14, tray_main);
+	}
+	/* volume popup */
+	if (s->vol_popup) {
+		bu_rect p = vol_popup_rect();
+		bu_shadow_round_rect(c, p, 12, 8, BU_RGBA(0, 0, 0, 110));
+		bu_fill_round_rect(c, p, 12, t->surface);
+		bu_icon_volume(c, p.x + 24, p.y + p.h / 2, t->text_dim);
+		bu_slider(c, t, vol_popup_slider(), s->volume, s->drag_slider == 3);
+		char vp[8];
+		snprintf(vp, sizeof(vp), "%d%%", (int)(s->volume * 100 + 0.5f));
+		bu_draw_text_right(c, t->font, (bu_rect){ p.x, p.y + 16, p.w - 10, 24 }, vp, 12.5, t->text);
+	}
+}
+
+static void draw_assist(bu_canvas *c, bu_theme *t, bd_state *s)
+{
+	if (!s->assist_on)
+		return;
+	if (s->assist_open) {
+		bu_rect m = assist_menu();
+		bu_shadow_round_rect(c, m, 14, 8, BU_RGBA(0, 0, 0, 110));
+		bu_fill_round_rect(c, m, 14, t->surface);
+		static const char *labels[] = {
+			"音量 ＋", "音量 －", "輝度 ＋", "輝度 －",
+			"ページ上", "ページ下", "ランチャ", "ロック",
+		};
+		for (int i = 0; i < 8; i++)
+			bu_button(c, t, assist_item(i), labels[i], BU_BTN_NORMAL, false);
+	}
+	bu_rect b = assist_btn();
+	bu_shadow_round_rect(c, b, 27, 6, BU_RGBA(0, 0, 0, 90));
+	bu_fill_round_rect(c, b, 27, s->assist_open ? t->accent2 : t->accent);
+	/* four-dot grip */
+	for (int dy = 0; dy < 2; dy++)
+		for (int dx = 0; dx < 2; dx++)
+			bu_fill_circle(c, b.x + 21 + dx * 12, b.y + 21 + dy * 12, 3, BU_RGB(255, 255, 255));
 }
 
 static void draw_launcher(bu_canvas *c, bu_theme *t, bd_state *s)
@@ -198,7 +284,7 @@ static void draw_settings(bu_canvas *c, bu_theme *t, bd_state *s)
 		bu_list_row(c, t, row, cats[i], NULL, false, i == s->settings_cat);
 	}
 	bu_rect pane = pane_rect();
-	if (s->settings_cat == 3) {
+	if (s->settings_cat == 4) {
 		bu_draw_text(c, t->font, pane.x + 22, pane.y + 16, "ネットワーク", 19, t->text);
 		bu_rect r0 = { pane.x + 8, pane.y + 52, pane.w - 16, 42 };
 		bu_draw_text(c, t->font, r0.x + 14, r0.y + 10, "Wi-Fi", 15, t->text);
@@ -222,7 +308,7 @@ static void draw_settings(bu_canvas *c, bu_theme *t, bd_state *s)
 			bu_draw_text(c, t->font, pane.x + 240, pane.y + 136, s->net_status, 12.5, t->warn);
 		return;
 	}
-	if (s->settings_cat == 6) {
+	if (s->settings_cat == 7) {
 		bu_draw_text(c, t->font, pane.x + 22, pane.y + 16, "システム", 19, t->text);
 		for (int i = 0; i < 6; i++) {
 			if (!s->sysinfo[i][0])
@@ -253,38 +339,62 @@ static void draw_settings(bu_canvas *c, bu_theme *t, bd_state *s)
 		bu_button(c, t, (bu_rect){ pane.x + pane.w - 54, pane.y + 292, 46, 60 }, "▼", BU_BTN_NORMAL, false);
 		return;
 	}
-	bu_draw_text(c, t->font, pane.x + 22, pane.y + 16, "画面", 19, t->text);
-	bu_draw_text(c, t->font, pane.x + 22, pane.y + 52, "明るさ", 13, t->text_dim);
-	bu_icon_brightness(c, pane.x + 36, pane.y + 92, t->text_dim);
-	bu_rect bs = brightness_slider();
-	bu_slider(c, t, bs, s->brightness, s->drag_slider == 1);
-	char pct[8];
-	snprintf(pct, sizeof(pct), "%d%%", (int)(s->brightness * 100 + 0.5f));
-	bu_draw_text_right(c, t->font, (bu_rect){ pane.x, pane.y + 78, pane.w - 22, 26 }, pct, 14, t->text);
-	bu_list_row(c, t, (bu_rect){ pane.x + 8, pane.y + 118, pane.w - 16, 42 }, "画面オフまでの時間", "1分", true, false);
-	bu_rect r2 = { pane.x + 8, pane.y + 160, pane.w - 16, 42 };
-	bu_draw_text(c, t->font, r2.x + 14, r2.y + (r2.h - 22) / 2, "蓋を閉じたらスリープ", 15, t->text);
-	bu_toggle(c, t, r2.x + r2.w - 60, r2.y + 8, s->lid_sleep);
-	bu_draw_text(c, t->font, pane.x + 22, pane.y + 208, "音声", 19, t->text);
-	bu_draw_text(c, t->font, pane.x + 22, pane.y + 242, "音量", 13, t->text_dim);
-	bu_icon_volume(c, pane.x + 36, pane.y + 280, t->text_dim);
-	bu_rect vs = volume_slider();
-	bu_slider(c, t, vs, s->volume, s->drag_slider == 2);
-	snprintf(pct, sizeof(pct), "%d%%", (int)(s->volume * 100 + 0.5f));
-	bu_draw_text_right(c, t->font, (bu_rect){ pane.x, pane.y + 266, pane.w - 22, 26 }, pct, 14, t->text);
-	bu_rect r3 = { pane.x + 8, pane.y + 302, pane.w - 16, 42 };
-	bu_draw_text(c, t->font, r3.x + 14, r3.y + (r3.h - 22) / 2, "キー音", 15, t->text);
-	bu_toggle(c, t, r3.x + r3.w - 60, r3.y + 8, s->key_sound);
+	if (s->settings_cat == 0) {
+		bu_draw_text(c, t->font, pane.x + 22, pane.y + 16, "画面", 19, t->text);
+		bu_draw_text(c, t->font, pane.x + 22, pane.y + 52, "明るさ", 13, t->text_dim);
+		bu_icon_brightness(c, pane.x + 36, pane.y + 92, t->text_dim);
+		bu_rect bs = brightness_slider();
+		bu_slider(c, t, bs, s->brightness, s->drag_slider == 1);
+		char pct[8];
+		snprintf(pct, sizeof(pct), "%d%%", (int)(s->brightness * 100 + 0.5f));
+		bu_draw_text_right(c, t->font, (bu_rect){ pane.x, pane.y + 78, pane.w - 22, 26 }, pct, 14, t->text);
+		bu_list_row(c, t, (bu_rect){ pane.x + 8, pane.y + 118, pane.w - 16, 42 }, "画面オフまでの時間", "1分", true, false);
+		bu_rect r2 = { pane.x + 8, pane.y + 160, pane.w - 16, 42 };
+		bu_draw_text(c, t->font, r2.x + 14, r2.y + (r2.h - 22) / 2, "蓋を閉じたらスリープ", 15, t->text);
+		bu_toggle(c, t, r2.x + r2.w - 60, r2.y + 8, s->lid_sleep);
+		bu_rect pr = panel_size_row();
+		bu_fill_round_rect(c, pr, 8, t->surface2);
+		bu_draw_text(c, t->font, pr.x + 14, pr.y + (pr.h - 22) / 2, "パネルの大きさ", 15, t->text);
+		const char *sz = s->panel_h <= 40 ? "小" : s->panel_h >= 64 ? "大" : "中";
+		bu_draw_text_right(c, t->font, (bu_rect){ pr.x, pr.y + (pr.h - 22) / 2, pr.w - 14, 22 }, sz, 14, t->text_dim);
+		bu_rect ar = assist_row();
+		bu_fill_round_rect(c, ar, 8, t->surface2);
+		bu_draw_text(c, t->font, ar.x + 14, ar.y + (ar.h - 22) / 2, "アシストボタン (片手操作)", 15, t->text);
+		bu_toggle(c, t, ar.x + ar.w - 60, ar.y + 8, s->assist_on);
+		return;
+	}
+	if (s->settings_cat == 2) {
+		bu_draw_text(c, t->font, pane.x + 22, pane.y + 16, "音声", 19, t->text);
+		bu_draw_text(c, t->font, pane.x + 22, pane.y + 52, "音量", 13, t->text_dim);
+		bu_icon_volume(c, pane.x + 36, pane.y + 92, t->text_dim);
+		bu_rect vs = volume_slider_for(s);
+		bu_slider(c, t, vs, s->volume, s->drag_slider == 2);
+		char pct[8];
+		snprintf(pct, sizeof(pct), "%d%%", (int)(s->volume * 100 + 0.5f));
+		bu_draw_text_right(c, t->font, (bu_rect){ pane.x, pane.y + 78, pane.w - 22, 26 }, pct, 14, t->text);
+		bu_rect r3 = { pane.x + 8, pane.y + 140, pane.w - 16, 42 };
+		bu_fill_round_rect(c, r3, 8, t->surface2);
+		bu_draw_text(c, t->font, r3.x + 14, r3.y + (r3.h - 22) / 2, "キー音", 15, t->text);
+		bu_toggle(c, t, r3.x + r3.w - 60, r3.y + 8, s->key_sound);
+		return;
+	}
+	{
+		static const char *names[] = { "画面", "スキン", "音声", "キーボード", "ネットワーク", "バッテリー", "入力と日本語", "システム" };
+		bu_draw_text(c, t->font, pane.x + 22, pane.y + 16, names[s->settings_cat & 7], 19, t->text);
+		bu_draw_text(c, t->font, pane.x + 22, pane.y + 60, "このカテゴリは今後の更新で拡充されます。", 13, t->text_dim);
+	}
 }
 
 void bd_draw_shell(bu_canvas *c, bu_theme *t, bd_state *s)
 {
+	PANEL_H = s->panel_h > 0 ? s->panel_h : 46;
 	wallpaper(c);
 	if (s->view == BD_VIEW_LAUNCHER)
 		draw_launcher(c, t, s);
 	if (s->settings_open)
 		draw_settings(c, t, s);
 	panel(c, t, s);
+	draw_assist(c, t, s);
 }
 
 void bd_draw_login(bu_canvas *c, bu_theme *t, bd_state *s, const char *user)
@@ -321,6 +431,7 @@ static float slider_frac(bu_rect r, int x)
 
 int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y, bool *changed)
 {
+	PANEL_H = s->panel_h > 0 ? s->panel_h : 46;
 	*changed = false;
 	if (ev_type == BU_EV_KEY) {
 		if (value == 1 && code == 1 /* KEY_ESC */) {
@@ -334,6 +445,78 @@ int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y,
 		return BD_ACT_NONE;
 	}
 	if (ev_type == BU_EV_POINTER_DOWN) {
+		/* assist overlay first: it floats above everything */
+		if (s->assist_on) {
+			if (s->assist_open) {
+				static const int ACTS[] = {
+					BD_ASSIST_VOL_UP, BD_ASSIST_VOL_DOWN, BD_ASSIST_BRIGHT_UP, BD_ASSIST_BRIGHT_DOWN,
+					BD_ASSIST_PGUP, BD_ASSIST_PGDN, BD_ASSIST_LAUNCHER, BD_ASSIST_LOCK,
+				};
+				for (int i = 0; i < 8; i++) {
+					if (in_rect(assist_item(i), x, y)) {
+						int act = ACTS[i];
+						s->assist_open = false;
+						*changed = true;
+						if (act == BD_ASSIST_VOL_UP) { s->volume = s->volume + 0.1f > 1 ? 1 : s->volume + 0.1f; return BD_ACT_NONE; }
+						if (act == BD_ASSIST_VOL_DOWN) { s->volume = s->volume - 0.1f < 0 ? 0 : s->volume - 0.1f; return BD_ACT_NONE; }
+						if (act == BD_ASSIST_BRIGHT_UP) { s->brightness = s->brightness + 0.125f > 1 ? 1 : s->brightness + 0.125f; return BD_ACT_NONE; }
+						if (act == BD_ASSIST_BRIGHT_DOWN) { s->brightness = s->brightness - 0.125f < 0 ? 0 : s->brightness - 0.125f; return BD_ACT_NONE; }
+						if (act == BD_ASSIST_LAUNCHER) { s->view = BD_VIEW_LAUNCHER; return BD_ACT_NONE; }
+						s->assist_action = act;
+						return BD_ACT_ASSIST;
+					}
+				}
+			}
+			if (in_rect(assist_btn(), x, y)) {
+				s->assist_open = !s->assist_open;
+				*changed = true;
+				return BD_ACT_NONE;
+			}
+			if (s->assist_open) {
+				s->assist_open = false;
+				*changed = true;
+				return BD_ACT_NONE;
+			}
+		}
+		/* volume popup */
+		if (s->vol_popup) {
+			if (in_rect(vol_popup_slider(), x, y)) {
+				s->drag_slider = 3;
+				s->volume = slider_frac(vol_popup_slider(), x);
+				*changed = true;
+				return BD_ACT_NONE;
+			}
+			if (!in_rect(vol_popup_rect(), x, y) && !in_rect(vol_icon_rect(), x, y)) {
+				s->vol_popup = false;
+				*changed = true;
+			}
+		}
+		if (in_rect(vol_icon_rect(), x, y)) {
+			s->vol_popup = !s->vol_popup;
+			*changed = true;
+			return BD_ACT_NONE;
+		}
+		if (in_rect(clock_rect(), x, y)) {
+			snprintf(s->launch_path, sizeof(s->launch_path), "/usr/local/bin/bd-clock");
+			*changed = true;
+			return BD_ACT_LAUNCH;
+		}
+		/* quick launch */
+		if (in_rect(ql_rect(0), x, y)) {
+			s->settings_open = !s->settings_open;
+			*changed = true;
+			return BD_ACT_NONE;
+		}
+		if (in_rect(ql_rect(1), x, y)) {
+			snprintf(s->launch_path, sizeof(s->launch_path), "/usr/local/bin/bd-files");
+			*changed = true;
+			return BD_ACT_LAUNCH;
+		}
+		if (in_rect(ql_rect(2), x, y)) {
+			snprintf(s->launch_path, sizeof(s->launch_path), "/usr/local/bin/netsurf-fb");
+			*changed = true;
+			return BD_ACT_LAUNCH;
+		}
 		if (in_rect(start_btn(), x, y)) {
 			s->start_pressed = true;
 			*changed = true;
@@ -341,7 +524,7 @@ int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y,
 		}
 		if (s->settings_open) {
 			if (in_rect(settings_close(), x, y)) { s->settings_open = false; *changed = true; return BD_ACT_NONE; }
-			if (s->settings_cat == 3) {
+			if (s->settings_cat == 4) {
 				bu_rect pane = pane_rect();
 				bu_rect r0 = { pane.x + 8, pane.y + 52, pane.w - 16, 42 };
 				if (in_rect(r0, x, y)) { s->wifi_on = !s->wifi_on; *changed = true; return BD_ACT_NONE; }
@@ -351,7 +534,7 @@ int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y,
 				}
 				return BD_ACT_NONE;
 			}
-			if (s->settings_cat == 6)
+			if (s->settings_cat == 7)
 				return BD_ACT_NONE;
 			if (s->settings_cat == 1) {
 				bu_rect pane = pane_rect();
@@ -374,15 +557,27 @@ int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y,
 				}
 				return BD_ACT_NONE; /* skin page swallows other pane taps */
 			}
-			if (in_rect(brightness_slider(), x, y)) { s->drag_slider = 1; s->brightness = slider_frac(brightness_slider(), x); *changed = true; return BD_ACT_NONE; }
-			if (in_rect(volume_slider(), x, y)) { s->drag_slider = 2; s->volume = slider_frac(volume_slider(), x); *changed = true; return BD_ACT_NONE; }
-			if (in_rect(lid_toggle_hit(), x, y)) { s->lid_sleep = !s->lid_sleep; *changed = true; return BD_ACT_NONE; }
-			if (in_rect(keysound_toggle_hit(), x, y)) { s->key_sound = !s->key_sound; *changed = true; return BD_ACT_NONE; }
+			if (s->settings_cat == 0) {
+				if (in_rect(brightness_slider(), x, y)) { s->drag_slider = 1; s->brightness = slider_frac(brightness_slider(), x); *changed = true; return BD_ACT_NONE; }
+				if (in_rect(lid_toggle_hit(), x, y)) { s->lid_sleep = !s->lid_sleep; *changed = true; return BD_ACT_NONE; }
+				if (in_rect(panel_size_row(), x, y)) {
+					s->panel_h = s->panel_h <= 40 ? 52 : s->panel_h >= 64 ? 40 : 64;
+					PANEL_H = s->panel_h;
+					*changed = true;
+					return BD_ACT_NONE;
+				}
+				if (in_rect(assist_row(), x, y)) { s->assist_on = !s->assist_on; if (!s->assist_on) s->assist_open = false; *changed = true; return BD_ACT_NONE; }
+			}
+			if (s->settings_cat == 2) {
+				if (in_rect(volume_slider_for(s), x, y)) { s->drag_slider = 2; s->volume = slider_frac(volume_slider_for(s), x); *changed = true; return BD_ACT_NONE; }
+				if (in_rect(keysound_hit_for(s), x, y)) { s->key_sound = !s->key_sound; *changed = true; return BD_ACT_NONE; }
+			}
+
 			/* sidebar categories */
 			bu_rect w = settings_win();
 			for (int i = 0; i < 8; i++) {
 				bu_rect row = { w.x + 10, w.y + 42 + 12 + i * 40, 156, 34 };
-				if (in_rect(row, x, y)) { s->settings_cat = i; if (i == 3) s->net_scan_req++; *changed = true; return BD_ACT_NONE; }
+				if (in_rect(row, x, y)) { s->settings_cat = i; if (i == 4) s->net_scan_req++; *changed = true; return BD_ACT_NONE; }
 			}
 			return BD_ACT_NONE; /* clicks inside the window don't fall through */
 		}
@@ -410,7 +605,8 @@ int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y,
 	}
 	if (ev_type == BU_EV_POINTER_MOVE) {
 		if (s->drag_slider == 1) { s->brightness = slider_frac(brightness_slider(), x); *changed = true; }
-		if (s->drag_slider == 2) { s->volume = slider_frac(volume_slider(), x); *changed = true; }
+		if (s->drag_slider == 2) { s->volume = slider_frac(volume_slider_for(s), x); *changed = true; }
+		if (s->drag_slider == 3) { s->volume = slider_frac(vol_popup_slider(), x); *changed = true; }
 		return BD_ACT_NONE;
 	}
 	if (ev_type == BU_EV_POINTER_UP) {

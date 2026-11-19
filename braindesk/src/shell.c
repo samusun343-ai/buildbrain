@@ -19,6 +19,89 @@
 
 static bu_theme *T;
 #include <sys/utsname.h>
+#include <linux/uinput.h>
+#include <fcntl.h>
+
+/* --- uinput key injection for the assist menu (PgUp/PgDn) --- */
+static int uinput_fd = -1;
+static void uinput_setup(void)
+{
+	uinput_fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
+	if (uinput_fd < 0)
+		return;
+	ioctl(uinput_fd, UI_SET_EVBIT, EV_KEY);
+	ioctl(uinput_fd, UI_SET_KEYBIT, KEY_PAGEUP);
+	ioctl(uinput_fd, UI_SET_KEYBIT, KEY_PAGEDOWN);
+	struct uinput_user_dev udev;
+	memset(&udev, 0, sizeof(udev));
+	snprintf(udev.name, UINPUT_MAX_NAME_SIZE, "braindesk-assist");
+	udev.id.bustype = BUS_VIRTUAL;
+	if (write(uinput_fd, &udev, sizeof(udev)) < 0 || ioctl(uinput_fd, UI_DEV_CREATE) < 0) {
+		close(uinput_fd);
+		uinput_fd = -1;
+	}
+}
+static void uinput_key(int code)
+{
+	if (uinput_fd < 0)
+		uinput_setup();
+	if (uinput_fd < 0)
+		return;
+	struct input_event ev;
+	memset(&ev, 0, sizeof(ev));
+	ev.type = EV_KEY;
+	ev.code = code;
+	ev.value = 1;
+	if (write(uinput_fd, &ev, sizeof(ev)) < 0) return;
+	ev.value = 0;
+	if (write(uinput_fd, &ev, sizeof(ev)) < 0) return;
+	memset(&ev, 0, sizeof(ev));
+	ev.type = EV_SYN;
+	ev.code = SYN_REPORT;
+	if (write(uinput_fd, &ev, sizeof(ev)) < 0) return;
+}
+
+/* --- panel preferences (size + assist) --- */
+static void panel_prefs_path(char *out, size_t n)
+{
+	const char *home = getenv("HOME");
+	snprintf(out, n, "%s/.config/braindesk/panel", home ? home : "/home/user");
+}
+static void panel_prefs_load(bd_state *s)
+{
+	char path[512];
+	panel_prefs_path(path, sizeof(path));
+	FILE *fp = fopen(path, "r");
+	if (!fp)
+		return;
+	int ph, as;
+	if (fscanf(fp, "%d %d", &ph, &as) == 2) {
+		if (ph == 40 || ph == 52 || ph == 64)
+			s->panel_h = ph;
+		s->assist_on = as != 0;
+	}
+	fclose(fp);
+}
+static void panel_prefs_save(bd_state *s)
+{
+	char path[512];
+	panel_prefs_path(path, sizeof(path));
+	char dir[512];
+	snprintf(dir, sizeof(dir), "%s", path);
+	char *slash = strrchr(dir, '/');
+	if (slash) {
+		*slash = 0;
+		char cmd[600];
+		snprintf(cmd, sizeof(cmd), "mkdir -p '%s'", dir);
+		if (system(cmd) != 0)
+			return;
+	}
+	FILE *fp = fopen(path, "w");
+	if (fp) {
+		fprintf(fp, "%d %d\n", s->panel_h, s->assist_on ? 1 : 0);
+		fclose(fp);
+	}
+}
 /* --- settings data providers (network / system pages) --- */
 static void fill_sysinfo(bd_state *s)
 {
@@ -154,7 +237,17 @@ int main(int argc, char **argv)
 	bd_state_init(&s);
 	s.skin = bd_skin_current;
 	int last_skin = s.skin;
+	panel_prefs_load(&s);
+	{
+		const char *e;
+		if ((e = getenv("BD_SHOT_PANEL"))) s.panel_h = atoi(e);
+		if (getenv("BD_SHOT_ASSIST")) s.assist_on = true;
+		if (getenv("BD_SHOT_ASSIST_OPEN")) { s.assist_on = true; s.assist_open = true; }
+		if (getenv("BD_SHOT_VOLPOP")) s.vol_popup = true;
+	}
 	fill_sysinfo(&s);
+	int last_panel_h = s.panel_h;
+	bool last_assist_on = s.assist_on;
 	int last_scan_req = 0, last_connect = -1;
 	bool last_wifi_on = s.wifi_on;
 	time_t last_net_poll = 0;
@@ -189,6 +282,14 @@ int main(int argc, char **argv)
 			if (ev.type == BU_EV_KEY && ev.code == 116 && ev.value == 1)
 				return 0;
 			int act = bd_handle_event(&s, ev.type, ev.code, ev.value, ev.x, ev.y, &changed);
+			if (act == BD_ACT_ASSIST) {
+				if (s.assist_action == BD_ASSIST_PGUP)
+					uinput_key(KEY_PAGEUP);
+				else if (s.assist_action == BD_ASSIST_PGDN)
+					uinput_key(KEY_PAGEDOWN);
+				else if (s.assist_action == BD_ASSIST_LOCK)
+					return 0; /* back to the greeter */
+			}
 			if (act == BD_ACT_LAUNCH) {
 				/* Run the app in the foreground; it opens the
 				 * display itself. Afterwards take the console
@@ -216,7 +317,7 @@ int main(int argc, char **argv)
 			apply_brightness(s.brightness);
 			last_brightness = s.brightness;
 		}
-		if (s.settings_open && s.settings_cat == 3 &&
+		if (s.settings_open && s.settings_cat == 4 &&
 		    (s.net_scan_req != last_scan_req || time(NULL) - last_net_poll > 10)) {
 			last_scan_req = s.net_scan_req;
 			last_net_poll = time(NULL);
@@ -243,6 +344,11 @@ int main(int argc, char **argv)
 			}
 			s.net_connect = -1;
 			last_connect = -1;
+		}
+		if (s.panel_h != last_panel_h || s.assist_on != last_assist_on) {
+			panel_prefs_save(&s);
+			last_panel_h = s.panel_h;
+			last_assist_on = s.assist_on;
 		}
 		if (s.skin != last_skin) {
 			bd_skin_set(s.skin);
