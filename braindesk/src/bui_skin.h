@@ -1,20 +1,19 @@
-/* bui_skin: braindesk skins.
- * A skin is a full palette (surfaces, text, accents, panel),
- * a wallpaper gradient and a corner radius, so a skin changes
- * the character of the whole desktop, not just one colour.
- * The selection persists in ~/.config/braindesk/skin and is
+/* bui_skin: braindesk colour themes.
+ * A theme is a full palette (surfaces, text, accents, panel)
+ * plus a wallpaper gradient, so a theme changes the colour
+ * character of the whole desktop. The DESKTOP LAYOUT is a
+ * single braindesk design and does not change with the theme
+ * (the OS-reproduction skins were retired in 2026-11; see
+ * docs/design-system.md in buildbrain).
+ * The selection persists in brainreg (desktop.skin) and is
  * applied by every braindesk process (shell, greeter, apps)
  * at startup; the shell also applies live from Settings.
  *
- * The OS-flavoured skins are original palettes inspired by
- * each era's look — no artwork or assets from those systems.
- *
- * Users can add their own skins as key=value text files
- * (*.skin, see docs/skins.md in buildbrain): bd_skin_load_files()
- * appends them after the built-ins, so indices of built-in
- * skins never change. Search order (earlier wins on duplicate
- * file names): $BRAINDESK_SKINS_DIR, then
- * ~/.config/braindesk/skins, then /usr/share/braindesk/skins.
+ * The layout/chrome fields stay in the struct because the WM
+ * and the app frame still read them; every theme pins them to
+ * the braindesk values (layout BD, chrome MODERN), so those
+ * readers always take their braindesk branch. The BD_LAYOUT_*
+ * constants likewise stay defined for those readers.
  */
 #ifndef BUI_SKIN_H
 #define BUI_SKIN_H
@@ -29,38 +28,36 @@ typedef struct {
 	bu_color panel;
 	bu_color wall_top, wall_bottom, wall_glow;
 	int radius;
-	int panel_h;		/* default bar height for this family (0 = shell default) */
-	int chrome;		/* BU_CHROME_* */
-	int layout;		/* BD_LAYOUT_* : bar/dock/window arrangement */
+	int panel_h;		/* taskbar height (48 in the design system) */
+	int chrome;		/* BU_CHROME_* (always MODERN now) */
+	int layout;		/* BD_LAYOUT_* (always BD_LAYOUT_BD now) */
 } bd_skin;
 
-/* Layout families: the arrangement of the bar, start control,
- * tray and window controls follows the system each skin
- * evokes, not just its colours. */
+/* Layout families. Only BD_LAYOUT_BD is used by the shell;
+ * the other values remain because bui_wm.c and apps/bdapp.h
+ * still name them (they read bd_skin.layout, which is always
+ * BD_LAYOUT_BD, so their family branches are unreachable). */
 enum {
-	BD_LAYOUT_BD = 0,	/* bottom panel, start left (braindesk) */
-	BD_LAYOUT_MAC = 1,	/* top menu bar + floating dock */
-	BD_LAYOUT_CLASSIC = 2,	/* top menu bar only */
-	BD_LAYOUT_WIN11 = 3,	/* bottom taskbar, centred icons */
-	BD_LAYOUT_WIN = 4,	/* bottom taskbar, start left */
+	BD_LAYOUT_BD = 0,	/* the braindesk design (only layout) */
+	BD_LAYOUT_MAC = 1,	/* retired */
+	BD_LAYOUT_CLASSIC = 2,	/* retired */
+	BD_LAYOUT_WIN11 = 3,	/* retired */
+	BD_LAYOUT_WIN = 4,	/* retired */
 };
 
-/* The skin table. BD_SKINS points at the built-in table until
- * file-defined skins are loaded, then at a combined table with
- * the file skins appended; BD_NSKINS is the total count. Prefer
- * bd_skin_count()/bd_skin_at() in new code. */
+/* The theme table (braindesk originals only). */
 extern const bd_skin *BD_SKINS;
 extern int BD_NSKINS;
 extern const int BD_NBUILTIN;
 extern int bd_skin_current;
 
-int bd_skin_count(void);		/* total skins (loads files) */
+int bd_skin_count(void);		/* total themes */
 const bd_skin *bd_skin_at(int idx);	/* NULL when out of range */
-void bd_skin_load_files(void);		/* scan *.skin files (idempotent) */
+void bd_skin_load_files(void);		/* retired .skin loader: no-op */
 const bd_skin *bd_skin_get(void);
 void bd_skin_load(void);		/* read saved selection */
 void bd_skin_save(int idx);		/* persist selection */
-void bd_skin_apply(bu_theme *t);	/* apply current skin to a theme */
+void bd_skin_apply(bu_theme *t);	/* apply current theme to a theme */
 void bd_skin_set(int idx);		/* select + apply helper */
 
 #endif

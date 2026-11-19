@@ -31,6 +31,8 @@ extern void bd_switcher_cycle(void);
 extern int bd_switcher_is_open(void);
 extern void bd_switcher_open(void);
 extern void bd_cc_show(void);
+extern void bd_launcher_show_all(void);
+extern void bd_recent_seed(void);
 
 #include <sys/utsname.h>
 #include <linux/uinput.h>
@@ -201,7 +203,7 @@ static void fill_sysinfo(bd_state *s)
 		fclose(fp);
 	}
 	snprintf(s->sysinfo[3], 96, "メモリ   %.0f MB", total / 1024.0);
-	snprintf(s->sysinfo[4], 96, "braindesk   スキン: %s", bd_skin_get()->name);
+	snprintf(s->sysinfo[4], 96, "braindesk   テーマ: %s", bd_skin_get()->name);
 	snprintf(s->sysinfo[5], 96, "セッション   braindesk (fbdev / libbrainui)");
 }
 
@@ -462,6 +464,8 @@ int main(int argc, char **argv)
 		const char *e;
 		if ((e = getenv("BD_SHOT_PANEL"))) s.panel_h = atoi(e);
 		if (getenv("BD_SHOT_LAUNCH")) s.view = BD_VIEW_LAUNCHER;
+		if (getenv("BD_SHOT_ALLAPPS")) { s.view = BD_VIEW_LAUNCHER; bd_launcher_show_all(); }
+		if (getenv("BD_SHOT_RECENT")) bd_recent_seed();
 		if (getenv("BD_SHOT_ASSIST")) s.assist_on = true;
 		if (getenv("BD_SHOT_ASSIST_OPEN")) { s.assist_on = true; s.assist_open = true; }
 		if (getenv("BD_SHOT_VOLPOP")) s.vol_popup = true;

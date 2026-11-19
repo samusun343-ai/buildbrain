@@ -9,128 +9,99 @@
 
 #define PW 854
 #define PH 480
-static int PANEL_H = 42;
+static int PANEL_H = 48;
 
-/* Skin layout family: bar placement and control arrangement
- * follow it (see bui_skin.h). MAC/CLASSIC put a slim menu bar
- * on top; MAC adds a floating dock at the bottom. */
-static int skin_layout(void) { return bd_skin_get()->layout; }
-static bool top_bar(void) { int l = skin_layout(); return l == BD_LAYOUT_MAC || l == BD_LAYOUT_CLASSIC; }
-static int topbar_h(void) { return skin_layout() == BD_LAYOUT_MAC ? 24 : 20; }
+/* The desktop has ONE layout (the braindesk design system):
+ * a 48 px taskbar at the bottom, a centred launcher panel,
+ * categorised app grids. Colour themes change the palette
+ * only, never the arrangement. */
 
-/* Desktop work area for the window manager: the screen minus the
- * bottom panel, or minus the top bar for the Mac families. The
- * macOS dock floats, so it does not shrink the area. */
+/* Desktop work area for the window manager: the screen minus
+ * the bottom taskbar. */
 void bd_workarea(bu_rect *r)
 {
-	if (top_bar())
-		*r = (bu_rect){ 0, topbar_h(), PW, PH - topbar_h() };
-	else
-		*r = (bu_rect){ 0, 0, PW, PH - PANEL_H };
-}
-/* macOS dock geometry (ui-metrics.md: tile 48 pt, divider before
- * Trash). Cells: 0 = Launchpad, 1..10 = apps (DOCK_APPS), 11 =
- * Trash. Draw and hit code share dock_cell_rect(). */
-#define DOCK_TILE 48
-#define DOCK_PITCH 52
-#define DOCK_PADX 10
-#define DOCK_GAP 6
-static const int DOCK_APPS[10] = { 1, 3, 4, 5, 6, 7, 8, 10, 12, 0 };
-static int dock_w(void)
-{
-	return DOCK_PADX + DOCK_TILE + DOCK_GAP +
-		10 * DOCK_TILE + 9 * (DOCK_PITCH - DOCK_TILE) +
-		DOCK_GAP + 1 + DOCK_GAP + DOCK_TILE + DOCK_PADX;
-}
-static int dock_h(void) { return DOCK_TILE + 18; }
-static bu_rect dock_rect(void) { return (bu_rect){ (PW - dock_w()) / 2, PH - dock_h() - 8, dock_w(), dock_h() }; }
-static bu_rect dock_cell_rect(int i)
-{
-	bu_rect d = dock_rect();
-	int y = d.y + (d.h - DOCK_TILE) / 2;
-	if (i <= 0)
-		return (bu_rect){ d.x + DOCK_PADX, y, DOCK_TILE, DOCK_TILE };
-	if (i >= 11)
-		return (bu_rect){ d.x + d.w - DOCK_PADX - DOCK_TILE, y, DOCK_TILE, DOCK_TILE };
-	return (bu_rect){ d.x + DOCK_PADX + DOCK_TILE + DOCK_GAP + (i - 1) * DOCK_PITCH, y, DOCK_TILE, DOCK_TILE };
-}
-static bu_rect dock_app_cell(int app)
-{
-	for (int i = 0; i < 10; i++)
-		if (DOCK_APPS[i] == app)
-			return dock_cell_rect(i + 1);
-	return (bu_rect){ 0, -100, 0, 0 };
-}
-static bu_rect dock_divider_rect(void)
-{
-	bu_rect d = dock_rect();
-	bu_rect tr = dock_cell_rect(11);
-	return (bu_rect){ tr.x - DOCK_GAP - 1, d.y + 10, 1, d.h - 20 };
+	*r = (bu_rect){ 0, 0, PW, PH - PANEL_H };
 }
 
-static int dock_x0(void) { return bu_chrome == BU_CHROME_DOCK && !top_bar() ? (PW - 600) / 2 : 0; }
-static int panel_rx(void) { return bu_chrome == BU_CHROME_DOCK && !top_bar() ? (PW - 600) / 2 + 600 : PW; }
+/* ---- taskbar geometry ----
+ * Centred cluster: the start button, three favourite pins,
+ * then the running apps (drawn by bui_wm). The tray sits at
+ * the right edge: quick settings (Wi-Fi), volume, battery and
+ * the clock. The cluster origin depends on how wide the
+ * running-app buttons are, so panel() computes it with the
+ * theme font and caches it here; the hit code uses the cached
+ * values, which keeps draw and hit geometry identical. */
+#define TB_BTN 40	/* start / pin button size */
+#define TB_GAP 8	/* the 8 px spacing grid */
+#define TB_PINS 3
+static int tb_cluster_x = (PW - (TB_BTN + TB_PINS * TB_BTN + TB_PINS * TB_GAP)) / 2;
+static int tb_task_x0, tb_task_x1;
+
+static int tb_cluster_w(int tasks_w)
+{
+	int w = TB_BTN + TB_GAP + TB_PINS * TB_BTN + (TB_PINS - 1) * TB_GAP;
+	if (tasks_w > 0)
+		w += 12 + tasks_w;
+	return w;
+}
+
+/* Width of the running-app buttons, replicating bui_wm's
+ * task_layout(): text width at 11.5 px + 22, clamped to
+ * [60, 148], with 4 px gaps. */
+static int tb_tasks_width(bu_font *font)
+{
+	struct bd_wm_info infos[8];
+	int n = bd_wm_list(infos, 8);
+	int w = 0;
+	for (int i = 0; i < n; i++) {
+		int bw = font ? bu_text_width(font, infos[i].title, 11.5f) : 40;
+		bw += 22;
+		if (bw < 60) bw = 60;
+		if (bw > 148) bw = 148;
+		w += (i ? 4 : 0) + bw;
+	}
+	return w;
+}
+
+static void tb_layout(bu_font *font)
+{
+	int tw = tb_tasks_width(font);
+	int x = (PW - tb_cluster_w(tw)) / 2;
+	if (x < TB_GAP)
+		x = TB_GAP;
+	tb_cluster_x = x;
+	tb_task_x0 = x + TB_BTN + TB_GAP + TB_PINS * TB_BTN + (TB_PINS - 1) * TB_GAP + 12;
+	tb_task_x1 = tb_task_x0 + tw;
+	if (tb_task_x1 > PW - 210)
+		tb_task_x1 = PW - 210;
+}
+
 static bu_rect start_btn(void)
 {
-	int l = skin_layout();
-	if (l == BD_LAYOUT_MAC)
-		return dock_cell_rect(0);	/* Launchpad tile */
-	if (l == BD_LAYOUT_CLASSIC)
-		return (bu_rect){ 4, 0, 30, topbar_h() };
-	if (l == BD_LAYOUT_WIN11)
-		return (bu_rect){ (PW - 168) / 2, PH - PANEL_H + (PANEL_H - 34) / 2, 36, 34 };
-	if (bu_chrome == BU_CHROME_LUNA)
-		return (bu_rect){ 0, PH - PANEL_H, 98, PANEL_H };
-	if (bu_chrome == BU_CHROME_BEVEL)
-		return (bu_rect){ 4, PH - PANEL_H + 3, 86, PANEL_H - 6 };
-	if (bu_chrome == BU_CHROME_AERO)
-		return (bu_rect){ 2, PH - PANEL_H / 2 - 27, 54, 54 };	/* 54px orb, centred on the bar: Win7 (40px bar) protrudes ~7, Vista (30px) ~12 */
-	return (bu_rect){ dock_x0() + 8, PH - PANEL_H + (PANEL_H - 34) / 2, 34, 34 };
+	return (bu_rect){ tb_cluster_x, PH - PANEL_H + (PANEL_H - TB_BTN) / 2, TB_BTN, TB_BTN };
 }
 static bu_rect ql_rect(int i)
 {
-	int l = skin_layout();
-	if (l == BD_LAYOUT_MAC) {
-		static const int ql_apps[3] = { 0, 1, 8 };	/* settings, files, browser */
-		return dock_app_cell(ql_apps[i]);
-	}
-	if (l == BD_LAYOUT_CLASSIC)
-		return (bu_rect){ 0, -100, 0, 0 };	/* no quick launch */
-	if (l == BD_LAYOUT_WIN11) {
-		bu_rect sb = start_btn();
-		return (bu_rect){ sb.x + 44 + i * 42, sb.y, 36, 34 };
-	}
-	if (bu_chrome == BU_CHROME_LUNA || bu_chrome == BU_CHROME_BEVEL ||
-	    bu_chrome == BU_CHROME_AERO) {
-		bu_rect sb = start_btn();
-		int x0 = sb.x + sb.w + 6;
-		if (bu_chrome == BU_CHROME_AERO) {
-			/* Start cell: Vista 60px, Win7 52px (researched). The
-			 * 54px orb overflows Win7's cell, so keep 2px past it. */
-			int cell = (bd_skin_get()->panel_h == 30) ? 60 : 52;
-			int a = cell + 2, b = sb.x + sb.w + 2;
-			x0 = a > b ? a : b;
-		}
-		return (bu_rect){ x0 + i * 40, PH - PANEL_H + (PANEL_H - 32) / 2, 34, 32 };
-	}
-	return (bu_rect){ dock_x0() + 48 + i * 40, PH - PANEL_H + (PANEL_H - 32) / 2, 34, 32 };
+	bu_rect sb = start_btn();
+	return (bu_rect){ sb.x + TB_BTN + TB_GAP + i * (TB_BTN + TB_GAP), sb.y, TB_BTN, TB_BTN };
+}
+/* Panel task-button area (running WM windows), cached by
+ * tb_layout() during panel(). */
+static void task_area(int *x0, int *x1)
+{
+	*x0 = tb_task_x0;
+	*x1 = tb_task_x1;
 }
 static bu_rect vol_icon_rect(void)
 {
-	if (top_bar())
-		return (bu_rect){ PW - 254, 0, 28, topbar_h() };
-	return (bu_rect){ panel_rx() - 168, PH - PANEL_H, 34, PANEL_H };
+	return (bu_rect){ PW - 168, PH - PANEL_H, 34, PANEL_H };
 }
 static bu_rect clock_rect(void)
 {
-	if (top_bar())
-		return (bu_rect){ PW - 184, 0, 180, topbar_h() };
-	return (bu_rect){ panel_rx() - 96, PH - PANEL_H, 96, PANEL_H };
+	return (bu_rect){ PW - 96, PH - PANEL_H, 96, PANEL_H };
 }
 static bu_rect vol_popup_rect(void)
 {
-	if (skin_layout() == BD_LAYOUT_MAC)
-		return (bu_rect){ PW - 268, PH - dock_h() - 84, 256, 58 };
 	return (bu_rect){ PW - 268, PH - PANEL_H - 66, 256, 58 };
 }
 static bu_rect vol_popup_slider(void) { bu_rect p = vol_popup_rect(); return (bu_rect){ p.x + 44, p.y + 16, p.w - 90, 26 }; }
@@ -139,11 +110,6 @@ static bu_rect assist_menu(void) { return (bu_rect){ PW - 292, PH - PANEL_H - 80
 static bu_rect assist_item(int i) { bu_rect m = assist_menu(); return (bu_rect){ m.x + 10 + (i % 2) * 130, m.y + 10 + (i / 2) * 44, 124, 38 }; }
 static bu_rect settings_win(void)
 {
-	int l = skin_layout();
-	if (l == BD_LAYOUT_MAC)
-		return (bu_rect){ 36, topbar_h() + 12, PW - 72, PH - topbar_h() - 12 - dock_h() - 20 };
-	if (l == BD_LAYOUT_CLASSIC)
-		return (bu_rect){ 36, topbar_h() + 12, PW - 72, PH - topbar_h() - 24 };
 	return (bu_rect){ 36, 16, PW - 72, PH - PANEL_H - 26 };
 }
 static bu_rect pane_rect(void)
@@ -231,14 +197,8 @@ static bu_rect keysound_toggle_hit(void)
 static bu_rect settings_close(void)
 {
 	bu_rect w = settings_win();
-	int l = skin_layout();
-	if (l == BD_LAYOUT_MAC || l == BD_LAYOUT_CLASSIC)
-		return (bu_rect){ w.x + 10, w.y + 9, 18, 18 };	/* red traffic light */
-	if (l >= BD_LAYOUT_WIN11)
-		return (bu_rect){ w.x + w.w - 46, w.y, 46, 36 };	/* caption button */
 	return (bu_rect){ w.x + w.w - 32, w.y + 6, 24, 24 };
 }
-static bu_rect launcher_sheet(void) { return (bu_rect){ 54, 26, PW - 108, PH - PANEL_H - 52 }; }
 
 static bool in_rect(bu_rect r, int x, int y)
 {
@@ -246,92 +206,229 @@ static bool in_rect(bu_rect r, int x, int y)
 }
 
 typedef void (*icon_fn)(bu_canvas *, int, int, bu_color);
-struct app { const char *name; icon_fn icon; bu_color tint; const char *exec; };
+struct app { const char *name; icon_fn icon; bu_color tint; const char *exec; const char *keys; };
 static const struct app APPS[] = {
-	{ "設定", bu_icon_gear, { 134, 142, 150, 255 }, NULL },
-	{ "ファイル", bu_icon_folder, { 250, 176, 5, 255 }, "/usr/local/bin/bd-files" },
-	{ "タスク", bu_icon_tasks, { 255, 135, 135, 255 }, "/usr/local/bin/bd-tasks" },
-	{ "メモ", bu_icon_note, { 255, 212, 59, 255 }, "/usr/local/bin/bd-notes" },
-	{ "時計", bu_icon_clock, { 130, 200, 255, 255 }, "/usr/local/bin/bd-clock" },
-	{ "電卓", bu_icon_calc, { 116, 192, 252, 255 }, "/usr/local/bin/bd-calc" },
-	{ "音楽", bu_icon_music, { 240, 101, 149, 255 }, "/usr/local/bin/bd-player" },
-	{ "録音", bu_icon_mic, { 255, 110, 110, 255 }, "/usr/local/bin/bd-recorder" },
-	{ "ブラウザ", bu_icon_globe, { 32, 201, 151, 255 }, "/usr/local/bin/bd-web" },
-	{ "デバイス", bu_icon_chip, { 178, 140, 240, 255 }, "/usr/local/bin/bd-devices" },
-	{ "パッケージ", bu_icon_box, { 165, 215, 130, 255 }, "/usr/local/bin/bd-pkg" },
-	{ "辞書", bu_icon_book, { 45, 156, 219, 255 }, NULL },
-	{ "端末", bu_icon_terminal, { 90, 100, 116, 255 }, NULL },
-	{ "ホーム", bu_icon_home, { 129, 230, 168, 255 }, NULL },
-	{ "明るさ", bu_icon_brightness, { 255, 224, 102, 255 }, NULL },
-	{ "音量", bu_icon_volume, { 99, 230, 190, 255 }, NULL },
+	{ "設定", bu_icon_gear, { 134, 142, 150, 255 }, NULL, "settei settings gear" },
+	{ "ファイル", bu_icon_folder, { 250, 176, 5, 255 }, "/usr/local/bin/bd-files", "files fairu file folder" },
+	{ "タスク", bu_icon_tasks, { 255, 135, 135, 255 }, "/usr/local/bin/bd-tasks", "tasks tasuku todo reminders" },
+	{ "メモ", bu_icon_note, { 255, 212, 59, 255 }, "/usr/local/bin/bd-notes", "notes memo" },
+	{ "時計", bu_icon_clock, { 130, 200, 255, 255 }, "/usr/local/bin/bd-clock", "clock tokei timer" },
+	{ "電卓", bu_icon_calc, { 116, 192, 252, 255 }, "/usr/local/bin/bd-calc", "calc dentaku calculator" },
+	{ "音楽", bu_icon_music, { 240, 101, 149, 255 }, "/usr/local/bin/bd-player", "music ongaku player" },
+	{ "録音", bu_icon_mic, { 255, 110, 110, 255 }, "/usr/local/bin/bd-recorder", "recorder rokuon mic voice" },
+	{ "ブラウザ", bu_icon_globe, { 32, 201, 151, 255 }, "/usr/local/bin/bd-web", "browser burauza web" },
+	{ "デバイス", bu_icon_chip, { 178, 140, 240, 255 }, "/usr/local/bin/bd-devices", "devices debaisu chip" },
+	{ "パッケージ", bu_icon_box, { 165, 215, 130, 255 }, "/usr/local/bin/bd-pkg", "package pakkeji pkg" },
+	{ "辞書", bu_icon_book, { 45, 156, 219, 255 }, NULL, "dict jisyo book dictionary" },
+	{ "端末", bu_icon_terminal, { 90, 100, 116, 255 }, NULL, "terminal tanmatsu console" },
+	{ "ホーム", bu_icon_home, { 129, 230, 168, 255 }, NULL, "home" },
+	{ "明るさ", bu_icon_brightness, { 255, 224, 102, 255 }, NULL, "brightness akarusa" },
+	{ "音量", bu_icon_volume, { 99, 230, 190, 255 }, NULL, "volume onryo sound" },
 };
 #define NAPPS 16
 
-/* Windows 11 Start (ui-metrics.md: real Start is 640x720 and
- * cannot fit the 480-high panel, so the same structure — search,
- * Pinned grid, user/power footer — is kept at a compressed
- * scale). */
-static bu_rect win11_start_rect(void)
-{
-	int w = 560, h = 396;
-	return (bu_rect){ (PW - w) / 2, PH - PANEL_H - 12 - h, w, h };
-}
-/* Windows XP Start (ui-metrics.md: ~380 wide, header ~65 px with
- * a 48x48 user picture, two columns, footer band). */
-static bu_rect xp_start_rect(void)
-{
-	int w = 380, h = 376;
-	return (bu_rect){ 0, PH - PANEL_H - h, w, h };
-}
-#define XP_HEADER_H 65
-#define XP_FOOTER_H 42
-static const int XP_LEFT[8] = { 1, 8, 3, 6, 2, 4, 5, 7 };
-static const int XP_RIGHT[8] = { 0, 10, 9, 12, 13, 11, 14, 15 };
+/* App categories (design system): general apps and system
+ * functions are listed under separate headings so the two
+ * kinds read differently at a glance. */
+static const int APP_CAT_APPS[9] = { 1, 8, 6, 3, 7, 4, 5, 11, 2 };
+static const int APP_CAT_SYS[7] = { 0, 9, 14, 15, 13, 10, 12 };
+/* Launcher pins: related apps sit next to each other
+ * (ファイル↔パッケージ, 設定↔デバイス, 音楽↔録音). */
+static const int LN_PINS[12] = { 1, 10, 0, 9, 6, 7, 8, 3, 2, 4, 5, 11 };
 
-/* One helper for every launcher flavour: draw and hit code both
- * place apps through tile_rect(), whatever the skin family. */
-static bu_rect tile_rect(int i)
+/* ---- launcher ----
+ * One centred panel (radius 12): a 40 px search field on top,
+ * a "ピン留め" pin grid, a "最近使ったアプリ" strip and a
+ * footer with the user, a prominent すべてのアプリ button and
+ * power. The all-apps view swaps the body for the two
+ * categorised grids (アプリ / システム). A non-empty search
+ * query swaps the body for one flat results grid. */
+#define LN_W 640
+#define LN_H 416
+static bu_rect launcher_panel(void)
 {
-	if (skin_layout() == BD_LAYOUT_MAC) {
-		/* Launchpad: 7 cols x 5 rows (ui-metrics.md) */
-		int cw = 110, ch = 78;
-		int x0 = (PW - 7 * cw) / 2, y0 = 78;
-		return (bu_rect){ x0 + (i % 7) * cw, y0 + (i / 7) * ch, cw, ch };
-	}
-	if (skin_layout() == BD_LAYOUT_WIN11) {
-		bu_rect r = win11_start_rect();
-		int cw = (r.w - 64) / 6;
-		return (bu_rect){ r.x + 32 + (i % 6) * cw, r.y + 92 + (i / 6) * 74, cw, 74 };
-	}
-	if (bu_chrome == BU_CHROME_LUNA) {
-		bu_rect r = xp_start_rect();
-		int y0 = r.y + XP_HEADER_H;
-		for (int k = 0; k < 8; k++) {
-			if (XP_LEFT[k] == i)
-				return (bu_rect){ r.x + 2, y0 + k * 33, 192, 33 };
-			if (XP_RIGHT[k] == i)
-				return (bu_rect){ r.x + 198, y0 + k * 33, 180, 33 };
-		}
-		return (bu_rect){ 0, -100, 0, 0 };
-	}
-	bu_rect sheet = launcher_sheet();
-	int cols = 6, cell_w = (sheet.w - 44) / cols, cell_h = 96;
-	int col = i % cols, row = i / cols;
-	int cx = sheet.x + 22 + col * cell_w + cell_w / 2;
-	int cy = sheet.y + 76 + row * cell_h + 28;
-	return (bu_rect){ cx - cell_w / 2, cy - 40, cell_w, cell_h - 8 };
+	return (bu_rect){ (PW - LN_W) / 2, PH - PANEL_H - 8 - LN_H, LN_W, LN_H };
+}
+static bu_rect ln_search_rect(void)
+{
+	bu_rect p = launcher_panel();
+	return (bu_rect){ p.x + 24, p.y + 20, p.w - 48, 40 };
+}
+/* 6-column grid cell (pins, recent, search results). */
+static bu_rect ln_cell(int pos, int y0, int ch)
+{
+	bu_rect p = launcher_panel();
+	int cw = 88;
+	int x0 = p.x + (p.w - 6 * cw) / 2;
+	return (bu_rect){ x0 + (pos % 6) * cw, y0 + (pos / 6) * ch, cw, ch };
+}
+/* 8-column grid cell (all-apps view). */
+static bu_rect ln_cell8(int pos, int y0, int ch)
+{
+	bu_rect p = launcher_panel();
+	int cw = 74;
+	return (bu_rect){ p.x + 24 + (pos % 8) * cw, y0 + (pos / 8) * ch, cw, ch };
+}
+static bu_rect ln_recent_rect(int pos)
+{
+	bu_rect p = launcher_panel();
+	return ln_cell(pos, p.y + 284, 64);
+}
+static bu_rect ln_allapps_btn(void)
+{
+	bu_rect p = launcher_panel();
+	return (bu_rect){ p.x + p.w - 24 - 44 - 16 - 168, p.y + p.h - 48, 168, 36 };
+}
+static bu_rect ln_back_btn(void)
+{
+	bu_rect p = launcher_panel();
+	return (bu_rect){ p.x + 24, p.y + p.h - 48, 120, 36 };
+}
+static bu_rect ln_power_rect(void)
+{
+	bu_rect p = launcher_panel();
+	return (bu_rect){ p.x + p.w - 24 - 36, p.y + p.h - 46, 36, 32 };
 }
 
-/* The region a tap must stay inside to keep the launcher open. */
-static bu_rect launcher_region(void)
+static bool ln_all;		/* all-apps view */
+static char ln_query[64];	/* search text */
+static bool ln_search_focus;
+static int ln_recent[6];
+static int ln_nrecent;
+static bool ln_recent_loaded;
+
+static void ln_recent_path(char *out, size_t n)
 {
-	if (skin_layout() == BD_LAYOUT_MAC)
-		return (bu_rect){ 0, 0, PW, PH };
-	if (skin_layout() == BD_LAYOUT_WIN11)
-		return win11_start_rect();
-	if (bu_chrome == BU_CHROME_LUNA)
-		return xp_start_rect();
-	return launcher_sheet();
+	const char *home = getenv("HOME");
+	snprintf(out, n, "%s/.config/braindesk/recent", home ? home : "/home/user");
+}
+static void ln_recent_load(void)
+{
+	if (ln_recent_loaded)
+		return;
+	ln_recent_loaded = true;
+	ln_nrecent = 0;
+	char path[512];
+	ln_recent_path(path, sizeof(path));
+	FILE *fp = fopen(path, "r");
+	if (!fp)
+		return;
+	int v;
+	while (ln_nrecent < 6 && fscanf(fp, "%d", &v) == 1)
+		if (v >= 0 && v < NAPPS)
+			ln_recent[ln_nrecent++] = v;
+	fclose(fp);
+}
+static void ln_recent_save(void)
+{
+	char path[512], dir[512];
+	ln_recent_path(path, sizeof(path));
+	snprintf(dir, sizeof(dir), "%s", path);
+	char *slash = strrchr(dir, '/');
+	if (slash) {
+		*slash = 0;
+		char cmd[600];
+		snprintf(cmd, sizeof(cmd), "mkdir -p '%s'", dir);
+		if (system(cmd) != 0)
+			return;
+	}
+	FILE *fp = fopen(path, "w");
+	if (!fp)
+		return;
+	for (int i = 0; i < ln_nrecent; i++)
+		fprintf(fp, "%d\n", ln_recent[i]);
+	fclose(fp);
+}
+/* Record an app launch in the recent list (most recent first,
+ * de-duplicated, capped at 6) and persist it. */
+static void ln_record(int app)
+{
+	ln_recent_load();
+	int out[6], n = 0;
+	out[n++] = app;
+	for (int i = 0; i < ln_nrecent && n < 6; i++)
+		if (ln_recent[i] != app)
+			out[n++] = ln_recent[i];
+	memcpy(ln_recent, out, sizeof(out));
+	ln_nrecent = n;
+	ln_recent_save();
+}
+static void ln_reset(void)
+{
+	ln_all = false;
+	ln_query[0] = 0;
+	ln_search_focus = false;
+}
+/* Hooks for shell.c (BD_SHOT_*) and the synthetic tap harness;
+ * the launcher state itself stays file-static. */
+void bd_launcher_show_all(void) { ln_all = true; }
+int bd_launcher_is_all(void) { return ln_all; }
+int bd_recent_count(void) { ln_recent_load(); return ln_nrecent; }
+int bd_recent_at(int i)
+{
+	ln_recent_load();
+	return (i >= 0 && i < ln_nrecent) ? ln_recent[i] : -1;
+}
+void bd_recent_seed(void)
+{
+	static const int seed[4] = { 1, 8, 6, 3 };
+	ln_recent_loaded = true;
+	memcpy(ln_recent, seed, sizeof(seed));
+	ln_nrecent = 4;
+}
+static bool ln_matches(int app)
+{
+	if (!ln_query[0])
+		return true;
+	if (strstr(APPS[app].name, ln_query))
+		return true;
+	return APPS[app].keys && strstr(APPS[app].keys, ln_query);
+}
+/* Launch an app from the launcher / taskbar: records the
+ * recent entry, opens Settings for app 0, execs otherwise. */
+static int ln_launch(bd_state *s, int app)
+{
+	ln_record(app);
+	if (app == 0) {
+		s->settings_open = true;
+		s->view = BD_VIEW_DESKTOP;
+		return BD_ACT_NONE;
+	}
+	if (APPS[app].exec) {
+		snprintf(s->launch_path, sizeof(s->launch_path), "%s", APPS[app].exec);
+		s->view = BD_VIEW_DESKTOP;
+		return BD_ACT_LAUNCH;
+	}
+	s->view = BD_VIEW_DESKTOP;
+	return BD_ACT_NONE;
+}
+/* Keyboard input for the search field (evdev codes). */
+static void ln_query_key(int code)
+{
+	if (code == 14) {	/* backspace: drop the last UTF-8 char */
+		int l = (int)strlen(ln_query);
+		while (l > 0 && (ln_query[l - 1] & 0xC0) == 0x80)
+			l--;
+		if (l > 0)
+			ln_query[l - 1] = 0;
+		return;
+	}
+	char ch = 0;
+	if (code >= 16 && code <= 25)
+		ch = "qwertyuiop"[code - 16];
+	else if (code >= 30 && code <= 38)
+		ch = "asdfghjkl"[code - 30];
+	else if (code >= 44 && code <= 50)
+		ch = "zxcvbnm"[code - 44];
+	else if (code >= 2 && code <= 11)
+		ch = "1234567890"[code - 2];
+	else if (code == 57)
+		ch = ' ';
+	if (ch && strlen(ln_query) < sizeof(ln_query) - 1) {
+		int l = (int)strlen(ln_query);
+		ln_query[l] = ch;
+		ln_query[l + 1] = 0;
+	}
 }
 
 void bd_update_datetime(bd_state *s)
@@ -365,28 +462,9 @@ void bd_state_init(bd_state *s)
 	snprintf(s->ip_addr, sizeof(s->ip_addr), "—");
 }
 
-static const char *asset_dir(void);
 static void wallpaper(bu_canvas *c)
 {
 	const bd_skin *sk = bd_skin_get();
-	/* Real wallpaper artwork per family (size-optimised JPEGs in
-	 * assets/wall/); the gradient stays as the fallback. */
-	const char *wall = NULL;
-	if (sk->layout == BD_LAYOUT_MAC) wall = "mac";
-	else if (sk->layout == BD_LAYOUT_WIN11) wall = "win11";
-	else if (!strcmp(sk->name, "Windows XP")) wall = "xp";
-	else if (!strcmp(sk->name, "Windows 10")) wall = "win10";
-	else if (!strcmp(sk->name, "Windows Vista")) wall = "vista";
-	else if (!strcmp(sk->name, "Windows 7")) wall = "win7";
-	if (wall) {
-		const char *dir = asset_dir();
-		if (dir) {
-			char path[512];
-			snprintf(path, sizeof(path), "%s/wall/%s.jpg", dir, wall);
-			if (bu_draw_image(c, path, 0, 0, PW, PH))
-				return;
-		}
-	}
 	bu_gradient_v(c, (bu_rect){ 0, 0, PW, PH }, sk->wall_top, sk->wall_bottom);
 	bu_color glow = sk->wall_glow;
 	glow.a = 7;
@@ -413,76 +491,82 @@ static void draw_panes(bu_canvas *c, int x, int y, int s, int gap, bu_color col)
 	bu_fill_rect(c, (bu_rect){ x + s + gap, y + s + gap, s, s }, col);
 }
 
-
-/* ---------- raster icon assets (real artwork, size-optimized) ---------- */
+/* ---------- raster icon assets (unified app set) ---------- */
 static const char *asset_dir(void)
 {
 	static char dir[256];
 	static int done;
-	if (done) return dir;
+	if (done)
+		return dir;
 	done = 1;
-	const char *cands[4];
+	const char *home = getenv("HOME");
+	char local[320];
+	snprintf(local, sizeof(local), "%s/.local/share/braindesk/assets",
+		 home ? home : "/home/user");
+	const char *cands[5];
 	cands[0] = getenv("BRAINDESK_ASSETS");
-	cands[1] = "/usr/share/braindesk/assets";
-	cands[2] = "assets";
-	cands[3] = "../assets";
-	for (int i = 0; i < 4; i++) {
-		if (!cands[i]) continue;
-		char probe[320];
-		snprintf(probe, sizeof(probe), "%s/mac/files.png", cands[i]);
+	cands[1] = local;
+	cands[2] = "/usr/share/braindesk/assets";
+	cands[3] = "assets";
+	cands[4] = "../assets";
+	for (int i = 0; i < 5; i++) {
+		if (!cands[i] || !cands[i][0])
+			continue;
+		char probe[384];
+		snprintf(probe, sizeof(probe), "%s/app/files.png", cands[i]);
 		FILE *f = fopen(probe, "rb");
-		if (f) { fclose(f); snprintf(dir, sizeof(dir), "%s", cands[i]); return dir; }
+		if (f) {
+			fclose(f);
+			snprintf(dir, sizeof(dir), "%s", cands[i]);
+			return dir;
+		}
 	}
 	dir[0] = 0;
 	return dir;
 }
-static const char *asset_fam(void)
-{
-	int l = skin_layout();
-	if (l == BD_LAYOUT_MAC) return "mac";
-	if (l == BD_LAYOUT_WIN11) return "win11";
-	if (bu_chrome == BU_CHROME_LUNA) return "xp";
-	return NULL;
-}
-static const char *app_asset_name(int idx)
-{
-	switch (idx) {
-	case 0: return "settings"; case 1: return "files"; case 2: return "tasks";
-	case 3: return "notes"; case 4: return "clock"; case 5: return "calc";
-	case 6: return "music"; case 7: return "recorder"; case 8: return "browser";
-	case 10: return "pkg"; case 12: return "terminal";
-	}
-	return NULL;
-}
-static int draw_named_asset(bu_canvas *c, const char *fam, const char *name, int x, int y, int sz)
-{
-	const char *dir = asset_dir();
-	if (!dir[0]) return 0;
-	char path[320];
-	snprintf(path, sizeof(path), "%s/%s/%s.png", dir, fam, name);
-	return bu_draw_image(c, path, x, y, sz, sz);
-}
-static int draw_app_asset(bu_canvas *c, int idx, int x, int y, int sz)
-{
-	const char *fam = asset_fam();
-	const char *name = app_asset_name(idx);
-	if (!fam || !name) return 0;
-	if (!strcmp(fam, "xp")) return 0; /* XP set covers start/browser/files only */
-	return draw_named_asset(c, fam, name, x, y, sz);
-}
-static const int QL_APP_IDX[3] = { 0, 1, 8 };
 
-/* Apple-ish mark for the Mac-family menu bar, drawn from
- * circles: two-lobed body, leaf, and a bite taken out of the
- * right side in the bar colour. */
-static void draw_apple(bu_canvas *c, int cx, int cy, bu_color col, bu_color bar)
+/* Base file names in the unified app set (design-system
+ * manifest). NULL entries have no raster icon. */
+static const char *app_asset_name(int app)
 {
-	bu_fill_circle(c, cx - 4, cy + 2, 7, col);
-	bu_fill_circle(c, cx + 4, cy + 2, 7, col);
-	bu_fill_circle(c, cx, cy - 2, 6, col);
-	bu_fill_circle(c, cx + 3, cy - 10, 3, col);	/* leaf */
-	bu_fill_circle(c, cx + 10, cy + 1, 4, bar);	/* bite */
+	switch (app) {
+	case 0: return "settings";
+	case 1: return "files";
+	case 2: return "tasks";
+	case 3: return "notes";
+	case 4: return "clock";
+	case 5: return "calc";
+	case 6: return "player";
+	case 7: return "recorder";
+	case 8: return "web";
+	case 9: return "devices";
+	case 10: return "pkg";
+	case 11: return "dict";
+	case 12: return "terminal";
+	case 13: return "home";
+	case 14: return "brightness";
+	case 15: return "volume";
+	default: return NULL;
+	}
 }
+
+/* Draw the unified-set icon for an app; false when the set
+ * has no file for it (caller draws the glyph fallback). */
+static bool draw_app_asset(bu_canvas *c, int app, int x, int y, int size)
+{
+	const char *nm = app_asset_name(app);
+	if (!nm)
+		return false;
+	const char *dir = asset_dir();
+	if (!dir[0])
+		return false;
+	char path[640];
+	snprintf(path, sizeof(path), "%s/app/%s.png", dir, nm);
+	return bu_draw_image(c, path, x, y, size, size);
+}
+
+/* Quick-launch pins on the taskbar: 設定 / ファイル / ブラウザ. */
+static const int QL_APP_IDX[3] = { 0, 1, 8 };
 
 static void draw_vol_popup(bu_canvas *c, bu_theme *t, bd_state *s)
 {
@@ -496,261 +580,63 @@ static void draw_vol_popup(bu_canvas *c, bu_theme *t, bd_state *s)
 	bu_draw_text_right(c, t->font, (bu_rect){ p.x, p.y + 16, p.w - 10, 24 }, vp, 12.5, t->text);
 }
 
-/* Mac-family top menu bar: mark + app name on the left,
- * status icons and date/time on the right. */
-static void draw_top_bar(bu_canvas *c, bu_theme *t, bd_state *s, int l)
-{
-	int h = topbar_h();
-	bu_color pc = t->panel;
-	if (l == BD_LAYOUT_MAC)
-		pc.a = 228;
-	bu_fill_rect(c, (bu_rect){ 0, 0, PW, h }, pc);
-	bu_fill_rect(c, (bu_rect){ 0, h - 1, PW, 1 }, l == BD_LAYOUT_CLASSIC ? BU_RGB(0, 0, 0) : t->line);
-	if (!draw_named_asset(c, "mac", "apple", 9, h / 2 - 10, 20))
-		draw_apple(c, 20, h / 2, t->text, pc);
-	bu_draw_text(c, t->font, 38, (h - 18) / 2, "braindesk", 13, t->text);
-	/* right side: wifi, volume, battery %, battery, then the
-	 * date/time as the rightmost item (macOS order) */
-	bu_icon_wifi(c, PW - 266, h / 2, t->text_dim);
-	bu_rect vr = vol_icon_rect();
-	bu_icon_volume(c, vr.x + vr.w / 2, h / 2, s->vol_popup ? t->accent : t->text_dim);
-	char pct[8];
-	snprintf(pct, sizeof(pct), "%d%%", s->battery_pct);
-	bu_draw_text_right(c, t->font, (bu_rect){ 0, (h - 16) / 2, PW - 200, 16 }, pct, 11.5, t->text_dim);
-	bu_icon_battery(c, PW - 196, h / 2 - 6, s->battery_pct / 100.0f, false, t->text_dim);
-	char clk[64];
-	snprintf(clk, sizeof(clk), "%s  %s", s->date, s->clock);
-	bu_draw_text_right(c, t->font, (bu_rect){ PW - 168, (h - 17) / 2, 160, 17 }, clk, 12, t->text);
-}
-
-/* macOS-style floating dock (ui-metrics.md: 48 pt tiles, divider
- * before Trash): Launchpad + the full app set + Trash, drawn from
- * the same dock_cell_rect() the hit test uses. A dot under a cell
- * marks the running/open state we know about (Launchpad open,
- * Settings open). */
-static void draw_dock(bu_canvas *c, bu_theme *t, bd_state *s)
-{
-	bu_rect d = dock_rect();
-	bu_shadow_round_rect(c, d, 16, 8, BU_RGBA(0, 0, 0, 100));
-	bu_color pc = t->surface;
-	pc.a = 235;
-	bu_fill_round_rect(c, d, 16, pc);
-	bu_stroke_round_rect(c, d, 16, 1, t->line);
-	bu_rect lp = dock_cell_rect(0);
-	if (s->start_pressed)
-		bu_fill_round_rect(c, lp, 10, t->surface3);
-	if (!draw_named_asset(c, "mac", "launchpad", lp.x + 2, lp.y + 2, 44)) {
-		for (int gy = 0; gy < 3; gy++)
-			for (int gx = 0; gx < 3; gx++)
-				bu_fill_round_rect(c, (bu_rect){ lp.x + 11 + gx * 10, lp.y + 11 + gy * 10, 7, 7 }, 2, t->text_dim);
-	}
-	if (s->view == BD_VIEW_LAUNCHER)
-		bu_fill_circle(c, lp.x + lp.w / 2, d.y + d.h - 4, 2, t->text_dim);
-	for (int i = 0; i < 10; i++) {
-		int app = DOCK_APPS[i];
-		bu_rect cell = dock_cell_rect(i + 1);
-		bool active = (app == 0 && s->settings_open);
-		if (!draw_app_asset(c, app, cell.x + 2, cell.y + 2, 44)) {
-			bu_fill_round_rect(c, (bu_rect){ cell.x + 4, cell.y + 4, 40, 40 }, 10, APPS[app].tint);
-			APPS[app].icon(c, cell.x + cell.w / 2, cell.y + cell.h / 2, BU_RGB(255, 255, 255));
-		}
-		if (active)
-			bu_fill_circle(c, cell.x + cell.w / 2, d.y + d.h - 4, 2, t->text_dim);
-	}
-	bu_fill_rect(c, dock_divider_rect(), t->line);
-	bu_rect tr = dock_cell_rect(11);
-	if (!draw_named_asset(c, "mac", "trash", tr.x + 2, tr.y + 2, 44))
-		bu_icon_box(c, tr.x + tr.w / 2, tr.y + tr.h / 2, t->text_dim);
-}
-
-
-/* Panel task-button area (running WM windows). */
-static void task_area(int *x0, int *x1)
-{
-	if (skin_layout() == BD_LAYOUT_WIN11) {
-		/* running apps join the centred cluster, right after the pins */
-		bu_rect q2 = ql_rect(2);
-		*x0 = q2.x + q2.w + 6;
-	} else {
-		bu_rect q2 = ql_rect(2);
-		*x0 = q2.x + q2.w + 12;
-	}
-	*x1 = panel_rx() - 208;
-}
-
 static void panel(bu_canvas *c, bu_theme *t, bd_state *s)
 {
-	int RX = panel_rx();
-	int l = skin_layout();
-	if (l == BD_LAYOUT_MAC || l == BD_LAYOUT_CLASSIC) {
-		draw_top_bar(c, t, s, l);
-		if (l == BD_LAYOUT_MAC)
-			draw_dock(c, t, s);
-		if (s->vol_popup)
-			draw_vol_popup(c, t, s);
-		return;
-	}
+	tb_layout(t->font);
 	bu_rect bar = { 0, PH - PANEL_H, PW, PANEL_H };
-	if (bu_chrome == BU_CHROME_DOCK) {
-		bu_rect dock = { dock_x0(), PH - PANEL_H - 4, 600, PANEL_H };
-		bu_shadow_round_rect(c, dock, 18, 8, BU_RGBA(0, 0, 0, 90));
-		bu_color pc = t->panel; pc.a = 225;
-		bu_fill_round_rect(c, dock, 18, pc);
-	} else if (bu_chrome == BU_CHROME_BEVEL) {
-		bu_fill_rect(c, bar, t->panel);
-		bu_fill_rect(c, (bu_rect){ 0, PH - PANEL_H, PW, 1 }, BU_RGB(255, 255, 255));
-		bu_fill_rect(c, (bu_rect){ 0, PH - PANEL_H + 1, PW, 1 }, BU_RGB(223, 223, 223));
-	} else if (bu_chrome == BU_CHROME_LUNA) {
-		bu_color deep = t->accent;
-		deep.r = deep.r * 55 / 100; deep.g = deep.g * 55 / 100; deep.b = deep.b * 72 / 100;
-		bu_gradient_v(c, bar, t->accent, deep);
-		bu_fill_rect(c, (bu_rect){ 0, PH - PANEL_H, PW, 1 }, BU_RGBA(255, 255, 255, 90));
-	} else if (bu_chrome == BU_CHROME_AERO) {
-		bu_color deep = t->panel;
-		deep.r = deep.r / 3; deep.g = deep.g / 3; deep.b = deep.b / 3;
-		bu_gradient_v(c, bar, t->panel, deep);
-		bu_fill_rect(c, (bu_rect){ 0, PH - PANEL_H, PW, 1 }, BU_RGBA(255, 255, 255, 60));
-	} else {
-		bu_color pc = t->panel; pc.a = 235;
-		bu_fill_rect(c, bar, pc);
-		if (skin_layout() == BD_LAYOUT_BD) {
-			/* accent hairline: accent -> accent2 across the panel top */
-			bu_fill_rect(c, (bu_rect){ 0, PH - PANEL_H, PW / 2, 2 }, t->accent);
-			bu_fill_rect(c, (bu_rect){ PW / 2, PH - PANEL_H, PW - PW / 2, 2 }, t->accent2);
-		}
-	}
+	bu_color pc = t->panel;
+	pc.a = 235;
+	bu_fill_rect(c, bar, pc);
+	/* accent hairline along the top edge: accent -> accent2 */
+	bu_fill_rect(c, (bu_rect){ 0, PH - PANEL_H, PW / 2, 2 }, t->accent);
+	bu_fill_rect(c, (bu_rect){ PW / 2, PH - PANEL_H, PW - PW / 2, 2 }, t->accent2);
+
+	/* centred cluster: start button */
 	bu_rect sb = start_btn();
-	if (bu_chrome == BU_CHROME_BEVEL) {
-		bu_fill_rect(c, sb, t->surface2);
-		bu_bevel_rect(c, sb, !s->start_pressed);
-		bu_color ink = t->text;
-		bu_fill_rect(c, (bu_rect){ sb.x + 34000, sb.y + 10, 6, 6 }, ink);
-		bu_fill_rect(c, (bu_rect){ sb.x + 18, sb.y + 10, 6, 6 }, ink);
-		bu_fill_rect(c, (bu_rect){ sb.x + 10, sb.y + 18, 6, 6 }, ink);
-		bu_fill_rect(c, (bu_rect){ sb.x + 18, sb.y + 18, 6, 6 }, ink);
-		bu_draw_text(c, t->font, sb.x + 32, sb.y + (sb.h - 19) / 2, "Start", 14, t->text);
-		draw_named_asset(c, "xp", "start", sb.x + 4, sb.y + 3, 28);
-	} else if (bu_chrome == BU_CHROME_LUNA) {
-		bu_fill_round_rect(c, sb, 10, s->start_pressed ? t->accent : t->accent2);
-		bu_fill_rect(c, (bu_rect){ sb.x + 34000, sb.y + 13, 6, 6 }, BU_RGB(255, 255, 255));
-		bu_fill_rect(c, (bu_rect){ sb.x + 22, sb.y + 13, 6, 6 }, BU_RGBA(255, 255, 255, 200));
-		bu_fill_rect(c, (bu_rect){ sb.x + 14, sb.y + 21, 6, 6 }, BU_RGBA(255, 255, 255, 200));
-		bu_fill_rect(c, (bu_rect){ sb.x + 22, sb.y + 21, 6, 6 }, BU_RGBA(255, 255, 255, 150));
-		if (!draw_named_asset(c, "xp", "start", sb.x + 5, sb.y + 3, 28))
-			;
-		bu_draw_text(c, t->font, sb.x + 38, sb.y + (sb.h - 21) / 2, "start", 16, BU_RGB(255, 255, 255));
-	} else if (skin_layout() == BD_LAYOUT_WIN11) {
-		if (s->start_pressed)
-			bu_fill_round_rect(c, sb, 6, t->surface3);
-		if (!draw_named_asset(c, "win11", "start", sb.x + 6, sb.y + 6, 22))
-			draw_panes(c, sb.x + 9, sb.y + 8, 8, 2, t->accent);
-	} else if (bu_chrome == BU_CHROME_METRO) {
-		/* Win8/10: bare white panes, no button box */
-		if (s->start_pressed)
-			bu_fill_rect(c, sb, t->surface3);
-		draw_panes(c, sb.x + 9, sb.y + 9, 7, 2, BU_RGB(255, 255, 255));
-	} else if (bu_chrome == BU_CHROME_AERO) {
-		/* Vista/Win7 Start pearl: the 54px orb artwork. Dark glass
-		 * sphere in the panel tone with a 1px lighter rim, and the
-		 * four-colour Windows flag centred on it (26px across). */
-		int cx = sb.x + sb.w / 2, cy = sb.y + sb.h / 2;
-		bu_color rim = t->panel;
-		int v;
-		v = rim.r * 8 / 5; rim.r = v > 255 ? 255 : v;
-		v = rim.g * 8 / 5; rim.g = v > 255 ? 255 : v;
-		v = rim.b * 8 / 5; rim.b = v > 255 ? 255 : v;
-		bu_fill_circle(c, cx, cy, 27, rim);
-		bu_fill_circle(c, cx, cy, 26, t->panel);
-		bu_fill_rect(c, (bu_rect){ cx - 13, cy - 13, 12, 12 }, BU_RGB(242, 80, 34));
-		bu_fill_rect(c, (bu_rect){ cx + 1, cy - 13, 12, 12 }, BU_RGB(127, 186, 0));
-		bu_fill_rect(c, (bu_rect){ cx - 13, cy + 1, 12, 12 }, BU_RGB(0, 164, 239));
-		bu_fill_rect(c, (bu_rect){ cx + 1, cy + 1, 12, 12 }, BU_RGB(255, 185, 0));
-	} else {
-		bu_fill_round_rect(c, sb, 9, s->start_pressed ? t->accent2 : t->accent);
-	}
-	if (bu_chrome != BU_CHROME_BEVEL && bu_chrome != BU_CHROME_LUNA && bu_chrome != BU_CHROME_AERO &&
-	    bu_chrome != BU_CHROME_METRO && skin_layout() != BD_LAYOUT_WIN11) {
-		bu_fill_rect(c, (bu_rect){ sb.x + 11, sb.y + 11, 5, 5 }, BU_RGB(255, 255, 255));
-		bu_fill_rect(c, (bu_rect){ sb.x + 18, sb.y + 11, 5, 5 }, BU_RGBA(255, 255, 255, 200));
-		bu_fill_rect(c, (bu_rect){ sb.x + 11, sb.y + 18, 5, 5 }, BU_RGBA(255, 255, 255, 200));
-		bu_fill_rect(c, (bu_rect){ sb.x + 18, sb.y + 18, 5, 5 }, BU_RGBA(255, 255, 255, 150));
-	}
-	/* quick launch: settings (toggle), files, browser */
-	/* Chip tone: on a dark panel use a dark glass tone derived from
-	 * the panel — light-surface skins (Win7/Win8) would otherwise
-	 * show white pills on the dark bar. Same luminance rule as the
-	 * tray ink below; Vista/Win10 surfaces are already dark, so
-	 * they are unaffected. */
-	bu_color chip_bg = t->surface;
-	if ((t->panel.r * 3 + t->panel.g * 5 + t->panel.b * 2) / 10 < 110) {
-		chip_bg = t->panel;
-		int v;
-		v = chip_bg.r * 8 / 5; chip_bg.r = v > 255 ? 255 : v;
-		v = chip_bg.g * 8 / 5; chip_bg.g = v > 255 ? 255 : v;
-		v = chip_bg.b * 8 / 5; chip_bg.b = v > 255 ? 255 : v;
-	}
-	for (int i = 0; i < 3; i++) {
+	bu_fill_round_rect(c, sb, 10, s->start_pressed ? t->accent2 : t->accent);
+	draw_panes(c, sb.x + 11, sb.y + 11, 8, 2, BU_RGB(255, 255, 255));
+
+	/* favourite pins */
+	for (int i = 0; i < TB_PINS; i++) {
 		bu_rect chip = ql_rect(i);
 		bool active = (i == 0 && s->settings_open);
-		if (bu_chrome == BU_CHROME_BEVEL) {
-			bu_fill_rect(c, chip, t->surface2);
-			bu_bevel_rect(c, chip, !active);
-		} else if (skin_layout() == BD_LAYOUT_WIN11) {
-			if (active)
-				bu_fill_round_rect(c, chip, 6, t->surface3);
-		} else if (bu_chrome == BU_CHROME_LUNA) {
-			if (active)
-				bu_fill_round_rect(c, chip, 6, BU_RGBA(255, 255, 255, 40));
-		} else {
-			bu_fill_round_rect(c, chip, 8, active ? t->surface3 : chip_bg);
-		}
-		int isz = skin_layout() == BD_LAYOUT_WIN11 ? 24 : 26;	/* Win11 taskbar icons are 24 */
-		int drawn = draw_app_asset(c, QL_APP_IDX[i], chip.x + (chip.w - isz) / 2, chip.y + (chip.h - isz) / 2, isz);
-		if (!drawn && bu_chrome == BU_CHROME_LUNA && QL_APP_IDX[i] == 1)
-			drawn = draw_named_asset(c, "xp", "files", chip.x + 4, chip.y + 3, 26);
-		if (!drawn && bu_chrome == BU_CHROME_LUNA && QL_APP_IDX[i] == 8)
-			drawn = draw_named_asset(c, "xp", "browser", chip.x + 4, chip.y + 3, 26);
-		if (!drawn)
+		bu_fill_round_rect(c, chip, 10, active ? t->surface3 : t->surface2);
+		int isz = 26;
+		if (!draw_app_asset(c, QL_APP_IDX[i], chip.x + (chip.w - isz) / 2,
+				    chip.y + (chip.h - isz) / 2, isz))
 			QL_ICONS[i].icon(c, chip.x + chip.w / 2, chip.y + chip.h / 2,
-					 bu_chrome == BU_CHROME_LUNA ? BU_RGB(255, 255, 255)
-								     : active ? t->text : t->text_dim);
+					 active ? t->text : t->text_dim);
 		if (active)
-			bu_fill_round_rect(c, (bu_rect){ chip.x + chip.w / 2 - 10, PH - 8, 20, 3 }, 1, t->accent);
+			bu_fill_round_rect(c, (bu_rect){ chip.x + chip.w / 2 - 10, PH - 8, 20, 3 },
+					   1, t->accent);
 	}
-	{
-		int tx0, tx1;
-		task_area(&tx0, &tx1);
-		if (tx1 > tx0)
-			bd_wm_draw_tasks(c, t, tx0, tx1, PH - PANEL_H, PANEL_H);
-	}
-	/* tray ink: light on dark panels (XP/Win8), theme text otherwise */
+
+	/* running apps (bui_wm draws the running indicator) */
+	if (tb_task_x1 > tb_task_x0)
+		bd_wm_draw_tasks(c, t, tb_task_x0, tb_task_x1, PH - PANEL_H, PANEL_H);
+
+	/* tray ink: light on dark panels, theme text otherwise */
 	int lum = (t->panel.r * 3 + t->panel.g * 5 + t->panel.b * 2) / 10;
 	bu_color tray = lum < 110 ? BU_RGB(255, 255, 255) : t->text_dim;
 	bu_color tray_main = lum < 110 ? BU_RGB(255, 255, 255) : t->text;
-	bu_icon_wifi(c, RX - 186, PH - PANEL_H / 2, tray);
+	/* quick settings (Wi-Fi), volume, battery, clock */
+	bu_icon_wifi(c, PW - 185, PH - PANEL_H / 2, tray);
 	bu_rect vr = vol_icon_rect();
 	bu_icon_volume(c, vr.x + vr.w / 2, PH - PANEL_H / 2, s->vol_popup ? t->accent : tray);
 	char pct[8];
 	snprintf(pct, sizeof(pct), "%d%%", s->battery_pct);
-	bu_draw_text_right(c, t->font, (bu_rect){ 0, PH - PANEL_H, RX - 100, PANEL_H }, pct, 13, tray);
-	bu_icon_battery(c, RX - 96, PH - PANEL_H / 2 - 7, s->battery_pct / 100.0f, false, tray);
-	if (PANEL_H >= 52 || skin_layout() == BD_LAYOUT_WIN11) {
-		/* two-line clock: time over date */
-		char dbuf[40];
-		const char *sp = strchr(s->date, ' ');
-		snprintf(dbuf, sizeof(dbuf), "%.*s", sp ? (int)(sp - s->date) : (int)strlen(s->date), s->date);
-		bool w11 = skin_layout() == BD_LAYOUT_WIN11;
-		bu_draw_text_right(c, t->font, (bu_rect){ 0, PH - PANEL_H + 4, RX - 10, 24 }, s->clock, w11 ? 12.5 : 16, tray_main);
-		bu_draw_text_right(c, t->font, (bu_rect){ 0, PH - 22, RX - 10, 18 }, dbuf, 10.5, tray);
-	} else {
-		bu_draw_text_right(c, t->font, (bu_rect){ 0, PH - PANEL_H, RX - 10, PANEL_H }, s->clock, 14, tray_main);
-	}
+	bu_draw_text_right(c, t->font, (bu_rect){ 0, PH - PANEL_H, PW - 100, PANEL_H }, pct, 13, tray);
+	bu_icon_battery(c, PW - 88, PH - PANEL_H / 2 - 7, s->battery_pct / 100.0f, false, tray);
+	/* two-line clock: time over date */
+	char dbuf[40];
+	const char *sp = strchr(s->date, ' ');
+	snprintf(dbuf, sizeof(dbuf), "%.*s", sp ? (int)(sp - s->date) : (int)strlen(s->date), s->date);
+	bu_draw_text_right(c, t->font, (bu_rect){ 0, PH - PANEL_H + 4, PW - 10, 24 }, s->clock, 13, tray_main);
+	bu_draw_text_right(c, t->font, (bu_rect){ 0, PH - 22, PW - 10, 18 }, dbuf, 10.5, tray);
 	/* volume popup */
 	if (s->vol_popup)
 		draw_vol_popup(c, t, s);
 }
-
-
 
 static void draw_assist(bu_canvas *c, bu_theme *t, bd_state *s)
 {
@@ -776,162 +662,84 @@ static void draw_assist(bu_canvas *c, bu_theme *t, bd_state *s)
 			bu_fill_circle(c, b.x + 21 + dx * 12, b.y + 21 + dy * 12, 3, BU_RGB(255, 255, 255));
 }
 
-/* Launchpad (macOS family): full-screen 7x5 grid over the
- * wallpaper, search top-centre, page dots bottom-centre
- * (ui-metrics.md). 16 apps fill rows 0-2 of the 5-row grid. */
-static void draw_launchpad(bu_canvas *c, bu_theme *t)
+/* One launcher tile: the unified-set icon (or the glyph on
+ * the app's tint tile) with the 12.5 px name under it. */
+static void ln_draw_tile(bu_canvas *c, bu_theme *t, int app, bu_rect cell, int isz)
 {
-	bu_color veil = t->surface;
-	veil.a = 205;
-	bu_fill_rect(c, (bu_rect){ 0, 0, PW, PH }, veil);
-	bu_rect search = { PW / 2 - 130, 16, 260, 34 };
-	bu_fill_round_rect(c, search, 10, t->surface2);
-	bu_icon_search(c, search.x + 22, search.y + 17, t->text_faint);
-	bu_draw_text(c, t->font, search.x + 40, search.y + 6, "検索", 13.5, t->text_faint);
-	for (int i = 0; i < NAPPS; i++) {
-		bu_rect tr = tile_rect(i);
-		int cx = tr.x + tr.w / 2;
-		if (!draw_app_asset(c, i, cx - 28, tr.y + 2, 56)) {
-			bu_fill_round_rect(c, (bu_rect){ cx - 26, tr.y + 4, 52, 52 }, 12, APPS[i].tint);
-			APPS[i].icon(c, cx, tr.y + 30, BU_RGB(255, 255, 255));
-		}
-		bu_draw_text_centered(c, t->font, (bu_rect){ tr.x, tr.y + 62, tr.w, 16 }, APPS[i].name, 12, t->text);
+	int cx = cell.x + cell.w / 2;
+	if (!draw_app_asset(c, app, cx - isz / 2, cell.y + 2, isz)) {
+		bu_fill_round_rect(c, (bu_rect){ cx - isz / 2, cell.y + 2, isz, isz }, 12, APPS[app].tint);
+		APPS[app].icon(c, cx, cell.y + 2 + isz / 2, BU_RGB(255, 255, 255));
 	}
-	bu_fill_circle(c, PW / 2 - 10, PH - 16, 3, t->text);
-	bu_fill_circle(c, PW / 2 + 4, PH - 16, 3, t->text_faint);
-}
-
-/* Windows 11 Start: search, "ピン留め" pin grid (32 px pins),
- * and the user/power footer bar, compressed to fit 480 high. */
-static void draw_win11_start(bu_canvas *c, bu_theme *t)
-{
-	bu_rect r = win11_start_rect();
-	bu_shadow_round_rect(c, r, 8, 10, BU_RGBA(0, 0, 0, 110));
-	bu_color sf = t->surface;
-	sf.a = 250;
-	bu_fill_round_rect(c, r, 8, sf);
-	bu_stroke_round_rect(c, r, 8, 1, t->line);
-	bu_rect search = { r.x + 24, r.y + 18, r.w - 48, 32 };
-	bu_fill_round_rect(c, search, 8, t->surface2);
-	bu_icon_search(c, search.x + 22, search.y + 16, t->text_faint);
-	bu_draw_text(c, t->font, search.x + 40, search.y + 5, "検索", 13, t->text_faint);
-	bu_draw_text(c, t->font, r.x + 32, r.y + 62, "ピン留め", 13, t->text);
-	bu_draw_text_right(c, t->font, (bu_rect){ r.x, r.y + 64, r.w - 32, 16 }, "すべてのアプリ", 11, t->text_dim);
-	for (int i = 0; i < NAPPS; i++) {
-		bu_rect tr = tile_rect(i);
-		int cx = tr.x + tr.w / 2;
-		if (!draw_app_asset(c, i, cx - 16, tr.y + 4, 32)) {
-			bu_fill_round_rect(c, (bu_rect){ cx - 16, tr.y + 4, 32, 32 }, 8, APPS[i].tint);
-			APPS[i].icon(c, cx, tr.y + 20, BU_RGB(255, 255, 255));
-		}
-		bu_draw_text_centered(c, t->font, (bu_rect){ tr.x, tr.y + 42, tr.w, 16 }, APPS[i].name, 11, t->text);
-	}
-	/* footer: user left, power right, on a surface2 band */
-	bu_rect foot = { r.x, r.y + r.h - 48, r.w, 48 };
-	bu_fill_round_rect(c, foot, 8, t->surface2);
-	bu_fill_rect(c, (bu_rect){ foot.x, foot.y, foot.w, 10 }, t->surface2);
-	int fcy = foot.y + foot.h / 2;
-	bu_fill_circle(c, foot.x + 52, fcy, 13, t->accent);
-	bu_draw_text_centered(c, t->font, (bu_rect){ foot.x + 39, fcy - 10, 26, 20 }, "U", 13, BU_RGB(255, 255, 255));
-	bu_draw_text(c, t->font, foot.x + 74, fcy - 10, "user", 13, t->text);
-	bu_icon_power(c, foot.x + foot.w - 52, fcy, t->text_dim);
-}
-
-/* Windows XP Start: Luna header with the 48x48 user picture,
- * two columns (apps left, places right), logoff/power footer. */
-static void draw_xp_start(bu_canvas *c, bu_theme *t)
-{
-	bu_rect r = xp_start_rect();
-	bu_shadow_round_rect(c, r, 8, 10, BU_RGBA(0, 0, 0, 120));
-	bu_fill_round_rect(c, r, 8, t->surface);
-	bu_color deep = t->accent;
-	deep.r = deep.r * 55 / 100; deep.g = deep.g * 55 / 100; deep.b = deep.b * 72 / 100;
-	/* header band (65 px), square at the bottom edge */
-	bu_rect head = { r.x, r.y, r.w, XP_HEADER_H + 8 };
-	bu_gradient_round_v(c, head, 8, t->accent, deep);
-	bu_fill_rect(c, (bu_rect){ r.x, r.y + XP_HEADER_H - 8, r.w, 16 }, deep);
-	bu_fill_rect(c, (bu_rect){ r.x + 10, r.y + 7, 50, 50 }, BU_RGB(255, 255, 255));
-	bu_fill_rect(c, (bu_rect){ r.x + 12, r.y + 9, 46, 46 }, t->accent2);
-	bu_fill_circle(c, r.x + 35, r.y + 26, 7, BU_RGB(255, 255, 255));
-	bu_fill_rect(c, (bu_rect){ r.x + 24, r.y + 38, 22, 12 }, BU_RGB(255, 255, 255));
-	bu_draw_text(c, t->font, r.x + 72, r.y + 21, "user", 17, BU_RGB(255, 255, 255));
-	/* body columns */
-	int y0 = r.y + XP_HEADER_H, body_h = r.h - XP_HEADER_H - XP_FOOTER_H;
-	bu_color pale = t->accent;
-	pale.r = pale.r + (255 - pale.r) * 4 / 5;
-	pale.g = pale.g + (255 - pale.g) * 4 / 5;
-	pale.b = pale.b + (255 - pale.b) * 4 / 5;
-	bu_fill_rect(c, (bu_rect){ r.x + 196, y0, r.w - 196, body_h }, pale);
-	for (int k = 0; k < 8; k++) {
-		bu_rect lr = tile_rect(XP_LEFT[k]);
-		int app = XP_LEFT[k], cx = lr.x + 22, cy = lr.y + lr.h / 2;
-		int drawn = draw_app_asset(c, app, cx - 14, cy - 14, 28);
-		if (!drawn && app == 1) drawn = draw_named_asset(c, "xp", "files", cx - 13, cy - 13, 26);
-		if (!drawn && app == 8) drawn = draw_named_asset(c, "xp", "browser", cx - 13, cy - 13, 26);
-		if (!drawn) {
-			bu_fill_round_rect(c, (bu_rect){ cx - 14, cy - 14, 28, 28 }, 6, APPS[app].tint);
-			APPS[app].icon(c, cx, cy, BU_RGB(255, 255, 255));
-		}
-		bu_draw_text(c, t->font, lr.x + 44, lr.y + (lr.h - 19) / 2, APPS[app].name, 13, t->text);
-		bu_rect rr = tile_rect(XP_RIGHT[k]);
-		int rapp = XP_RIGHT[k];
-		int rcx = rr.x + 18, rcy = rr.y + rr.h / 2;
-		if (!draw_app_asset(c, rapp, rcx - 12, rcy - 12, 24)) {
-			bu_fill_round_rect(c, (bu_rect){ rcx - 12, rcy - 12, 24, 24 }, 5, APPS[rapp].tint);
-			APPS[rapp].icon(c, rcx, rcy, BU_RGB(255, 255, 255));
-		}
-		bu_draw_text(c, t->font, rr.x + 36, rr.y + (rr.h - 17) / 2, APPS[rapp].name, 12, t->text);
-	}
-	/* footer band: logoff left, power right */
-	bu_rect foot = { r.x, r.y + r.h - XP_FOOTER_H, r.w, XP_FOOTER_H };
-	bu_gradient_v(c, foot, t->accent, deep);
-	int fcy = foot.y + foot.h / 2;
-	bu_fill_round_rect(c, (bu_rect){ foot.x + 12, fcy - 11, 22, 22 }, 4, BU_RGB(240, 140, 40));
-	bu_line(c, foot.x + 17, fcy, foot.x + 27, fcy, 2, BU_RGB(255, 255, 255));
-	bu_line(c, foot.x + 23, fcy - 4, foot.x + 27, fcy, 2, BU_RGB(255, 255, 255));
-	bu_line(c, foot.x + 27, fcy, foot.x + 23, fcy + 4, 2, BU_RGB(255, 255, 255));
-	bu_draw_text(c, t->font, foot.x + 42, fcy - 9, "ログオフ", 12.5, BU_RGB(255, 255, 255));
-	bu_draw_text_right(c, t->font, (bu_rect){ foot.x, fcy - 9, foot.w - 46, 18 }, "電源を切る", 12.5, BU_RGB(255, 255, 255));
-	bu_fill_round_rect(c, (bu_rect){ foot.x + foot.w - 36, fcy - 11, 22, 22 }, 4, BU_RGB(216, 72, 56));
-	bu_icon_power(c, foot.x + foot.w - 25, fcy, BU_RGB(255, 255, 255));
+	bu_draw_text_centered(c, t->font, (bu_rect){ cell.x, cell.y + isz + 6, cell.w, 16 },
+			      APPS[app].name, 12.5, t->text);
 }
 
 static void draw_launcher(bu_canvas *c, bu_theme *t, bd_state *s)
 {
-	if (skin_layout() == BD_LAYOUT_MAC) {
-		draw_launchpad(c, t);
-		return;
-	}
-	if (skin_layout() == BD_LAYOUT_WIN11) {
-		draw_win11_start(c, t);
-		return;
-	}
-	if (bu_chrome == BU_CHROME_LUNA) {
-		draw_xp_start(c, t);
-		return;
-	}
-	bu_rect sheet = launcher_sheet();
-	int srad = t->radius > 0 ? t->radius + 6 : 18;
-	bu_shadow_round_rect(c, sheet, srad, 10, BU_RGBA(0, 0, 0, 110));
+	(void)s;
+	ln_recent_load();
+	bu_rect p = launcher_panel();
+	bu_shadow_round_rect(c, p, 12, 10, BU_RGBA(0, 0, 0, 110));
 	bu_color sf = t->surface;
 	sf.a = 248;
-	bu_fill_round_rect(c, sheet, srad, sf);
-	bu_rect search = { sheet.x + 22, sheet.y + 18, sheet.w - 44, 38 };
-	bu_fill_round_rect(c, search, 10, t->surface2);
-	bu_icon_search(c, search.x + 22, search.y + 19, t->text_faint);
-	bu_draw_text(c, t->font, search.x + 40, search.y + 8, "アプリを検索", 14, t->text_faint);
-	for (int i = 0; i < NAPPS; i++) {
-		bu_rect tr = tile_rect(i);
-		int cx = tr.x + tr.w / 2, cy = tr.y + 40;
-		if (!draw_app_asset(c, i, cx - 24, cy - 24, 48)) {
-			bu_fill_round_rect(c, (bu_rect){ cx - 23, cy - 23, 46, 46 }, 12, APPS[i].tint);
-			APPS[i].icon(c, cx, cy, BU_RGB(255, 255, 255));
+	bu_fill_round_rect(c, p, 12, sf);
+	bu_stroke_round_rect(c, p, 12, 1, t->line);
+
+	/* search field (40 px) */
+	bu_rect sr = ln_search_rect();
+	bu_fill_round_rect(c, sr, 10, t->surface2);
+	if (ln_search_focus)
+		bu_stroke_round_rect(c, sr, 10, 1, t->accent);
+	bu_icon_search(c, sr.x + 22, sr.y + sr.h / 2, t->text_faint);
+	if (ln_query[0])
+		bu_draw_text(c, t->font, sr.x + 40, sr.y + 10, ln_query, 14, t->text);
+	else
+		bu_draw_text(c, t->font, sr.x + 40, sr.y + 10, "アプリを検索", 14, t->text_faint);
+
+	/* footer hairline */
+	bu_fill_rect(c, (bu_rect){ p.x + 1, p.y + p.h - 57, p.w - 2, 1 }, t->line);
+	int fcy = p.y + p.h - 28;
+
+	if (ln_query[0]) {
+		bu_draw_text(c, t->font, p.x + 56, p.y + 74, "検索結果", 13, t->text);
+		int pos = 0;
+		for (int i = 0; i < NAPPS && pos < 12; i++) {
+			if (!ln_matches(i))
+				continue;
+			ln_draw_tile(c, t, i, ln_cell(pos, p.y + 96, 76), 48);
+			pos++;
 		}
-		bu_draw_text_centered(c, t->font, (bu_rect){ tr.x, cy + 28, tr.w, 20 }, APPS[i].name, 12.5, t->text);
+		if (pos == 0)
+			bu_draw_text(c, t->font, p.x + 56, p.y + 100, "見つかりませんでした", 13, t->text_dim);
+	} else if (ln_all) {
+		bu_draw_text(c, t->font, p.x + 56, p.y + 74, "アプリ", 13, t->text);
+		for (int i = 0; i < 9; i++)
+			ln_draw_tile(c, t, APP_CAT_APPS[i], ln_cell8(i, p.y + 96, 68), 40);
+		bu_draw_text(c, t->font, p.x + 56, p.y + 246, "システム", 13, t->text);
+		for (int i = 0; i < 7; i++)
+			ln_draw_tile(c, t, APP_CAT_SYS[i], ln_cell8(i, p.y + 268, 68), 40);
+		bu_button(c, t, ln_back_btn(), "‹ 戻る", BU_BTN_NORMAL, false);
+		bu_rect pr = ln_power_rect();
+		bu_icon_power(c, pr.x + pr.w / 2, fcy, t->text_dim);
+	} else {
+		bu_draw_text(c, t->font, p.x + 56, p.y + 74, "ピン留め", 13, t->text);
+		for (int i = 0; i < 12; i++)
+			ln_draw_tile(c, t, LN_PINS[i], ln_cell(i, p.y + 96, 76), 48);
+		bu_draw_text(c, t->font, p.x + 56, p.y + 262, "最近使ったアプリ", 13, t->text);
+		if (ln_nrecent == 0)
+			bu_draw_text(c, t->font, p.x + 56, p.y + 292, "まだありません", 12.5, t->text_faint);
+		for (int i = 0; i < ln_nrecent; i++)
+			ln_draw_tile(c, t, ln_recent[i], ln_recent_rect(i), 40);
+		/* footer: user left, すべてのアプリ + power right */
+		bu_fill_circle(c, p.x + 40, fcy, 13, t->accent);
+		bu_draw_text_centered(c, t->font, (bu_rect){ p.x + 27, fcy - 10, 26, 20 },
+				      "U", 13, BU_RGB(255, 255, 255));
+		bu_draw_text(c, t->font, p.x + 62, fcy - 10, "user", 13, t->text);
+		bu_button(c, t, ln_allapps_btn(), "すべてのアプリ ›", BU_BTN_PRIMARY, false);
+		bu_rect pr = ln_power_rect();
+		bu_icon_power(c, pr.x + pr.w / 2, fcy, t->text_dim);
 	}
-	bu_fill_circle(c, PW / 2 - 10, sheet.y + sheet.h - 18, 3, t->text);
-	bu_fill_circle(c, PW / 2 + 4, sheet.y + sheet.h - 18, 3, t->text_faint);
-	(void)s;
 }
 
 static void draw_settings(bu_canvas *c, bu_theme *t, bd_state *s)
@@ -941,65 +749,21 @@ static void draw_settings(bu_canvas *c, bu_theme *t, bd_state *s)
 	bu_shadow_round_rect(c, win, rad, 10, BU_RGBA(0, 0, 0, 120));
 	bu_fill_round_rect(c, win, rad, t->surface);
 	bu_rect tb = { win.x, win.y, win.w, 36 };
-	bool bevel = bu_chrome == BU_CHROME_BEVEL && skin_layout() != BD_LAYOUT_CLASSIC;
-	bool luna = bu_chrome == BU_CHROME_LUNA;
-	if (bevel || luna) {
-		/* classic caption: coloured gradient, white text */
-		bu_color bot = t->accent;
-		bot.g = bot.g + 90 > 255 ? 255 : bot.g + 90;
-		bot.b = bot.b + 120 > 255 ? 255 : bot.b + 120;
-		if (luna) {
-			bot = t->accent;
-			bot.r = bot.r * 70 / 100; bot.g = bot.g * 70 / 100; bot.b = bot.b * 80 / 100;
-		}
-		bu_gradient_round_v(c, tb, rad, t->accent, bot);
-		bu_fill_rect(c, (bu_rect){ win.x, win.y + 22, win.w, 14 }, bot);
-	} else {
-		bu_fill_round_rect(c, tb, rad, t->surface2);
-		bu_fill_rect(c, (bu_rect){ win.x, win.y + 22, win.w, 14 }, t->surface2);
-		bu_fill_rect(c, (bu_rect){ win.x, win.y + 35, win.w, 1 }, t->line);
-	}
-	int l = skin_layout();
-	if (l == BD_LAYOUT_MAC) {
-		/* traffic lights on the left, title centred */
-		bu_fill_circle(c, win.x + 19, win.y + 18, 6, BU_RGB(255, 95, 87));
-		bu_fill_circle(c, win.x + 39, win.y + 18, 6, BU_RGB(254, 188, 46));
-		bu_fill_circle(c, win.x + 59, win.y + 18, 6, BU_RGB(40, 200, 64));
-		bu_draw_text_centered(c, t->font, (bu_rect){ win.x, win.y + 8, win.w, 20 }, "設定", 13.5, t->text);
-	} else if (l == BD_LAYOUT_CLASSIC) {
-		/* pinstriped caption, close box on the left */
-		for (int i = 0; i < 3; i++)
-			bu_fill_rect(c, (bu_rect){ win.x + 70, win.y + 10 + i * 6, win.w - 140, 1 }, t->line);
-		bu_stroke_round_rect(c, (bu_rect){ win.x + 14, win.y + 13, 10, 10 }, 0, 1, t->text_dim);
-		bu_draw_text_centered(c, t->font, (bu_rect){ win.x, win.y + 8, win.w, 20 }, "設定", 13.5, t->text);
-	} else if (l >= BD_LAYOUT_WIN11) {
-		/* caption glyphs on the right: min / max / close */
-		bu_color ink = (bevel || luna) ? BU_RGB(255, 255, 255) : t->text;
-		bu_color inkd = (bevel || luna) ? BU_RGB(255, 255, 255) : t->text_dim;
-		bu_icon_gear(c, win.x + 20, win.y + 18, inkd);
-		bu_draw_text(c, t->font, win.x + 36, win.y + 9, "設定", 13.5, ink);
-		int cx0 = win.x + win.w - 46;
-		bu_line(c, cx0 - 82, win.y + 18, cx0 - 72, win.y + 18, 1, inkd);
-		bu_stroke_round_rect(c, (bu_rect){ cx0 - 41, win.y + 13, 10, 10 }, 0, 1, inkd);
-		if (luna) {
-			/* Luna close: red-orange rounded box */
-			bu_fill_round_rect(c, (bu_rect){ cx0 + 8, win.y + 7, 22, 22 }, 4, BU_RGB(232, 108, 84));
-			bu_line(c, cx0 + 14, win.y + 13, cx0 + 24, win.y + 23, 2, BU_RGB(255, 255, 255));
-			bu_line(c, cx0 + 24, win.y + 13, cx0 + 14, win.y + 23, 2, BU_RGB(255, 255, 255));
-		} else {
-			bu_line(c, cx0 + 14, win.y + 13, cx0 + 24, win.y + 23, 1, ink);
-			bu_line(c, cx0 + 24, win.y + 13, cx0 + 14, win.y + 23, 1, ink);
-		}
-	} else {
-		bu_icon_gear(c, win.x + 20, win.y + 18, t->text_dim);
-		bu_draw_text(c, t->font, win.x + 36, win.y + 9, "設定", 13.5, t->text);
-		bu_fill_circle(c, win.x + win.w - 20, win.y + 18, 6, t->danger);
-		bu_fill_circle(c, win.x + win.w - 40, win.y + 18, 6, t->warn);
-		bu_fill_circle(c, win.x + win.w - 60, win.y + 18, 6, t->ok);
+	bu_fill_round_rect(c, tb, rad, t->surface2);
+	bu_fill_rect(c, (bu_rect){ win.x, win.y + 22, win.w, 14 }, t->surface2);
+	bu_fill_rect(c, (bu_rect){ win.x, win.y + 35, win.w, 1 }, t->line);
+	bu_icon_gear(c, win.x + 20, win.y + 18, t->text_dim);
+	bu_draw_text(c, t->font, win.x + 36, win.y + 9, "設定", 13.5, t->text);
+	/* close: a danger-red circle with a white x */
+	{
+		bu_rect cr = settings_close();
+		bu_fill_circle(c, cr.x + cr.w / 2, cr.y + cr.h / 2, 11, t->danger);
+		bu_line(c, cr.x + 7, cr.y + 7, cr.x + 17, cr.y + 17, 2, BU_RGB(255, 255, 255));
+		bu_line(c, cr.x + 17, cr.y + 7, cr.x + 7, cr.y + 17, 2, BU_RGB(255, 255, 255));
 	}
 	bu_rect side = { win.x, win.y + 36, 160, win.h - 36 };
 	bu_fill_rect(c, side, BU_RGBA(255, 255, 255, 7));
-	const char *cats[] = { "画面", "スキン", "音声", "キーボード", "ネットワーク", "バッテリー", "入力と日本語", "システム", "モード" };
+	const char *cats[] = { "画面", "テーマ", "音声", "キーボード", "ネットワーク", "バッテリー", "入力と日本語", "システム", "モード" };
 	for (int i = 0; i < 9; i++) {
 		bu_rect row = { side.x + 8, side.y + 8 + i * 32, side.w - 16, 27 };
 		bu_list_row(c, t, row, cats[i], NULL, false, i == s->settings_cat);
@@ -1042,8 +806,8 @@ static void draw_settings(bu_canvas *c, bu_theme *t, bd_state *s)
 		return;
 	}
 	if (s->settings_cat == 1) {
-		bu_draw_text(c, t->font, pane.x + 22, pane.y + 16, "スキン", 19, t->text);
-		bu_draw_text(c, t->font, pane.x + 22, pane.y + 48, "テーマと壁紙の配色を切り替えます。全アプリに反映されます。", 12.5, t->text_dim);
+		bu_draw_text(c, t->font, pane.x + 22, pane.y + 16, "テーマ", 19, t->text);
+		bu_draw_text(c, t->font, pane.x + 22, pane.y + 48, "色テーマを切り替えます。レイアウトは共通で、全アプリに反映されます。", 12.5, t->text_dim);
 		for (int vi = 0; vi < 6; vi++) {
 			int i = s->skin_scroll + vi;
 			if (i >= BD_NSKINS)
@@ -1192,7 +956,7 @@ static void draw_settings(bu_canvas *c, bu_theme *t, bd_state *s)
 		return;
 	}
 	{
-		static const char *names[] = { "画面", "スキン", "音声", "キーボード", "ネットワーク", "バッテリー", "入力と日本語", "システム", "モード" };
+		static const char *names[] = { "画面", "テーマ", "音声", "キーボード", "ネットワーク", "バッテリー", "入力と日本語", "システム", "モード" };
 		int ci = s->settings_cat >= 0 && s->settings_cat < 9 ? s->settings_cat : 0;
 		bu_draw_text(c, t->font, pane.x + 22, pane.y + 16, names[ci], 19, t->text);
 		bu_draw_text(c, t->font, pane.x + 22, pane.y + 60, "このカテゴリは今後の更新で拡充されます。", 13, t->text_dim);
@@ -1205,7 +969,7 @@ static int eff_panel_h(bd_state *s)
 	if (s->panel_h > 0)
 		return s->panel_h;
 	int ph = bd_skin_get()->panel_h;
-	return ph > 0 ? ph : 42;
+	return ph > 0 ? ph : 48;
 }
 
 /* ================= shell overlays =================
@@ -1270,7 +1034,7 @@ static void draw_toast(bu_canvas *c, bu_theme *t)
 	int w = tw + 48;
 	if (w < 140) w = 140;
 	if (w > 720) w = 720;
-	int y = top_bar() ? PH - dock_h() - 56 : PH - PANEL_H - 56;
+	int y = PH - PANEL_H - 56;
 	bu_rect r = { (PW - w) / 2, y, w, 42 };
 	bu_shadow_round_rect(c, r, 21, 8, BU_RGBA(0, 0, 0, 120));
 	bu_color bg = t->surface;
@@ -1398,14 +1162,10 @@ int bd_cc_is_open(void) { return cc_open; }
 
 static bu_rect cc_btn_rect(void)
 {
-	if (top_bar())
-		return (bu_rect){ PW - 282, 0, 30, topbar_h() };
-	return (bu_rect){ panel_rx() - 202, PH - PANEL_H, 34, PANEL_H };
+	return (bu_rect){ PW - 202, PH - PANEL_H, 34, PANEL_H };
 }
 static bu_rect cc_rect(void)
 {
-	if (top_bar())
-		return (bu_rect){ PW - 316, topbar_h() + 8, 300, 244 };
 	return (bu_rect){ PW - 316, PH - PANEL_H - 252, 300, 244 };
 }
 static bu_rect cc_vol_slider(void) { bu_rect r = cc_rect(); return (bu_rect){ r.x + 52, r.y + 46, r.w - 110, 26 }; }
@@ -1472,7 +1232,7 @@ void bd_scenes_tick(bd_state *s, bool *changed)
 
 void bd_draw_shell(bu_canvas *c, bu_theme *t, bd_state *s)
 {
-	PANEL_H = eff_panel_h(s);	/* skin family bar height (Vista 30, Win7 40, Win11 48, …); s->panel_h overrides */
+	PANEL_H = eff_panel_h(s);	/* taskbar height: theme value (48), s->panel_h overrides */
 	/* Keep the WM's work area in sync every frame, so a skin
 	 * change (bottom panel vs top bar) applies at once. */
 	bu_rect wa;
@@ -1496,23 +1256,11 @@ void bd_draw_login(bu_canvas *c, bu_theme *t, bd_state *s, const char *user)
 	wallpaper(c);
 	bu_draw_text_centered(c, t->font, (bu_rect){ 0, 58, PW, 90 }, s->clock, 64, t->text);
 	bu_draw_text_centered(c, t->font, (bu_rect){ 0, 138, PW, 30 }, s->date, 16, t->text_dim);
-	/* The login card follows the skin family: macOS, Classic Mac and
-	 * Windows 11 show the user directly on the wallpaper, like the
-	 * originals; the braindesk and Windows families keep a panel card. */
-	int l = skin_layout();
-	if (l == BD_LAYOUT_BD || l == BD_LAYOUT_WIN) {
-		bu_rect card = { PW / 2 - 170, 196, 340, 216 };
-		bu_card(c, t, card);
-	}
-	/* Avatar: a square user tile with a white frame on the Windows
-	 * families (XP-style), a circle everywhere else. Geometry is
-	 * unchanged, so the greeter's hit rects still apply. */
-	if (l == BD_LAYOUT_WIN) {
-		bu_fill_rect(c, (bu_rect){ PW / 2 - 28, 212, 56, 56 }, BU_RGB(255, 255, 255));
-		bu_fill_rect(c, (bu_rect){ PW / 2 - 26, 214, 52, 52 }, t->accent);
-	} else {
-		bu_fill_circle(c, PW / 2, 240, 26, t->accent);
-	}
+	/* One design: the login card is always shown (the greeter's
+	 * hit rects are built on this geometry). */
+	bu_rect card = { PW / 2 - 170, 196, 340, 216 };
+	bu_card(c, t, card);
+	bu_fill_circle(c, PW / 2, 240, 26, t->accent);
 	{
 		char initial[2] = { '?', '\0' };
 		if (user && user[0])
@@ -1526,8 +1274,7 @@ void bd_draw_login(bu_canvas *c, bu_theme *t, bd_state *s, const char *user)
 	bu_draw_text_centered(c, t->font, (bu_rect){ PW - 96, PH - 52, 60, 18 }, "電源", 11, t->text_dim);
 	bu_icon_gear(c, PW - 126, PH - 66, t->text_dim);
 	bu_draw_text_centered(c, t->font, (bu_rect){ PW - 156, PH - 52, 60, 18 }, "再起動", 11, t->text_dim);
-	/* Title names the active skin, so the greeter shows which family
-	 * is selected. */
+	/* Title names the active colour theme. */
 	char title[64];
 	snprintf(title, sizeof(title), "Brainux · %s", bd_skin_get()->name);
 	bu_draw_text(c, t->font, 16, PH - 30, title, 12, t->text_faint);
@@ -1611,18 +1358,27 @@ int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y,
 				return BD_ACT_NONE;
 			}
 		}
-		bool on_shell_chrome;
-		if (top_bar())
-			on_shell_chrome = y < topbar_h() ||
-				(skin_layout() == BD_LAYOUT_MAC && in_rect(dock_rect(), x, y));
-		else
-			on_shell_chrome = y >= PH - PANEL_H;
+		bool on_shell_chrome = y >= PH - PANEL_H;
 		if (!on_shell_chrome && bd_wm_pointer(ev_type, x, y)) {
 			*changed = true;
 			return BD_ACT_NONE;
 		}
 	}
 	if (ev_type == BU_EV_KEY) {
+		if (s->view == BD_VIEW_LAUNCHER && ln_search_focus && value == 1) {
+			/* launcher search input: Esc clears the query,
+			 * Enter ends input, other keys edit the query */
+			if (code == 1 /* ESC */) {
+				ln_query[0] = 0;
+				ln_search_focus = false;
+			} else if (code == 28 /* ENTER */) {
+				ln_search_focus = false;
+			} else {
+				ln_query_key(code);
+			}
+			*changed = true;
+			return BD_ACT_NONE;
+		}
 		if (sw_open) {
 			/* switcher keys: Tab / arrows cycle, Enter
 			 * activates, Esc cancels */
@@ -1646,7 +1402,7 @@ int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y,
 		}
 		if (value == 1 && code == 1 /* KEY_ESC */) {
 			if (s->settings_open) { s->settings_open = false; *changed = true; }
-			else if (s->view == BD_VIEW_LAUNCHER) { s->view = BD_VIEW_DESKTOP; *changed = true; }
+			else if (s->view == BD_VIEW_LAUNCHER) { s->view = BD_VIEW_DESKTOP; ln_reset(); *changed = true; }
 		}
 		if (value == 1 && code == 139 /* KEY_MENU */) {
 			s->view = s->view == BD_VIEW_LAUNCHER ? BD_VIEW_DESKTOP : BD_VIEW_LAUNCHER;
@@ -1715,51 +1471,27 @@ int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y,
 			return BD_ACT_NONE;
 		}
 		if (in_rect(clock_rect(), x, y)) {
+			ln_record(4);
 			snprintf(s->launch_path, sizeof(s->launch_path), "/usr/local/bin/bd-clock");
 			*changed = true;
 			return BD_ACT_LAUNCH;
 		}
-		/* macOS dock: the full cell set has its own hit handling
-		 * (the generic quick-launch cells below predate it). */
-		if (skin_layout() == BD_LAYOUT_MAC && in_rect(dock_rect(), x, y)) {
-			for (int i = 0; i <= 11; i++) {
-				if (!in_rect(dock_cell_rect(i), x, y))
-					continue;
-				if (i == 0) {	/* Launchpad: pointer-up toggles, like start */
-					s->start_pressed = true;
-					*changed = true;
-					return BD_ACT_NONE;
-				}
-				*changed = true;
-				if (i == 11)	/* Trash: no action yet */
-					return BD_ACT_NONE;
-				int app = DOCK_APPS[i - 1];
-				s->view = BD_VIEW_DESKTOP;
-				if (app == 0) {
-					s->settings_open = !s->settings_open;
-					return BD_ACT_NONE;
-				}
-				if (APPS[app].exec) {
-					snprintf(s->launch_path, sizeof(s->launch_path), "%s", APPS[app].exec);
-					return BD_ACT_LAUNCH;
-				}
-				return BD_ACT_NONE;
-			}
-			*changed = true;
-			return BD_ACT_NONE;
-		}
-		/* quick launch */
+		/* taskbar favourite pins */
 		if (in_rect(ql_rect(0), x, y)) {
 			s->settings_open = !s->settings_open;
+			if (s->settings_open)
+				ln_record(0);
 			*changed = true;
 			return BD_ACT_NONE;
 		}
 		if (in_rect(ql_rect(1), x, y)) {
+			ln_record(1);
 			snprintf(s->launch_path, sizeof(s->launch_path), "/usr/local/bin/bd-files");
 			*changed = true;
 			return BD_ACT_LAUNCH;
 		}
 		if (in_rect(ql_rect(2), x, y)) {
+			ln_record(8);
 			snprintf(s->launch_path, sizeof(s->launch_path), "/usr/local/bin/bd-web");
 			*changed = true;
 			return BD_ACT_LAUNCH;
@@ -1870,23 +1602,87 @@ int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y,
 			return BD_ACT_NONE; /* clicks inside the window don't fall through */
 		}
 		if (s->view == BD_VIEW_LAUNCHER) {
-			for (int i = 0; i < NAPPS; i++) {
-				if (in_rect(tile_rect(i), x, y)) {
-					if (strcmp(APPS[i].name, "設定") == 0)
-						s->settings_open = true;
-					s->view = BD_VIEW_DESKTOP;
-					*changed = true;
-					if (APPS[i].exec) {
-						snprintf(s->launch_path, sizeof(s->launch_path), "%s", APPS[i].exec);
-						return BD_ACT_LAUNCH;
+			bu_rect p = launcher_panel();
+			ln_recent_load();
+			if (in_rect(ln_search_rect(), x, y)) {
+				ln_search_focus = true;
+				*changed = true;
+				return BD_ACT_NONE;
+			}
+			if (ln_query[0]) {
+				/* search results grid */
+				int pos = 0;
+				for (int i = 0; i < NAPPS && pos < 12; i++) {
+					if (!ln_matches(i))
+						continue;
+					if (in_rect(ln_cell(pos, p.y + 96, 76), x, y)) {
+						ln_reset();
+						*changed = true;
+						return ln_launch(s, i);
 					}
+					pos++;
+				}
+			} else if (ln_all) {
+				if (in_rect(ln_back_btn(), x, y)) {
+					ln_all = false;
+					*changed = true;
 					return BD_ACT_NONE;
 				}
+				for (int i = 0; i < 9; i++) {
+					if (in_rect(ln_cell8(i, p.y + 96, 68), x, y)) {
+						int app = APP_CAT_APPS[i];
+						ln_reset();
+						*changed = true;
+						return ln_launch(s, app);
+					}
+				}
+				for (int i = 0; i < 7; i++) {
+					if (in_rect(ln_cell8(i, p.y + 268, 68), x, y)) {
+						int app = APP_CAT_SYS[i];
+						ln_reset();
+						*changed = true;
+						if (app == 14) {	/* brightness: settings, display */
+							s->settings_open = true;
+							s->settings_cat = 0;
+							s->view = BD_VIEW_DESKTOP;
+							return BD_ACT_NONE;
+						}
+						if (app == 15) {	/* volume: settings, audio */
+							s->settings_open = true;
+							s->settings_cat = 2;
+							s->view = BD_VIEW_DESKTOP;
+							return BD_ACT_NONE;
+						}
+						return ln_launch(s, app);
+					}
+				}
+			} else {
+				if (in_rect(ln_allapps_btn(), x, y)) {
+					ln_all = true;
+					*changed = true;
+					return BD_ACT_NONE;
+				}
+				for (int i = 0; i < 12; i++) {
+					if (in_rect(ln_cell(i, p.y + 96, 76), x, y)) {
+						int app = LN_PINS[i];
+						ln_reset();
+						*changed = true;
+						return ln_launch(s, app);
+					}
+				}
+				for (int i = 0; i < ln_nrecent; i++) {
+					if (in_rect(ln_recent_rect(i), x, y)) {
+						int app = ln_recent[i];
+						ln_reset();
+						*changed = true;
+						return ln_launch(s, app);
+					}
+				}
 			}
-			if (skin_layout() == BD_LAYOUT_MAC || !in_rect(launcher_region(), x, y)) {
-				/* Launchpad is full-screen: a tap that hits no
-				 * app leaves it, like the original. */
+			if (!in_rect(p, x, y)) {
+				/* a tap outside the panel closes the launcher */
 				s->view = BD_VIEW_DESKTOP;
+				ln_reset();
 				*changed = true;
 			}
 			return BD_ACT_NONE;
@@ -1914,8 +1710,11 @@ int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y,
 		}
 		if (s->start_pressed) {
 			s->start_pressed = false;
-			if (in_rect(start_btn(), x, y))
+			if (in_rect(start_btn(), x, y)) {
 				s->view = s->view == BD_VIEW_LAUNCHER ? BD_VIEW_DESKTOP : BD_VIEW_LAUNCHER;
+				if (s->view == BD_VIEW_DESKTOP)
+					ln_reset();
+			}
 			*changed = true;
 		}
 		if (s->drag_slider == 2 || s->drag_slider == 3 || s->drag_slider == 4) {
