@@ -1,13 +1,16 @@
 CC ?= gcc
 CFLAGS ?= -O2 -Wall -Wextra -Wno-unused-parameter
-SRC = src/bui.c src/scenes.c src/bui_fb.c src/bui_input.c src/bui_alsa.c src/bui_osk.c src/bui_skin.c
+SRC = src/bui.c src/scenes.c src/bui_fb.c src/bui_input.c src/bui_alsa.c src/bui_osk.c src/bui_skin.c src/brainreg.c
 
-APPS = bd-files bd-tasks bd-notes bd-clock bd-calc bd-player bd-recorder bd-devices bd-pkg bd-web bd-deck
-APPSRC = src/bui.c src/bui_fb.c src/bui_input.c src/bui_alsa.c src/bui_osk.c src/bui_skin.c
+APPS = bd-files bd-tasks bd-notes bd-clock bd-calc bd-player bd-recorder bd-devices bd-pkg bd-web bd-deck bd-regedit
+APPSRC = src/bui.c src/bui_fb.c src/bui_input.c src/bui_alsa.c src/bui_osk.c src/bui_skin.c src/brainreg.c
 
 all: demo shell test_events greeter apps
 
-apps: $(APPS)
+apps: $(APPS) brainctl
+
+brainctl: src/apps/brainctl.c src/brainreg.c src/brainreg.h
+	$(CC) $(CFLAGS) -o $@ src/brainreg.c src/apps/brainctl.c
 
 bd-%: src/apps/bd-%.c src/apps/bdapp.h $(APPSRC)
 	$(CC) $(CFLAGS) -o $@ $(APPSRC) $< -lm

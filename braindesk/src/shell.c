@@ -8,6 +8,7 @@
 #include "scenes.h"
 #include "bui_alsa.h"
 #include "bui_skin.h"
+#include "brainreg.h"
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
@@ -69,6 +70,24 @@ static void panel_prefs_path(char *out, size_t n)
 }
 static void panel_prefs_load(bd_state *s)
 {
+	/* brainreg first; legacy file as fallback (see bd_skin_load).
+	 * Each key is independent: either one present in the store
+	 * is enough to take the store's values. */
+	char *reg_ph = brainreg_get("desktop", "panel_height");
+	char *reg_as = brainreg_get("desktop", "assist");
+	if (reg_ph || reg_as) {
+		if (reg_ph) {
+			int ph = atoi(reg_ph);
+			if (ph == 40 || ph == 52 || ph == 64)
+				s->panel_h = ph;
+		}
+		if (reg_as)
+			s->assist_on = strcmp(reg_as, "true") == 0 ||
+				       strcmp(reg_as, "1") == 0;
+		free(reg_ph);
+		free(reg_as);
+		return;
+	}
 	char path[512];
 	panel_prefs_path(path, sizeof(path));
 	FILE *fp = fopen(path, "r");
@@ -84,6 +103,10 @@ static void panel_prefs_load(bd_state *s)
 }
 static void panel_prefs_save(bd_state *s)
 {
+	char val[16];
+	snprintf(val, sizeof(val), "%d", s->panel_h);
+	brainreg_set("desktop", "panel_height", val);
+	brainreg_set("desktop", "assist", s->assist_on ? "true" : "false");
 	char path[512];
 	panel_prefs_path(path, sizeof(path));
 	char dir[512];

@@ -1,4 +1,5 @@
 #include "bui_skin.h"
+#include "brainreg.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -109,12 +110,18 @@ static void skin_path(char *out, size_t n)
 
 void bd_skin_load(void)
 {
+	/* brainreg first (desktop.skin); the legacy file is the
+	 * fallback for settings written before the store existed. */
+	int idx = brainreg_get_int("desktop", "skin", -1);
+	if (idx >= 0 && idx < BD_NSKINS) {
+		bd_skin_current = idx;
+		return;
+	}
 	char path[512];
 	skin_path(path, sizeof(path));
 	FILE *fp = fopen(path, "r");
 	if (!fp)
 		return;
-	int idx;
 	if (fscanf(fp, "%d", &idx) == 1 && idx >= 0 && idx < BD_NSKINS)
 		bd_skin_current = idx;
 	fclose(fp);
@@ -122,6 +129,11 @@ void bd_skin_load(void)
 
 void bd_skin_save(int idx)
 {
+	/* brainreg is the store of record; the legacy file is still
+	 * written as a mirror for anything that reads it directly. */
+	char val[16];
+	snprintf(val, sizeof(val), "%d", idx);
+	brainreg_set("desktop", "skin", val);
 	char path[512];
 	skin_path(path, sizeof(path));
 	char dir[512];
