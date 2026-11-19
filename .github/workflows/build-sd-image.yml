@@ -1,0 +1,51 @@
+name: Build SD image
+
+# Standalone, manually dispatched SD image build.
+# The legacy build.yml only runs on ci* branches and tags and publishes
+# through the old release-asset flow; this workflow simply builds the
+# Brainux SD image and stores it as a workflow artifact so it can be
+# downloaded and flashed (or booted in an emulator) directly.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-sd:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Make /opt writable
+        run: sudo chown "$(whoami):$(whoami)" /opt
+      - name: Install cegcc
+        run: |
+          wget -O cegcc.zip https://github.com/brain-hackers/cegcc-build/releases/download/2022-04-11-133546/cegcc-2022-04-11-133546.zip
+          unzip -q cegcc.zip
+          cp -r cegcc /opt/
+      - name: Workaround for apt update failure
+        run: sudo rm -f /etc/apt/sources.list.d/github_git-lfs.*
+      - name: Install deps
+        run: sudo apt update && sudo apt install -y kpartx build-essential bison flex libncurses5-dev gcc-arm-linux-gnueabi qemu-user-static debootstrap
+      - name: Configure for Linux
+        run: make ldefconfig
+      - name: Build Linux
+        run: make lbuild
+      - name: Build Debian Root
+        run: make brainux brainux-umount-special
+      - name: Build bsd-ce
+        run: make -C nkbin_maker bsd-ce
+      - name: Build SD image
+        run: make image/sd.img
+        env:
+          BRAINUX_VERSION: ${{ github.sha }}
+      - name: Compress
+        run: |
+          mv image/sd.img sdimage-${{ github.sha }}.img
+          zip sdimage-${{ github.sha }}.zip sdimage-${{ github.sha }}.img
+      - name: Upload SD image
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdimage-${{ github.sha }}
+          path: sdimage-${{ github.sha }}.zip
+          retention-days: 14
