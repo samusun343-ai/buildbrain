@@ -20,8 +20,11 @@ for d in /proc/[0-9]*; do
 	pid="${d#/proc/}"
 	[ -r "$d/smaps_rollup" ] || continue
 	comm=$(cat "$d/comm" 2>/dev/null) || continue
+	# NOTE: the stock session starts the WM via /usr/bin/x-window-manager
+	# (alternatives symlink to jwm), so the kernel comm is
+	# "x-window-manager", not "jwm" — match both, or the WM is missed.
 	case "$comm" in
-		Xorg|weston|jwm|pcmanfm|lxterminal|gnome-terminal|xterm|fcitx*|uim*|ly|braindesk|braingreeter|netsurf*|systemd|dbus-daemon|NetworkManager|wpa_supplicant)
+		Xorg|weston|jwm|x-window-manager|x-session-manager|pcmanfm|lxterminal|gnome-terminal|xterm|fcitx*|uim*|ly|braindesk|braingreeter|netsurf*|systemd|dbus-daemon|NetworkManager|wpa_supplicant)
 			pss=$(awk '/^Pss:/{print $2}' "$d/smaps_rollup" 2>/dev/null)
 			rss=$(awk '/^VmRSS:/{print $2}' "$d/status" 2>/dev/null)
 			[ -n "$pss" ] || pss=0
