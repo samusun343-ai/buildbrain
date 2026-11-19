@@ -28,19 +28,53 @@ void bd_workarea(bu_rect *r)
 	else
 		*r = (bu_rect){ 0, 0, PW, PH - PANEL_H };
 }
-#define DOCK_W 208
-#define DOCK_H 54
-static bu_rect dock_rect(void) { return (bu_rect){ (PW - DOCK_W) / 2, PH - DOCK_H - 8, DOCK_W, DOCK_H }; }
+/* macOS dock geometry (ui-metrics.md: tile 48 pt, divider before
+ * Trash). Cells: 0 = Launchpad, 1..10 = apps (DOCK_APPS), 11 =
+ * Trash. Draw and hit code share dock_cell_rect(). */
+#define DOCK_TILE 48
+#define DOCK_PITCH 52
+#define DOCK_PADX 10
+#define DOCK_GAP 6
+static const int DOCK_APPS[10] = { 1, 3, 4, 5, 6, 7, 8, 10, 12, 0 };
+static int dock_w(void)
+{
+	return DOCK_PADX + DOCK_TILE + DOCK_GAP +
+		10 * DOCK_TILE + 9 * (DOCK_PITCH - DOCK_TILE) +
+		DOCK_GAP + 1 + DOCK_GAP + DOCK_TILE + DOCK_PADX;
+}
+static int dock_h(void) { return DOCK_TILE + 18; }
+static bu_rect dock_rect(void) { return (bu_rect){ (PW - dock_w()) / 2, PH - dock_h() - 8, dock_w(), dock_h() }; }
+static bu_rect dock_cell_rect(int i)
+{
+	bu_rect d = dock_rect();
+	int y = d.y + (d.h - DOCK_TILE) / 2;
+	if (i <= 0)
+		return (bu_rect){ d.x + DOCK_PADX, y, DOCK_TILE, DOCK_TILE };
+	if (i >= 11)
+		return (bu_rect){ d.x + d.w - DOCK_PADX - DOCK_TILE, y, DOCK_TILE, DOCK_TILE };
+	return (bu_rect){ d.x + DOCK_PADX + DOCK_TILE + DOCK_GAP + (i - 1) * DOCK_PITCH, y, DOCK_TILE, DOCK_TILE };
+}
+static bu_rect dock_app_cell(int app)
+{
+	for (int i = 0; i < 10; i++)
+		if (DOCK_APPS[i] == app)
+			return dock_cell_rect(i + 1);
+	return (bu_rect){ 0, -100, 0, 0 };
+}
+static bu_rect dock_divider_rect(void)
+{
+	bu_rect d = dock_rect();
+	bu_rect tr = dock_cell_rect(11);
+	return (bu_rect){ tr.x - DOCK_GAP - 1, d.y + 10, 1, d.h - 20 };
+}
 
 static int dock_x0(void) { return bu_chrome == BU_CHROME_DOCK && !top_bar() ? (PW - 600) / 2 : 0; }
 static int panel_rx(void) { return bu_chrome == BU_CHROME_DOCK && !top_bar() ? (PW - 600) / 2 + 600 : PW; }
 static bu_rect start_btn(void)
 {
 	int l = skin_layout();
-	if (l == BD_LAYOUT_MAC) {
-		bu_rect d = dock_rect();
-		return (bu_rect){ d.x + 8, d.y + 7, 40, 40 };
-	}
+	if (l == BD_LAYOUT_MAC)
+		return dock_cell_rect(0);	/* Launchpad tile */
 	if (l == BD_LAYOUT_CLASSIC)
 		return (bu_rect){ 4, 0, 30, topbar_h() };
 	if (l == BD_LAYOUT_WIN11)
@@ -57,8 +91,8 @@ static bu_rect ql_rect(int i)
 {
 	int l = skin_layout();
 	if (l == BD_LAYOUT_MAC) {
-		bu_rect d = dock_rect();
-		return (bu_rect){ d.x + 52 + i * 44, d.y + 7, 40, 40 };
+		static const int ql_apps[3] = { 0, 1, 8 };	/* settings, files, browser */
+		return dock_app_cell(ql_apps[i]);
 	}
 	if (l == BD_LAYOUT_CLASSIC)
 		return (bu_rect){ 0, -100, 0, 0 };	/* no quick launch */
@@ -96,7 +130,7 @@ static bu_rect clock_rect(void)
 static bu_rect vol_popup_rect(void)
 {
 	if (skin_layout() == BD_LAYOUT_MAC)
-		return (bu_rect){ PW - 268, PH - DOCK_H - 84, 256, 58 };
+		return (bu_rect){ PW - 268, PH - dock_h() - 84, 256, 58 };
 	return (bu_rect){ PW - 268, PH - PANEL_H - 66, 256, 58 };
 }
 static bu_rect vol_popup_slider(void) { bu_rect p = vol_popup_rect(); return (bu_rect){ p.x + 44, p.y + 16, p.w - 90, 26 }; }
@@ -107,7 +141,7 @@ static bu_rect settings_win(void)
 {
 	int l = skin_layout();
 	if (l == BD_LAYOUT_MAC)
-		return (bu_rect){ 36, topbar_h() + 12, PW - 72, PH - topbar_h() - 12 - DOCK_H - 20 };
+		return (bu_rect){ 36, topbar_h() + 12, PW - 72, PH - topbar_h() - 12 - dock_h() - 20 };
 	if (l == BD_LAYOUT_CLASSIC)
 		return (bu_rect){ 36, topbar_h() + 12, PW - 72, PH - topbar_h() - 24 };
 	return (bu_rect){ 36, 16, PW - 72, PH - PANEL_H - 26 };
@@ -233,14 +267,71 @@ static const struct app APPS[] = {
 };
 #define NAPPS 16
 
+/* Windows 11 Start (ui-metrics.md: real Start is 640x720 and
+ * cannot fit the 480-high panel, so the same structure — search,
+ * Pinned grid, user/power footer — is kept at a compressed
+ * scale). */
+static bu_rect win11_start_rect(void)
+{
+	int w = 560, h = 396;
+	return (bu_rect){ (PW - w) / 2, PH - PANEL_H - 12 - h, w, h };
+}
+/* Windows XP Start (ui-metrics.md: ~380 wide, header ~65 px with
+ * a 48x48 user picture, two columns, footer band). */
+static bu_rect xp_start_rect(void)
+{
+	int w = 380, h = 376;
+	return (bu_rect){ 0, PH - PANEL_H - h, w, h };
+}
+#define XP_HEADER_H 65
+#define XP_FOOTER_H 42
+static const int XP_LEFT[8] = { 1, 8, 3, 6, 2, 4, 5, 7 };
+static const int XP_RIGHT[8] = { 0, 10, 9, 12, 13, 11, 14, 15 };
+
+/* One helper for every launcher flavour: draw and hit code both
+ * place apps through tile_rect(), whatever the skin family. */
 static bu_rect tile_rect(int i)
 {
+	if (skin_layout() == BD_LAYOUT_MAC) {
+		/* Launchpad: 7 cols x 5 rows (ui-metrics.md) */
+		int cw = 110, ch = 78;
+		int x0 = (PW - 7 * cw) / 2, y0 = 78;
+		return (bu_rect){ x0 + (i % 7) * cw, y0 + (i / 7) * ch, cw, ch };
+	}
+	if (skin_layout() == BD_LAYOUT_WIN11) {
+		bu_rect r = win11_start_rect();
+		int cw = (r.w - 64) / 6;
+		return (bu_rect){ r.x + 32 + (i % 6) * cw, r.y + 92 + (i / 6) * 74, cw, 74 };
+	}
+	if (bu_chrome == BU_CHROME_LUNA) {
+		bu_rect r = xp_start_rect();
+		int y0 = r.y + XP_HEADER_H;
+		for (int k = 0; k < 8; k++) {
+			if (XP_LEFT[k] == i)
+				return (bu_rect){ r.x + 2, y0 + k * 33, 192, 33 };
+			if (XP_RIGHT[k] == i)
+				return (bu_rect){ r.x + 198, y0 + k * 33, 180, 33 };
+		}
+		return (bu_rect){ 0, -100, 0, 0 };
+	}
 	bu_rect sheet = launcher_sheet();
 	int cols = 6, cell_w = (sheet.w - 44) / cols, cell_h = 96;
 	int col = i % cols, row = i / cols;
 	int cx = sheet.x + 22 + col * cell_w + cell_w / 2;
 	int cy = sheet.y + 76 + row * cell_h + 28;
 	return (bu_rect){ cx - cell_w / 2, cy - 40, cell_w, cell_h - 8 };
+}
+
+/* The region a tap must stay inside to keep the launcher open. */
+static bu_rect launcher_region(void)
+{
+	if (skin_layout() == BD_LAYOUT_MAC)
+		return (bu_rect){ 0, 0, PW, PH };
+	if (skin_layout() == BD_LAYOUT_WIN11)
+		return win11_start_rect();
+	if (bu_chrome == BU_CHROME_LUNA)
+		return xp_start_rect();
+	return launcher_sheet();
 }
 
 void bd_update_datetime(bd_state *s)
@@ -432,7 +523,11 @@ static void draw_top_bar(bu_canvas *c, bu_theme *t, bd_state *s, int l)
 	bu_draw_text_right(c, t->font, (bu_rect){ PW - 168, (h - 17) / 2, 160, 17 }, clk, 12, t->text);
 }
 
-/* macOS-style floating dock: launcher tile + quick launch. */
+/* macOS-style floating dock (ui-metrics.md: 48 pt tiles, divider
+ * before Trash): Launchpad + the full app set + Trash, drawn from
+ * the same dock_cell_rect() the hit test uses. A dot under a cell
+ * marks the running/open state we know about (Launchpad open,
+ * Settings open). */
 static void draw_dock(bu_canvas *c, bu_theme *t, bd_state *s)
 {
 	bu_rect d = dock_rect();
@@ -441,25 +536,31 @@ static void draw_dock(bu_canvas *c, bu_theme *t, bd_state *s)
 	pc.a = 235;
 	bu_fill_round_rect(c, d, 16, pc);
 	bu_stroke_round_rect(c, d, 16, 1, t->line);
-	bu_rect sb = start_btn();
-	bu_fill_round_rect(c, sb, 10, t->surface2);
+	bu_rect lp = dock_cell_rect(0);
 	if (s->start_pressed)
-		bu_fill_round_rect(c, sb, 10, t->surface3);
-	if (!draw_named_asset(c, "mac", "launchpad", sb.x + 2, sb.y + 2, 30)) {
+		bu_fill_round_rect(c, lp, 10, t->surface3);
+	if (!draw_named_asset(c, "mac", "launchpad", lp.x + 2, lp.y + 2, 44)) {
 		for (int gy = 0; gy < 3; gy++)
 			for (int gx = 0; gx < 3; gx++)
-				bu_fill_round_rect(c, (bu_rect){ sb.x + 8 + gx * 9, sb.y + 8 + gy * 9, 6, 6 }, 2, t->text_dim);
+				bu_fill_round_rect(c, (bu_rect){ lp.x + 11 + gx * 10, lp.y + 11 + gy * 10, 7, 7 }, 2, t->text_dim);
 	}
-	for (int i = 0; i < 3; i++) {
-		bu_rect chip = ql_rect(i);
-		bool active = (i == 0 && s->settings_open);
+	if (s->view == BD_VIEW_LAUNCHER)
+		bu_fill_circle(c, lp.x + lp.w / 2, d.y + d.h - 4, 2, t->text_dim);
+	for (int i = 0; i < 10; i++) {
+		int app = DOCK_APPS[i];
+		bu_rect cell = dock_cell_rect(i + 1);
+		bool active = (app == 0 && s->settings_open);
+		if (!draw_app_asset(c, app, cell.x + 2, cell.y + 2, 44)) {
+			bu_fill_round_rect(c, (bu_rect){ cell.x + 4, cell.y + 4, 40, 40 }, 10, APPS[app].tint);
+			APPS[app].icon(c, cell.x + cell.w / 2, cell.y + cell.h / 2, BU_RGB(255, 255, 255));
+		}
 		if (active)
-			bu_fill_round_rect(c, chip, 10, t->surface3);
-		if (!draw_app_asset(c, QL_APP_IDX[i], chip.x + 3, chip.y + 3, 28))
-			QL_ICONS[i].icon(c, chip.x + chip.w / 2, chip.y + chip.h / 2, QL_ICONS[i].tint);
-		if (active)
-			bu_fill_circle(c, chip.x + chip.w / 2, d.y + d.h - 4, 2, t->text_dim);
+			bu_fill_circle(c, cell.x + cell.w / 2, d.y + d.h - 4, 2, t->text_dim);
 	}
+	bu_fill_rect(c, dock_divider_rect(), t->line);
+	bu_rect tr = dock_cell_rect(11);
+	if (!draw_named_asset(c, "mac", "trash", tr.x + 2, tr.y + 2, 44))
+		bu_icon_box(c, tr.x + tr.w / 2, tr.y + tr.h / 2, t->text_dim);
 }
 
 
@@ -675,8 +776,140 @@ static void draw_assist(bu_canvas *c, bu_theme *t, bd_state *s)
 			bu_fill_circle(c, b.x + 21 + dx * 12, b.y + 21 + dy * 12, 3, BU_RGB(255, 255, 255));
 }
 
+/* Launchpad (macOS family): full-screen 7x5 grid over the
+ * wallpaper, search top-centre, page dots bottom-centre
+ * (ui-metrics.md). 16 apps fill rows 0-2 of the 5-row grid. */
+static void draw_launchpad(bu_canvas *c, bu_theme *t)
+{
+	bu_color veil = t->surface;
+	veil.a = 205;
+	bu_fill_rect(c, (bu_rect){ 0, 0, PW, PH }, veil);
+	bu_rect search = { PW / 2 - 130, 16, 260, 34 };
+	bu_fill_round_rect(c, search, 10, t->surface2);
+	bu_icon_search(c, search.x + 22, search.y + 17, t->text_faint);
+	bu_draw_text(c, t->font, search.x + 40, search.y + 6, "検索", 13.5, t->text_faint);
+	for (int i = 0; i < NAPPS; i++) {
+		bu_rect tr = tile_rect(i);
+		int cx = tr.x + tr.w / 2;
+		if (!draw_app_asset(c, i, cx - 28, tr.y + 2, 56)) {
+			bu_fill_round_rect(c, (bu_rect){ cx - 26, tr.y + 4, 52, 52 }, 12, APPS[i].tint);
+			APPS[i].icon(c, cx, tr.y + 30, BU_RGB(255, 255, 255));
+		}
+		bu_draw_text_centered(c, t->font, (bu_rect){ tr.x, tr.y + 62, tr.w, 16 }, APPS[i].name, 12, t->text);
+	}
+	bu_fill_circle(c, PW / 2 - 10, PH - 16, 3, t->text);
+	bu_fill_circle(c, PW / 2 + 4, PH - 16, 3, t->text_faint);
+}
+
+/* Windows 11 Start: search, "ピン留め" pin grid (32 px pins),
+ * and the user/power footer bar, compressed to fit 480 high. */
+static void draw_win11_start(bu_canvas *c, bu_theme *t)
+{
+	bu_rect r = win11_start_rect();
+	bu_shadow_round_rect(c, r, 8, 10, BU_RGBA(0, 0, 0, 110));
+	bu_color sf = t->surface;
+	sf.a = 250;
+	bu_fill_round_rect(c, r, 8, sf);
+	bu_stroke_round_rect(c, r, 8, 1, t->line);
+	bu_rect search = { r.x + 24, r.y + 18, r.w - 48, 32 };
+	bu_fill_round_rect(c, search, 8, t->surface2);
+	bu_icon_search(c, search.x + 22, search.y + 16, t->text_faint);
+	bu_draw_text(c, t->font, search.x + 40, search.y + 5, "検索", 13, t->text_faint);
+	bu_draw_text(c, t->font, r.x + 32, r.y + 62, "ピン留め", 13, t->text);
+	bu_draw_text_right(c, t->font, (bu_rect){ r.x, r.y + 64, r.w - 32, 16 }, "すべてのアプリ", 11, t->text_dim);
+	for (int i = 0; i < NAPPS; i++) {
+		bu_rect tr = tile_rect(i);
+		int cx = tr.x + tr.w / 2;
+		if (!draw_app_asset(c, i, cx - 16, tr.y + 4, 32)) {
+			bu_fill_round_rect(c, (bu_rect){ cx - 16, tr.y + 4, 32, 32 }, 8, APPS[i].tint);
+			APPS[i].icon(c, cx, tr.y + 20, BU_RGB(255, 255, 255));
+		}
+		bu_draw_text_centered(c, t->font, (bu_rect){ tr.x, tr.y + 42, tr.w, 16 }, APPS[i].name, 11, t->text);
+	}
+	/* footer: user left, power right, on a surface2 band */
+	bu_rect foot = { r.x, r.y + r.h - 48, r.w, 48 };
+	bu_fill_round_rect(c, foot, 8, t->surface2);
+	bu_fill_rect(c, (bu_rect){ foot.x, foot.y, foot.w, 10 }, t->surface2);
+	int fcy = foot.y + foot.h / 2;
+	bu_fill_circle(c, foot.x + 52, fcy, 13, t->accent);
+	bu_draw_text_centered(c, t->font, (bu_rect){ foot.x + 39, fcy - 10, 26, 20 }, "U", 13, BU_RGB(255, 255, 255));
+	bu_draw_text(c, t->font, foot.x + 74, fcy - 10, "user", 13, t->text);
+	bu_icon_power(c, foot.x + foot.w - 52, fcy, t->text_dim);
+}
+
+/* Windows XP Start: Luna header with the 48x48 user picture,
+ * two columns (apps left, places right), logoff/power footer. */
+static void draw_xp_start(bu_canvas *c, bu_theme *t)
+{
+	bu_rect r = xp_start_rect();
+	bu_shadow_round_rect(c, r, 8, 10, BU_RGBA(0, 0, 0, 120));
+	bu_fill_round_rect(c, r, 8, t->surface);
+	bu_color deep = t->accent;
+	deep.r = deep.r * 55 / 100; deep.g = deep.g * 55 / 100; deep.b = deep.b * 72 / 100;
+	/* header band (65 px), square at the bottom edge */
+	bu_rect head = { r.x, r.y, r.w, XP_HEADER_H + 8 };
+	bu_gradient_round_v(c, head, 8, t->accent, deep);
+	bu_fill_rect(c, (bu_rect){ r.x, r.y + XP_HEADER_H - 8, r.w, 16 }, deep);
+	bu_fill_rect(c, (bu_rect){ r.x + 10, r.y + 7, 50, 50 }, BU_RGB(255, 255, 255));
+	bu_fill_rect(c, (bu_rect){ r.x + 12, r.y + 9, 46, 46 }, t->accent2);
+	bu_fill_circle(c, r.x + 35, r.y + 26, 7, BU_RGB(255, 255, 255));
+	bu_fill_rect(c, (bu_rect){ r.x + 24, r.y + 38, 22, 12 }, BU_RGB(255, 255, 255));
+	bu_draw_text(c, t->font, r.x + 72, r.y + 21, "user", 17, BU_RGB(255, 255, 255));
+	/* body columns */
+	int y0 = r.y + XP_HEADER_H, body_h = r.h - XP_HEADER_H - XP_FOOTER_H;
+	bu_color pale = t->accent;
+	pale.r = pale.r + (255 - pale.r) * 4 / 5;
+	pale.g = pale.g + (255 - pale.g) * 4 / 5;
+	pale.b = pale.b + (255 - pale.b) * 4 / 5;
+	bu_fill_rect(c, (bu_rect){ r.x + 196, y0, r.w - 196, body_h }, pale);
+	for (int k = 0; k < 8; k++) {
+		bu_rect lr = tile_rect(XP_LEFT[k]);
+		int app = XP_LEFT[k], cx = lr.x + 22, cy = lr.y + lr.h / 2;
+		int drawn = draw_app_asset(c, app, cx - 14, cy - 14, 28);
+		if (!drawn && app == 1) drawn = draw_named_asset(c, "xp", "files", cx - 13, cy - 13, 26);
+		if (!drawn && app == 8) drawn = draw_named_asset(c, "xp", "browser", cx - 13, cy - 13, 26);
+		if (!drawn) {
+			bu_fill_round_rect(c, (bu_rect){ cx - 14, cy - 14, 28, 28 }, 6, APPS[app].tint);
+			APPS[app].icon(c, cx, cy, BU_RGB(255, 255, 255));
+		}
+		bu_draw_text(c, t->font, lr.x + 44, lr.y + (lr.h - 19) / 2, APPS[app].name, 13, t->text);
+		bu_rect rr = tile_rect(XP_RIGHT[k]);
+		int rapp = XP_RIGHT[k];
+		int rcx = rr.x + 18, rcy = rr.y + rr.h / 2;
+		if (!draw_app_asset(c, rapp, rcx - 12, rcy - 12, 24)) {
+			bu_fill_round_rect(c, (bu_rect){ rcx - 12, rcy - 12, 24, 24 }, 5, APPS[rapp].tint);
+			APPS[rapp].icon(c, rcx, rcy, BU_RGB(255, 255, 255));
+		}
+		bu_draw_text(c, t->font, rr.x + 36, rr.y + (rr.h - 17) / 2, APPS[rapp].name, 12, t->text);
+	}
+	/* footer band: logoff left, power right */
+	bu_rect foot = { r.x, r.y + r.h - XP_FOOTER_H, r.w, XP_FOOTER_H };
+	bu_gradient_v(c, foot, t->accent, deep);
+	int fcy = foot.y + foot.h / 2;
+	bu_fill_round_rect(c, (bu_rect){ foot.x + 12, fcy - 11, 22, 22 }, 4, BU_RGB(240, 140, 40));
+	bu_line(c, foot.x + 17, fcy, foot.x + 27, fcy, 2, BU_RGB(255, 255, 255));
+	bu_line(c, foot.x + 23, fcy - 4, foot.x + 27, fcy, 2, BU_RGB(255, 255, 255));
+	bu_line(c, foot.x + 27, fcy, foot.x + 23, fcy + 4, 2, BU_RGB(255, 255, 255));
+	bu_draw_text(c, t->font, foot.x + 42, fcy - 9, "ログオフ", 12.5, BU_RGB(255, 255, 255));
+	bu_draw_text_right(c, t->font, (bu_rect){ foot.x, fcy - 9, foot.w - 46, 18 }, "電源を切る", 12.5, BU_RGB(255, 255, 255));
+	bu_fill_round_rect(c, (bu_rect){ foot.x + foot.w - 36, fcy - 11, 22, 22 }, 4, BU_RGB(216, 72, 56));
+	bu_icon_power(c, foot.x + foot.w - 25, fcy, BU_RGB(255, 255, 255));
+}
+
 static void draw_launcher(bu_canvas *c, bu_theme *t, bd_state *s)
 {
+	if (skin_layout() == BD_LAYOUT_MAC) {
+		draw_launchpad(c, t);
+		return;
+	}
+	if (skin_layout() == BD_LAYOUT_WIN11) {
+		draw_win11_start(c, t);
+		return;
+	}
+	if (bu_chrome == BU_CHROME_LUNA) {
+		draw_xp_start(c, t);
+		return;
+	}
 	bu_rect sheet = launcher_sheet();
 	int srad = t->radius > 0 ? t->radius + 6 : 18;
 	bu_shadow_round_rect(c, sheet, srad, 10, BU_RGBA(0, 0, 0, 110));
@@ -1145,6 +1378,35 @@ int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y,
 			*changed = true;
 			return BD_ACT_LAUNCH;
 		}
+		/* macOS dock: the full cell set has its own hit handling
+		 * (the generic quick-launch cells below predate it). */
+		if (skin_layout() == BD_LAYOUT_MAC && in_rect(dock_rect(), x, y)) {
+			for (int i = 0; i <= 11; i++) {
+				if (!in_rect(dock_cell_rect(i), x, y))
+					continue;
+				if (i == 0) {	/* Launchpad: pointer-up toggles, like start */
+					s->start_pressed = true;
+					*changed = true;
+					return BD_ACT_NONE;
+				}
+				*changed = true;
+				if (i == 11)	/* Trash: no action yet */
+					return BD_ACT_NONE;
+				int app = DOCK_APPS[i - 1];
+				s->view = BD_VIEW_DESKTOP;
+				if (app == 0) {
+					s->settings_open = !s->settings_open;
+					return BD_ACT_NONE;
+				}
+				if (APPS[app].exec) {
+					snprintf(s->launch_path, sizeof(s->launch_path), "%s", APPS[app].exec);
+					return BD_ACT_LAUNCH;
+				}
+				return BD_ACT_NONE;
+			}
+			*changed = true;
+			return BD_ACT_NONE;
+		}
 		/* quick launch */
 		if (in_rect(ql_rect(0), x, y)) {
 			s->settings_open = !s->settings_open;
@@ -1280,7 +1542,9 @@ int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y,
 					return BD_ACT_NONE;
 				}
 			}
-			if (!in_rect(launcher_sheet(), x, y)) {
+			if (skin_layout() == BD_LAYOUT_MAC || !in_rect(launcher_region(), x, y)) {
+				/* Launchpad is full-screen: a tap that hits no
+				 * app leaves it, like the original. */
 				s->view = BD_VIEW_DESKTOP;
 				*changed = true;
 			}
