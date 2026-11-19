@@ -105,7 +105,33 @@ static void panel_prefs_save(bd_state *s)
 /* --- settings data providers (network / system pages) --- */
 static void fill_mode(bd_state *s)
 {
-	FILE *fp = popen("brain-mode get 2>/dev/null", "r");
+	FILE *fp = popen("brain-mode list 2>/dev/null", "r");
+	if (fp) {
+		char line[256];
+		int n = 0;
+		while (n < 8 && fgets(line, sizeof(line), fp)) {
+			line[strcspn(line, "\r\n")] = 0;
+			/* id|name|desc|launch|launch_label */
+			char *f[5] = { 0 };
+			char *p = line;
+			for (int k = 0; k < 5; k++) {
+				f[k] = p;
+				char *bar = strchr(p, '|');
+				if (bar) { *bar = 0; p = bar + 1; }
+				else break;
+			}
+			if (!f[0] || !f[0][0]) continue;
+			snprintf(s->mode_ids[n], 24, "%s", f[0]);
+			snprintf(s->mode_names[n], 40, "%s", f[1] ? f[1] : f[0]);
+			snprintf(s->mode_descs[n], 96, "%s", f[2] ? f[2] : "");
+			snprintf(s->mode_launch[n], 32, "%s", f[3] ? f[3] : "");
+			snprintf(s->mode_launch_label[n], 48, "%s", f[4] ? f[4] : "");
+			n++;
+		}
+		if (n > 0) s->mode_count = n;
+		pclose(fp);
+	}
+	fp = popen("brain-mode get 2>/dev/null", "r");
 	if (!fp) return;
 	char buf[32] = "";
 	if (fgets(buf, sizeof(buf), fp)) {
@@ -256,7 +282,21 @@ int main(int argc, char **argv)
 		if (getenv("BD_SHOT_ASSIST")) s.assist_on = true;
 		if (getenv("BD_SHOT_ASSIST_OPEN")) { s.assist_on = true; s.assist_open = true; }
 		if (getenv("BD_SHOT_VOLPOP")) s.vol_popup = true;
-		if (getenv("BD_SHOT_MODE")) { s.settings_open = true; s.settings_cat = 8; snprintf(s.mode_name, sizeof(s.mode_name), "deck"); }
+		if (getenv("BD_SHOT_MODE")) {
+			s.settings_open = true; s.settings_cat = 8;
+			s.mode_count = 4;
+			const char *ids[4] = { "normal", "deck", "server", "share" };
+			const char *nms[4] = { "通常", "デッキ", "サーバ", "共有" };
+			const char *dss[4] = { "デスクトップとして使う。USB はネットワークのみ", "PC のコントロールデッキになる (HID キーボード+メディアキー)", "小型サーバの束を起動する (DNS / MQTT / 共有)", "USB メモリとしてファイルを渡す + ネットワーク" };
+			for (int i = 0; i < 4; i++) {
+				snprintf(s.mode_ids[i], 24, "%s", ids[i]);
+				snprintf(s.mode_names[i], 40, "%s", nms[i]);
+				snprintf(s.mode_descs[i], 96, "%s", dss[i]);
+			}
+			snprintf(s.mode_launch[1], 32, "bd-deck");
+			snprintf(s.mode_launch_label[1], 48, "コントロールデッキを開く");
+			snprintf(s.mode_name, sizeof(s.mode_name), "deck");
+		}
 	}
 	fill_mode(&s);
 	fill_sysinfo(&s);
@@ -364,11 +404,11 @@ int main(int argc, char **argv)
 			fill_mode(&s);
 			changed = true;
 		}
-		if (s.mode_set >= 0 && s.mode_set < 4) {
-			char cmd[80];
-			snprintf(cmd, sizeof(cmd), "brain-mode set %s >/dev/null 2>&1", BD_MODE_IDS[s.mode_set]);
+		if (s.mode_set >= 0 && s.mode_set < s.mode_count) {
+			char cmd[96];
+			snprintf(cmd, sizeof(cmd), "brain-mode set %s >/dev/null 2>&1", s.mode_ids[s.mode_set]);
 			if (system(cmd) == 0)
-				snprintf(s.mode_name, sizeof(s.mode_name), "%s", BD_MODE_IDS[s.mode_set]);
+				snprintf(s.mode_name, sizeof(s.mode_name), "%s", s.mode_ids[s.mode_set]);
 			s.mode_set = -1;
 			changed = true;
 		}

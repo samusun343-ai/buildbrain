@@ -32,18 +32,16 @@ static bu_rect brightness_slider(void)
 	return (bu_rect){ p.x + 58, p.y + 80, p.w - 150, 24 };
 }
 
-const char *const BD_MODE_IDS[4] = { "normal", "deck", "server", "share" };
-const char *const BD_MODE_NAMES[4] = { "通常", "デッキ", "サーバ", "共有" };
-static const char *const BD_MODE_DESCS[4] = {
-	"デスクトップとして使う。USB はネットワークのみ",
-	"PC のコントロールデッキになる (HID キーボード+メディアキー)",
-	"小型サーバの束を起動する (DNS / MQTT / 共有)",
-	"USB メモリとしてファイルを渡す + ネットワーク",
-};
-static bu_rect mode_row(int i)
+static bu_rect mode_row(int vi)
 {
 	bu_rect p = pane_rect();
-	return (bu_rect){ p.x + 8, p.y + 76 + i * 56, p.w - 16, 50 };
+	return (bu_rect){ p.x + 8, p.y + 76 + vi * 56, p.w - 70, 50 };
+}
+static int mode_current(bd_state *s)
+{
+	for (int i = 0; i < s->mode_count; i++)
+		if (strcmp(s->mode_name, s->mode_ids[i]) == 0) return i;
+	return -1;
 }
 static bu_rect mode_deck_btn(void)
 {
@@ -455,18 +453,28 @@ static void draw_settings(bu_canvas *c, bu_theme *t, bd_state *s)
 	}
 	if (s->settings_cat == 8) {
 		bu_draw_text(c, t->font, pane.x + 22, pane.y + 16, "モード", 19, t->text);
-		bu_draw_text(c, t->font, pane.x + 22, pane.y + 48, "この1台を何にするか。切替は即座に反映されます。", 12.5, t->text_dim);
-		for (int i = 0; i < 4; i++) {
-			bu_rect row = mode_row(i);
-			bool cur = strcmp(s->mode_name, BD_MODE_IDS[i]) == 0;
+		bu_draw_text(c, t->font, pane.x + 22, pane.y + 48, "用途に合わせて切り替えるプロファイル。/etc/brain-modes/ に置くと自作も追加できます。", 12.5, t->text_dim);
+		for (int vi = 0; vi < 4; vi++) {
+			int i = s->mode_scroll + vi;
+			if (i >= s->mode_count)
+				break;
+			bu_rect row = mode_row(vi);
+			bool cur = i == mode_current(s);
 			bu_fill_round_rect(c, row, 8, cur ? t->surface3 : t->surface2);
-			bu_draw_text(c, t->font, row.x + 14, row.y + 5, BD_MODE_NAMES[i], 15, t->text);
-			bu_draw_text(c, t->font, row.x + 14, row.y + 27, BD_MODE_DESCS[i], 11.5, t->text_dim);
+			bu_draw_text(c, t->font, row.x + 14, row.y + 5, s->mode_names[i], 15, t->text);
+			bu_draw_text(c, t->font, row.x + 14, row.y + 27, s->mode_descs[i], 11.5, t->text_dim);
 			if (cur)
 				bu_draw_text_right(c, t->font, (bu_rect){ row.x, row.y + 5, row.w - 14, 22 }, "使用中", 12.5, t->accent);
 		}
-		if (strcmp(s->mode_name, "deck") == 0)
-			bu_button(c, t, mode_deck_btn(), "コントロールデッキを開く", BU_BTN_PRIMARY, false);
+		if (s->mode_count == 0)
+			bu_draw_text(c, t->font, pane.x + 22, pane.y + 90, "プロファイルが見つかりません (brain-mode list)", 13, t->text_faint);
+		if (s->mode_count > 4) {
+			bu_button(c, t, (bu_rect){ pane.x + pane.w - 54, pane.y + 76, 46, 60 }, "▲", BU_BTN_NORMAL, false);
+			bu_button(c, t, (bu_rect){ pane.x + pane.w - 54, pane.y + 240, 46, 60 }, "▼", BU_BTN_NORMAL, false);
+		}
+		int cur = mode_current(s);
+		if (cur >= 0 && s->mode_launch[cur][0])
+			bu_button(c, t, mode_deck_btn(), s->mode_launch_label[cur][0] ? s->mode_launch_label[cur] : "アプリを開く", BU_BTN_PRIMARY, false);
 		return;
 	}
 	{
@@ -666,11 +674,28 @@ int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y,
 			}
 
 			if (s->settings_cat == 8) {
-				for (int i = 0; i < 4; i++) {
-					if (in_rect(mode_row(i), x, y)) { s->mode_set = i; *changed = true; return BD_ACT_NONE; }
+				bu_rect pane = pane_rect();
+				if (s->mode_count > 4) {
+					if (in_rect((bu_rect){ pane.x + pane.w - 54, pane.y + 76, 46, 60 }, x, y)) {
+						if (s->mode_scroll > 0) s->mode_scroll -= 2;
+						*changed = true;
+						return BD_ACT_NONE;
+					}
+					if (in_rect((bu_rect){ pane.x + pane.w - 54, pane.y + 240, 46, 60 }, x, y)) {
+						if (s->mode_scroll + 4 < s->mode_count) s->mode_scroll += 2;
+						*changed = true;
+						return BD_ACT_NONE;
+					}
 				}
-				if (strcmp(s->mode_name, "deck") == 0 && in_rect(mode_deck_btn(), x, y)) {
-					snprintf(s->launch_path, sizeof(s->launch_path), "bd-deck");
+				for (int vi = 0; vi < 4; vi++) {
+					int i = s->mode_scroll + vi;
+					if (i >= s->mode_count)
+						break;
+					if (in_rect(mode_row(vi), x, y)) { s->mode_set = i; *changed = true; return BD_ACT_NONE; }
+				}
+				int cur = mode_current(s);
+				if (cur >= 0 && s->mode_launch[cur][0] && in_rect(mode_deck_btn(), x, y)) {
+					snprintf(s->launch_path, sizeof(s->launch_path), "%s", s->mode_launch[cur]);
 					s->settings_open = false;
 					*changed = true;
 					return BD_ACT_LAUNCH;

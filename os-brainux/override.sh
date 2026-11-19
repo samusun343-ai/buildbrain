@@ -31,3 +31,6 @@ install -g root -o root -m 0755 $SRC/usr/local/bin/brain-mode $DST/usr/local/bin
 install -g root -o root -m 0755 $SRC/usr/local/bin/brain-gadget $DST/usr/local/bin/brain-gadget
 install -g root -o root -m 0644 $SRC/lib/systemd/system/brain-mode.service $DST/lib/systemd/system/brain-mode.service
 install -g root -o root -m 0644 $SRC/lib/systemd/system/brain-server.target $DST/lib/systemd/system/brain-server.target
+for mode in normal deck server share; do
+    install -g root -o root -m 0644 -D $SRC/usr/share/brain-modes/$mode.conf $DST/usr/share/brain-modes/$mode.conf
+done

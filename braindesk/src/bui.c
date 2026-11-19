@@ -214,15 +214,33 @@ struct bu_font {
 	int cache_len;
 };
 
+static bool utf8_cont(unsigned char ch) { return (ch & 0xc0) == 0x80; }
+
 static int utf8_next(const char **sp)
 {
 	const unsigned char *s = (const unsigned char *)*sp;
 	if (!*s) return 0;
 	int cp;
 	if (s[0] < 0x80) { cp = s[0]; *sp += 1; }
-	else if ((s[0] & 0xe0) == 0xc0) { cp = ((s[0] & 0x1f) << 6) | (s[1] & 0x3f); *sp += 2; }
-	else if ((s[0] & 0xf0) == 0xe0) { cp = ((s[0] & 0x0f) << 12) | ((s[1] & 0x3f) << 6) | (s[2] & 0x3f); *sp += 3; }
-	else { cp = ((s[0] & 0x07) << 18) | ((s[1] & 0x3f) << 12) | ((s[2] & 0x3f) << 6) | (s[3] & 0x3f); *sp += 4; }
+	else if ((s[0] & 0xe0) == 0xc0 && utf8_cont(s[1])) {
+		cp = ((s[0] & 0x1f) << 6) | (s[1] & 0x3f); *sp += 2;
+	}
+	else if ((s[0] & 0xf0) == 0xe0 && utf8_cont(s[1]) && utf8_cont(s[2])) {
+		cp = ((s[0] & 0x0f) << 12) | ((s[1] & 0x3f) << 6) | (s[2] & 0x3f); *sp += 3;
+	}
+	else if ((s[0] & 0xf8) == 0xf0 && utf8_cont(s[1]) && utf8_cont(s[2]) && utf8_cont(s[3])) {
+		cp = ((s[0] & 0x07) << 18) | ((s[1] & 0x3f) << 12) | ((s[2] & 0x3f) << 6) | (s[3] & 0x3f); *sp += 4;
+	}
+	else {
+		/* Invalid or truncated sequence (e.g. a string cut short
+		 * mid-character by a fixed-size buffer): emit U+FFFD and
+		 * advance one byte. The old decoder read past the NUL
+		 * into adjacent memory and kept rendering whatever it
+		 * found there. */
+		*sp += 1;
+		return 0xFFFD;
+	}
+	if (cp > 0x10FFFF) return 0xFFFD;
 	return cp;
 }
 

@@ -1,56 +1,83 @@
 #!/bin/sh
-# brain-mode — gadget modes for a single-purpose device.
+# brain-mode — user-customizable usage profiles.
 #
-#   brain-mode get         print the current mode
-#   brain-mode list        list modes
-#   brain-mode set <mode>  persist and apply a mode now
-#   brain-mode apply       apply the persisted mode (used at boot)
+# What this device should be is the user's call, not ours: a mode is
+# just a small key=value profile, and anyone can add their own.
 #
-# Modes:
-#   normal  desktop use; USB gadget = network only (stock behaviour)
-#   deck    control deck for a host PC (HID keyboard + serial + net)
-#   server  small server bundle (brain-server.target) + network gadget
-#   share   present /srv/usb-share.img to a host PC + network gadget
+#   /usr/share/brain-modes/<id>.conf   factory profiles (examples)
+#   /etc/brain-modes/<id>.conf         user profiles (win over factory)
 #
-# State: /etc/brain-mode (one word). Default: normal.
+# Fields (one per line, KEY=value, quotes optional):
+#   NAME          display name
+#   DESC          one-line description
+#   GADGET        brain-gadget profile: net | deck | share | off
+#   SERVICES      space-separated systemd units started while active
+#   LAUNCH        app the settings page offers to open (optional)
+#   LAUNCH_LABEL  label for that button (optional)
+#
+#   brain-mode get          print the active profile id
+#   brain-mode list         id|name|desc|launch|launch_label per line
+#   brain-mode set <id>     persist and apply a profile now
+#   brain-mode apply        apply the persisted profile (boot)
+#
+# State: /etc/brain-mode (active id). Default: normal.
 
 STATE=/etc/brain-mode
+RUNDIR_SVC=/run/brain-mode.services
+FACTORY=/usr/share/brain-modes
+USERDIR=/etc/brain-modes
 
-mode_get() {
-    if [ -f "$STATE" ]; then
-        cat "$STATE"
-    else
-        echo normal
-    fi
+profile_path() {
+    if [ -f "$USERDIR/$1.conf" ]; then echo "$USERDIR/$1.conf";
+    elif [ -f "$FACTORY/$1.conf" ]; then echo "$FACTORY/$1.conf";
+    else return 1; fi
 }
 
-mode_valid() {
-    case "$1" in normal|deck|server|share) return 0 ;; *) return 1 ;; esac
+field() { # file key -> value (unquoted)
+    sed -n "s/^$2=//p" "$1" | head -1 | sed 's/^"//; s/"$//'
+}
+
+list_ids() {
+    { ls "$FACTORY" 2>/dev/null; ls "$USERDIR" 2>/dev/null; } \
+        | sed -n 's/\.conf$//p' | sort -u
+}
+
+mode_get() {
+    if [ -f "$STATE" ]; then cat "$STATE"; else echo normal; fi
 }
 
 mode_apply() {
-    m=$(mode_get)
-    case "$m" in
-        normal) brain-gadget net ;;
-        deck)   brain-gadget deck ;;
-        share)  brain-gadget share ;;
-        server) brain-gadget net ;;
-    esac
-    if [ "$m" = server ]; then
-        systemctl start brain-server.target 2>/dev/null
-    else
-        systemctl stop brain-server.target 2>/dev/null
+    id=$(mode_get)
+    p=$(profile_path "$id") || { echo "brain-mode: no profile '$id'" >&2; return 1; }
+    gadget=$(field "$p" GADGET); gadget=${gadget:-off}
+    services=$(field "$p" SERVICES)
+
+    # stop the previous profile's units
+    if [ -f "$RUNDIR_SVC" ]; then
+        for u in $(cat "$RUNDIR_SVC"); do systemctl stop "$u" 2>/dev/null; done
+        rm -f "$RUNDIR_SVC"
+    fi
+    brain-gadget "$gadget" || return 1
+    if [ -n "$services" ]; then
+        for u in $services; do systemctl start "$u" 2>/dev/null; done
+        echo "$services" > "$RUNDIR_SVC"
     fi
     return 0
 }
 
 case "$1" in
-    get)  mode_get ;;
-    list) echo "normal deck server share" ;;
+    get) mode_get ;;
+    list)
+        for id in $(list_ids); do
+            p=$(profile_path "$id")
+            echo "$id|$(field "$p" NAME)|$(field "$p" DESC)|$(field "$p" LAUNCH)|$(field "$p" LAUNCH_LABEL)"
+        done
+        ;;
     apply) mode_apply ;;
     set)
-        if ! mode_valid "$2"; then
-            echo "brain-mode: unknown mode '$2' (normal|deck|server|share)" >&2
+        if ! profile_path "$2" >/dev/null; then
+            echo "brain-mode: unknown profile '$2'" >&2
+            echo "available: $(list_ids | tr '\n' ' ')" >&2
             exit 2
         fi
         echo "$2" > "$STATE"
@@ -58,5 +85,5 @@ case "$1" in
         echo "mode: $2"
         ;;
     *)
-        echo "usage: brain-mode {get|list|set <mode>|apply}" >&2; exit 2 ;;
+        echo "usage: brain-mode {get|list|set <id>|apply}" >&2; exit 2 ;;
 esac
