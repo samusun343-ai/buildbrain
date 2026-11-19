@@ -24,7 +24,10 @@ bd-%: src/apps/bd-%.c src/apps/bdapp.h $(APPSRC)
 
 # bd-web overrides the generic rule: QuickJS engine + JS wrapper.
 bd-web: src/apps/bd-web.c src/apps/bdapp.h src/apps/bd_js.c src/apps/bd_js.h $(APPSRC) $(QJS_OBJ)
-	$(CC) $(CFLAGS) -Ithird_party/quickjs -o $@ $(APPSRC) src/apps/bd-web.c src/apps/bd_js.c $(QJS_OBJ) -lm -lpthread -ldl
+	$(CC) $(CFLAGS) -Ithird_party/quickjs -o $@ $(APPSRC) src/apps/bd-web.c src/apps/bd_js.c $(QJS_OBJ) -lm -lpthread -ldl -latomic
+# -latomic: QuickJS uses 64-bit atomic builtins; ARMv5 has no native
+# 64-bit atomics, so GCC emits __atomic_*_8 libcalls (CI failed the
+# bd-web link without it; the Buildroot cross toolchain masks this).
 
 greeter: $(SRC) src/greeter.c
 	$(CC) $(CFLAGS) -o $@ $(SRC) src/greeter.c -lm -lcrypt
