@@ -84,7 +84,7 @@ DEBIAN_FRONTEND=noninteractive \
                    dbus udev alsa-utils usbutils iw fake-hwclock systemd-timesyncd\
                    build-essential flex bison pkg-config autotools-dev libtool autoconf automake device-tree-compiler \
                    python3 python3-dev python3-setuptools python3-wheel python3-pip python3-smbus \
-                   resolvconf net-tools isc-dhcp-client ssh openssh-client avahi-daemon wget git \
+                   net-tools isc-dhcp-client ssh openssh-client avahi-daemon wget git \
                    wpasupplicant dhcpcd zip fastfetch sl python3-numpy ipython3 netsurf-gtk netsurf-fb mpg123 vorbis-tools fcitx-anthy
 
 # Packages from packagecloud
@@ -173,6 +173,18 @@ systemctl disable ethernet_gadget 2>/dev/null || true
 # never even installed wpasupplicant, so NM Wi-Fi could not work;
 # it is an explicit package now.
 systemctl enable dhcpcd 2>/dev/null || true
+# dhcpcd.service runs under ProtectSystem=strict with
+# ReadWritePaths=... /etc/resolv.conf. With resolvconf installed,
+# /etc/resolv.conf is a symlink to /run/resolvconf/resolv.conf, but
+# /run is tmpfs and nothing creates that target at boot, so systemd
+# fails the unit's mount-namespace setup and dhcpcd dies with
+# status 226/NAMESPACE (observed on the run-9 image). dhcpcd writes
+# resolv.conf itself, so resolvconf is dropped entirely and the
+# file is made a regular file. Nothing depends on resolvconf (only
+# Suggests from dhcpcd-base and isc-dhcp-client).
+DEBIAN_FRONTEND=noninteractive apt-get purge -y resolvconf 2>/dev/null || true
+rm -f /etc/resolv.conf
+printf '# /etc/resolv.conf — written by dhcpcd\n' > /etc/resolv.conf
 # avahi: mDNS is a server-mode convenience, not a desktop need.
 # The package stays installed; brain-server profiles can start it.
 systemctl disable avahi-daemon avahi-daemon.socket 2>/dev/null || true
