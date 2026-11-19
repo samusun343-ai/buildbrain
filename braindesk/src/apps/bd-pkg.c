@@ -26,6 +26,8 @@ struct pkgapp {
 	bu_osk osk;
 	bool can_admin;
 	bool confirm_remove;
+	int upgradable;
+	bool upg_checked;
 	char detail[512];
 	char status[160];
 };
@@ -131,6 +133,47 @@ static void run_apt(struct pkgapp *pa, const char *verb, const char *name)
 	}
 }
 
+static void check_updates(struct pkgapp *pa)
+{
+	FILE *pp = popen("apt list --upgradable 2>/dev/null | tail -n +2 | wc -l", "r");
+	pa->upgradable = 0;
+	if (pp) {
+		char buf[32];
+		if (fgets(buf, sizeof(buf), pp))
+			pa->upgradable = atoi(buf);
+		pclose(pp);
+	}
+	pa->upg_checked = true;
+	if (pa->upgradable > 0)
+		snprintf(pa->status, sizeof(pa->status), "%d 件の更新があります", pa->upgradable);
+	else
+		snprintf(pa->status, sizeof(pa->status), "利用可能な更新はありません");
+}
+
+static void apply_updates(struct pkgapp *pa)
+{
+	if (!pa->can_admin) {
+		snprintf(pa->status, sizeof(pa->status), "更新の適用には管理者権限が必要です");
+		return;
+	}
+	const char *prefix = "pkexec";
+	if (system("command -v pkexec >/dev/null 2>&1") != 0)
+		prefix = "sudo -n";
+	char cmd[256];
+	snprintf(cmd, sizeof(cmd), "%s apt-get update -qq >/tmp/bd-pkg.log 2>&1", prefix);
+	snprintf(pa->status, sizeof(pa->status), "更新を確認しています…");
+	if (system(cmd) != 0) {
+		snprintf(pa->status, sizeof(pa->status), "apt-get update に失敗しました");
+		return;
+	}
+	snprintf(cmd, sizeof(cmd), "%s apt-get upgrade -y -qq >>/tmp/bd-pkg.log 2>&1", prefix);
+	snprintf(pa->status, sizeof(pa->status), "更新を適用しています… (時間がかかります)");
+	int rc = system(cmd);
+	snprintf(pa->status, sizeof(pa->status), rc == 0 ? "更新を適用しました" : "更新に失敗しました (詳細: /tmp/bd-pkg.log)");
+	load(pa);
+	check_updates(pa);
+}
+
 static void draw(bdapp *a, void *ctx)
 {
 	struct pkgapp *pa = ctx;
@@ -140,6 +183,12 @@ static void draw(bdapp *a, void *ctx)
 	char hdr[128];
 	snprintf(hdr, sizeof(hdr), "インストール済み %d 件", visible_count(pa));
 	bu_draw_text(c, t->font, 16, 54, hdr, 13.5, t->text_dim);
+	if (pa->upg_checked && pa->upgradable > 0) {
+		char ub[48];
+		snprintf(ub, sizeof(ub), "更新可能 %d 件", pa->upgradable);
+		bu_draw_text(c, t->font, 200, 54, ub, 13.5, t->warn);
+	}
+	bu_button(c, t, (bu_rect){ 246, 50, 124, 36 }, pa->upgradable > 0 ? "更新を適用" : "更新確認", BU_BTN_NORMAL, false);
 	/* filter box */
 	bu_rect fb = { 380, 50, 330, 36 };
 	bu_fill_round_rect(c, fb, 8, pa->osk_open ? t->surface3 : t->surface);
@@ -217,6 +266,13 @@ static void onevent(bdapp *a, void *ctx, bu_event *ev, bool *changed, bool *quit
 			}
 			return;
 		}
+		return;
+	}
+	if (inr(x, y, (bu_rect){ 246, 50, 124, 36 })) {
+		if (pa->upg_checked && pa->upgradable > 0)
+			apply_updates(pa);
+		else
+			check_updates(pa);
 		return;
 	}
 	if (inr(x, y, (bu_rect){ 380, 50, 330, 36 })) {
