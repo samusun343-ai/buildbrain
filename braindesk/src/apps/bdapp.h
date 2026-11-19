@@ -64,9 +64,10 @@ static inline void bdapp_present(bdapp *a)
  * draw callback into a PPM (host testing) and returns NULL. */
 typedef void (*bdapp_draw_fn)(bdapp *a, void *ctx);
 typedef void (*bdapp_event_fn)(bdapp *a, void *ctx, bu_event *ev, bool *changed, bool *quit);
+typedef void (*bdapp_tick_fn)(bdapp *a, void *ctx, bool *changed);
 
 static inline int bdapp_run(const char *title, const char *shot_path,
-			    bdapp_draw_fn draw, bdapp_event_fn onevent, void *ctx)
+			    bdapp_draw_fn draw, bdapp_event_fn onevent, bdapp_tick_fn tick, void *ctx)
 {
 	bdapp a;
 	memset(&a, 0, sizeof(a));
@@ -102,6 +103,8 @@ static inline int bdapp_run(const char *title, const char *shot_path,
 				break;
 			onevent(&a, ctx, &ev, &changed, &quit);
 		}
+		if (tick)
+			tick(&a, ctx, &changed);
 		if (changed) {
 			draw(&a, ctx);
 			bdapp_present(&a);
