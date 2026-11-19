@@ -1,0 +1,6 @@
+[Unit]
+Description=Brain server mode bundle (dnsmasq / mosquitto / file sharing)
+After=network.target
+
+[Install]
+WantedBy=multi-user.target

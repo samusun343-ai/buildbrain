@@ -26,3 +26,8 @@ install -g root -o root -m 0755 $SRC/usr/local/bin/braindesk-session $DST/usr/lo
 install -g root -o root -m 0644 $SRC/lib/systemd/system/braindesk-session.service $DST/lib/systemd/system/braindesk-session.service
 install -g root -o root -m 0644 -D $SRC/etc/systemd/logind.conf.d/braindesk.conf $DST/etc/systemd/logind.conf.d/braindesk.conf
 install -g root -o root -m 0755 $SRC/usr/local/bin/brain-measure $DST/usr/local/bin/brain-measure
+# gadget modes (brain-mode / brain-gadget)
+install -g root -o root -m 0755 $SRC/usr/local/bin/brain-mode $DST/usr/local/bin/brain-mode
+install -g root -o root -m 0755 $SRC/usr/local/bin/brain-gadget $DST/usr/local/bin/brain-gadget
+install -g root -o root -m 0644 $SRC/lib/systemd/system/brain-mode.service $DST/lib/systemd/system/brain-mode.service
+install -g root -o root -m 0644 $SRC/lib/systemd/system/brain-server.target $DST/lib/systemd/system/brain-server.target

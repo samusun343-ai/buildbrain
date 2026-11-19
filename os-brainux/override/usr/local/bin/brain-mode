@@ -1,0 +1,62 @@
+#!/bin/sh
+# brain-mode — gadget modes for a single-purpose device.
+#
+#   brain-mode get         print the current mode
+#   brain-mode list        list modes
+#   brain-mode set <mode>  persist and apply a mode now
+#   brain-mode apply       apply the persisted mode (used at boot)
+#
+# Modes:
+#   normal  desktop use; USB gadget = network only (stock behaviour)
+#   deck    control deck for a host PC (HID keyboard + serial + net)
+#   server  small server bundle (brain-server.target) + network gadget
+#   share   present /srv/usb-share.img to a host PC + network gadget
+#
+# State: /etc/brain-mode (one word). Default: normal.
+
+STATE=/etc/brain-mode
+
+mode_get() {
+    if [ -f "$STATE" ]; then
+        cat "$STATE"
+    else
+        echo normal
+    fi
+}
+
+mode_valid() {
+    case "$1" in normal|deck|server|share) return 0 ;; *) return 1 ;; esac
+}
+
+mode_apply() {
+    m=$(mode_get)
+    case "$m" in
+        normal) brain-gadget net ;;
+        deck)   brain-gadget deck ;;
+        share)  brain-gadget share ;;
+        server) brain-gadget net ;;
+    esac
+    if [ "$m" = server ]; then
+        systemctl start brain-server.target 2>/dev/null
+    else
+        systemctl stop brain-server.target 2>/dev/null
+    fi
+    return 0
+}
+
+case "$1" in
+    get)  mode_get ;;
+    list) echo "normal deck server share" ;;
+    apply) mode_apply ;;
+    set)
+        if ! mode_valid "$2"; then
+            echo "brain-mode: unknown mode '$2' (normal|deck|server|share)" >&2
+            exit 2
+        fi
+        echo "$2" > "$STATE"
+        mode_apply
+        echo "mode: $2"
+        ;;
+    *)
+        echo "usage: brain-mode {get|list|set <mode>|apply}" >&2; exit 2 ;;
+esac

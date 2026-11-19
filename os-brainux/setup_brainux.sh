@@ -151,8 +151,12 @@ EOF
 # Enable /boot mount
 systemctl enable boot.mount
 
-# Enable RNDIS gadget
-systemctl enable ethernet_gadget
+# USB gadget is owned by brain-mode (normal mode = NCM network,
+# same as the old ethernet_gadget behaviour). The legacy
+# ethernet_gadget unit stays installed but disabled: both would
+# fight over the single UDC.
+systemctl enable brain-mode
+systemctl disable ethernet_gadget 2>/dev/null || true
 
 # Get wild
 cat <<EOF > /etc/apt/sources.list
