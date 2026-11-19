@@ -39,3 +39,8 @@ done
 install -g root -o root -m 0755 $SRC/usr/local/bin/brain-usb-mount $DST/usr/local/bin/brain-usb-mount
 install -g root -o root -m 0644 -D $SRC/etc/udev/rules.d/99-brain-usb.rules $DST/etc/udev/rules.d/99-brain-usb.rules
 install -g root -o root -m 0755 $SRC/usr/local/bin/brain-part-report $DST/usr/local/bin/brain-part-report
+
+# Service consolidation: nmcli shim (NetworkManager replacement
+# interface) + wpa_supplicant configuration
+install -g root -o root -m 0755 $SRC/usr/local/bin/nmcli $DST/usr/local/bin/nmcli
+install -g root -o root -m 0644 -D $SRC/etc/wpa_supplicant/wpa_supplicant.conf $DST/etc/wpa_supplicant/wpa_supplicant.conf

@@ -85,7 +85,7 @@ DEBIAN_FRONTEND=noninteractive \
                    build-essential flex bison pkg-config autotools-dev libtool autoconf automake device-tree-compiler \
                    python3 python3-dev python3-setuptools python3-wheel python3-pip python3-smbus \
                    resolvconf net-tools isc-dhcp-client ssh openssh-client avahi-daemon wget git \
-                   network-manager zip fastfetch sl python3-numpy ipython3 netsurf-gtk netsurf-fb mpg123 vorbis-tools fcitx-anthy
+                   wpasupplicant dhcpcd zip fastfetch sl python3-numpy ipython3 netsurf-gtk netsurf-fb mpg123 vorbis-tools fcitx-anthy
 
 # Packages from packagecloud
 DEBIAN_FRONTEND=noninteractive \
@@ -157,6 +157,30 @@ systemctl enable boot.mount
 # fight over the single UDC.
 systemctl enable brain-mode
 systemctl disable ethernet_gadget 2>/dev/null || true
+
+# Service consolidation (deep-optimization phase, measured on the
+# run-5 image: NetworkManager alone held ~13MB PSS of 128MB RAM).
+# Networking is now dhcpcd (DHCP for wired / USB-gadget / Wi-Fi
+# interfaces) + wpa_supplicant (started per-interface by dhcpcd's
+# hook). The nmcli command line remains available through the
+# brain nmcli shim (/usr/local/bin/nmcli), so existing apps that
+# call nmcli - braindesk's network settings among them - keep
+# working unchanged. NOTE: with Install-Recommends=0 the old image
+# never even installed wpasupplicant, so NM Wi-Fi could not work;
+# it is an explicit package now.
+systemctl enable dhcpcd 2>/dev/null || true
+# avahi: mDNS is a server-mode convenience, not a desktop need.
+# The package stays installed; brain-server profiles can start it.
+systemctl disable avahi-daemon avahi-daemon.socket 2>/dev/null || true
+# Every stock cron job (logrotate, man-db, dpkg-db-backup, apt)
+# already has a systemd timer in trixie, and e2scrub has its own
+# timer; the cron daemon and the e2scrub reaper do not need to run.
+systemctl disable cron 2>/dev/null || true
+systemctl disable e2scrub_reap 2>/dev/null || true
+# triggerhappy is installed (a brain-config Recommends) but ships
+# with an empty triggers.d: it runs while handling nothing. The
+# power key belongs to logind / braindesk.
+systemctl disable triggerhappy triggerhappy.socket 2>/dev/null || true
 
 # Get wild
 cat <<EOF > /etc/apt/sources.list

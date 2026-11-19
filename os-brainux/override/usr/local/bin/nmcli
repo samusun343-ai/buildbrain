@@ -1,0 +1,137 @@
+#!/bin/sh
+# nmcli (brain shim) - the subset of NetworkManager's nmcli that
+# Brainux apps actually use, backed by wpa_supplicant + dhcpcd +
+# ip. NetworkManager was removed in the service consolidation
+# (~13MB PSS on a 128MB device); this shim keeps the command-line
+# interface so existing callers keep working unchanged.
+#
+# Supported:
+#   nmcli -t -f ACTIVE,SSID dev wifi
+#   nmcli -t -f SSID,SIGNAL dev wifi [list]
+#   nmcli dev wifi connect <ssid> [password <psk>]
+#   nmcli radio wifi [on|off]
+#   nmcli dev status | device status
+#   nmcli connection show
+# Anything else exits 1 with a message on stderr.
+set -u
+
+wlan_iface() {
+    for i in /sys/class/net/wlan*; do
+        [ -e "$i" ] && { basename "$i"; return 0; }
+    done
+    echo wlan0
+}
+
+W=$(wlan_iface)
+WPACLI="wpa_cli -i $W"
+
+# strip global -t / -f FIELDS options, remember the field list
+FIELDS=""
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -t|--terse) shift ;;
+        -f|--fields) FIELDS=$2; shift 2 ;;
+        -g|--get-values) FIELDS=$2; shift 2 ;;
+        *) break ;;
+    esac
+done
+
+esc() { printf '%s' "$1" | sed 's/:/\\:/g'; }
+
+cmd_dev_wifi_list() {
+    $WPACLI scan >/dev/null 2>&1
+    sleep 2
+    cur=$($WPACLI status 2>/dev/null | sed -n 's/^ssid=//p' | head -1)
+    if [ "${FIELDS:-SSID,SIGNAL}" = "ACTIVE,SSID" ]; then
+        # one line per visible network: yes:<connected>, no:<other>
+        $WPACLI scan_results 2>/dev/null | tail -n +2 | \
+        while IFS="$(printf '\t')" read -r _bssid _freq _sig _flags ssid; do
+            [ -n "${ssid:-}" ] || continue
+            if [ "$ssid" = "$cur" ]; then
+                printf 'yes:%s\n' "$(esc "$ssid")"
+            else
+                printf 'no:%s\n' "$(esc "$ssid")"
+            fi
+        done | sort -u
+    else
+        $WPACLI scan_results 2>/dev/null | tail -n +2 | \
+        while IFS="$(printf '\t')" read -r _bssid _freq sig _flags ssid; do
+            [ -n "${ssid:-}" ] || continue
+            pct=$(( (sig + 100) * 2 ))
+            [ $pct -lt 0 ] && pct=0
+            [ $pct -gt 100 ] && pct=100
+            printf '%s:%s\n' "$(esc "$ssid")" "$pct"
+        done | sort -u -t: -k1,1
+    fi
+}
+
+cmd_dev_wifi_connect() {
+    ssid=${1:-}
+    [ -n "$ssid" ] || { echo "nmcli(shim): missing SSID" >&2; exit 1; }
+    psk=""
+    if [ "${2:-}" = "password" ]; then psk=${3:-}; fi
+    ip link set "$W" up 2>/dev/null || true
+    # reuse a saved network for this SSID when present
+    id=$($WPACLI list_networks 2>/dev/null | tail -n +2 | \
+         awk -F'\t' -v s="$ssid" '$2 == s { print $1; exit }')
+    if [ -z "$id" ]; then
+        id=$($WPACLI add_network 2>/dev/null | tail -1)
+        [ -n "$id" ] || { echo "nmcli(shim): wpa_supplicant not running" >&2; exit 1; }
+        $WPACLI set_network "$id" ssid "\"$ssid\"" >/dev/null || exit 1
+        if [ -n "$psk" ]; then
+            $WPACLI set_network "$id" psk "\"$psk\"" >/dev/null || exit 1
+        else
+            $WPACLI set_network "$id" key_mgmt NONE >/dev/null || exit 1
+        fi
+    fi
+    $WPACLI select_network "$id" >/dev/null || exit 1
+    $WPACLI save_config >/dev/null 2>&1 || true
+    # wait for association (dhcpcd picks up DHCP on carrier)
+    n=0
+    while [ $n -lt 15 ]; do
+        st=$($WPACLI status 2>/dev/null | sed -n 's/^wpa_state=//p')
+        [ "$st" = "COMPLETED" ] && exit 0
+        sleep 1; n=$((n + 1))
+    done
+    echo "nmcli(shim): connection timed out" >&2
+    exit 1
+}
+
+case "${1:-} ${2:-}" in
+    "dev wifi"|"device wifi")
+        shift 2
+        case "${1:-list}" in
+            list|"") cmd_dev_wifi_list ;;
+            connect) shift; cmd_dev_wifi_connect "$@" ;;
+            *) echo "nmcli(shim): unsupported: dev wifi $1" >&2; exit 1 ;;
+        esac
+        ;;
+    "radio wifi")
+        case "${3:-}" in
+            on)  ip link set "$W" up ;;
+            off) ip link set "$W" down ;;
+            "")  if ip link show "$W" 2>/dev/null | grep -q "state UP\|UP,"; then
+                     echo enabled; else echo disabled; fi ;;
+            *) echo "nmcli(shim): unsupported radio arg" >&2; exit 1 ;;
+        esac
+        ;;
+    "dev status"|"device status")
+        printf 'DEVICE\tTYPE\tSTATE\tCONNECTION\n'
+        for i in /sys/class/net/*; do
+            n=$(basename "$i")
+            [ "$n" = lo ] && continue
+            st=$(cat "$i/operstate" 2>/dev/null || echo unknown)
+            [ "$st" = up ] && st=connected || st=disconnected
+            printf '%s\t%s\t%s\t--\n' "$n" \
+                "$([ -d "$i/wireless" ] && echo wifi || echo ethernet)" "$st"
+        done
+        ;;
+    "connection show"|"con show"|"c show")
+        $WPACLI list_networks 2>/dev/null | tail -n +2 | cut -f2
+        ;;
+    *)
+        echo "nmcli(shim): unsupported command: $*" >&2
+        exit 1
+        ;;
+esac
+exit 0
