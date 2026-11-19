@@ -50,7 +50,7 @@ static bu_rect start_btn(void)
 	if (bu_chrome == BU_CHROME_BEVEL)
 		return (bu_rect){ 4, PH - PANEL_H + 3, 86, PANEL_H - 6 };
 	if (bu_chrome == BU_CHROME_AERO)
-		return (bu_rect){ 2, PH - PANEL_H - 7, 54, 54 };	/* Win7 orb: 54px, protrudes ~7 */
+		return (bu_rect){ 2, PH - PANEL_H / 2 - 27, 54, 54 };	/* 54px orb, centred on the bar: Win7 (40px bar) protrudes ~7, Vista (30px) ~12 */
 	return (bu_rect){ dock_x0() + 8, PH - PANEL_H + (PANEL_H - 34) / 2, 34, 34 };
 }
 static bu_rect ql_rect(int i)
@@ -69,7 +69,15 @@ static bu_rect ql_rect(int i)
 	if (bu_chrome == BU_CHROME_LUNA || bu_chrome == BU_CHROME_BEVEL ||
 	    bu_chrome == BU_CHROME_AERO) {
 		bu_rect sb = start_btn();
-		return (bu_rect){ sb.x + sb.w + 6 + i * 40, PH - PANEL_H + (PANEL_H - 32) / 2, 34, 32 };
+		int x0 = sb.x + sb.w + 6;
+		if (bu_chrome == BU_CHROME_AERO) {
+			/* Start cell: Vista 60px, Win7 52px (researched). The
+			 * 54px orb overflows Win7's cell, so keep 2px past it. */
+			int cell = (bd_skin_get()->panel_h == 30) ? 60 : 52;
+			int a = cell + 2, b = sb.x + sb.w + 2;
+			x0 = a > b ? a : b;
+		}
+		return (bu_rect){ x0 + i * 40, PH - PANEL_H + (PANEL_H - 32) / 2, 34, 32 };
 	}
 	return (bu_rect){ dock_x0() + 48 + i * 40, PH - PANEL_H + (PANEL_H - 32) / 2, 34, 32 };
 }
@@ -541,12 +549,21 @@ static void panel(bu_canvas *c, bu_theme *t, bd_state *s)
 			bu_fill_rect(c, sb, t->surface3);
 		draw_panes(c, sb.x + 9, sb.y + 9, 7, 2, BU_RGB(255, 255, 255));
 	} else if (bu_chrome == BU_CHROME_AERO) {
-		bu_fill_circle(c, sb.x + sb.w / 2, sb.y + sb.h / 2, 16, t->accent);
-		bu_fill_circle(c, sb.x + sb.w / 2, sb.y + sb.h / 2, 12, t->accent2);
-		bu_fill_rect(c, (bu_rect){ sb.x + 11, sb.y + 11, 5, 5 }, BU_RGB(255, 255, 255));
-		bu_fill_rect(c, (bu_rect){ sb.x + 18, sb.y + 11, 5, 5 }, BU_RGBA(255, 255, 255, 200));
-		bu_fill_rect(c, (bu_rect){ sb.x + 11, sb.y + 18, 5, 5 }, BU_RGBA(255, 255, 255, 200));
-		bu_fill_rect(c, (bu_rect){ sb.x + 18, sb.y + 18, 5, 5 }, BU_RGBA(255, 255, 255, 150));
+		/* Vista/Win7 Start pearl: the 54px orb artwork. Dark glass
+		 * sphere in the panel tone with a 1px lighter rim, and the
+		 * four-colour Windows flag centred on it (26px across). */
+		int cx = sb.x + sb.w / 2, cy = sb.y + sb.h / 2;
+		bu_color rim = t->panel;
+		int v;
+		v = rim.r * 8 / 5; rim.r = v > 255 ? 255 : v;
+		v = rim.g * 8 / 5; rim.g = v > 255 ? 255 : v;
+		v = rim.b * 8 / 5; rim.b = v > 255 ? 255 : v;
+		bu_fill_circle(c, cx, cy, 27, rim);
+		bu_fill_circle(c, cx, cy, 26, t->panel);
+		bu_fill_rect(c, (bu_rect){ cx - 13, cy - 13, 12, 12 }, BU_RGB(242, 80, 34));
+		bu_fill_rect(c, (bu_rect){ cx + 1, cy - 13, 12, 12 }, BU_RGB(127, 186, 0));
+		bu_fill_rect(c, (bu_rect){ cx - 13, cy + 1, 12, 12 }, BU_RGB(0, 164, 239));
+		bu_fill_rect(c, (bu_rect){ cx + 1, cy + 1, 12, 12 }, BU_RGB(255, 185, 0));
 	} else {
 		bu_fill_round_rect(c, sb, 9, s->start_pressed ? t->accent2 : t->accent);
 	}
@@ -558,6 +575,19 @@ static void panel(bu_canvas *c, bu_theme *t, bd_state *s)
 		bu_fill_rect(c, (bu_rect){ sb.x + 18, sb.y + 18, 5, 5 }, BU_RGBA(255, 255, 255, 150));
 	}
 	/* quick launch: settings (toggle), files, browser */
+	/* Chip tone: on a dark panel use a dark glass tone derived from
+	 * the panel — light-surface skins (Win7/Win8) would otherwise
+	 * show white pills on the dark bar. Same luminance rule as the
+	 * tray ink below; Vista/Win10 surfaces are already dark, so
+	 * they are unaffected. */
+	bu_color chip_bg = t->surface;
+	if ((t->panel.r * 3 + t->panel.g * 5 + t->panel.b * 2) / 10 < 110) {
+		chip_bg = t->panel;
+		int v;
+		v = chip_bg.r * 8 / 5; chip_bg.r = v > 255 ? 255 : v;
+		v = chip_bg.g * 8 / 5; chip_bg.g = v > 255 ? 255 : v;
+		v = chip_bg.b * 8 / 5; chip_bg.b = v > 255 ? 255 : v;
+	}
 	for (int i = 0; i < 3; i++) {
 		bu_rect chip = ql_rect(i);
 		bool active = (i == 0 && s->settings_open);
@@ -571,7 +601,7 @@ static void panel(bu_canvas *c, bu_theme *t, bd_state *s)
 			if (active)
 				bu_fill_round_rect(c, chip, 6, BU_RGBA(255, 255, 255, 40));
 		} else {
-			bu_fill_round_rect(c, chip, 8, active ? t->surface3 : t->surface);
+			bu_fill_round_rect(c, chip, 8, active ? t->surface3 : chip_bg);
 		}
 		int isz = skin_layout() == BD_LAYOUT_WIN11 ? 24 : 26;	/* Win11 taskbar icons are 24 */
 		int drawn = draw_app_asset(c, QL_APP_IDX[i], chip.x + (chip.w - isz) / 2, chip.y + (chip.h - isz) / 2, isz);
@@ -947,7 +977,7 @@ static int eff_panel_h(bd_state *s)
 
 void bd_draw_shell(bu_canvas *c, bu_theme *t, bd_state *s)
 {
-	PANEL_H = s->panel_h > 0 ? s->panel_h : 42;
+	PANEL_H = eff_panel_h(s);	/* skin family bar height (Vista 30, Win7 40, Win11 48, …); s->panel_h overrides */
 	/* Keep the WM's work area in sync every frame, so a skin
 	 * change (bottom panel vs top bar) applies at once. */
 	bu_rect wa;
