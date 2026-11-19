@@ -3,7 +3,7 @@
 	url = https://github.com/brain-hackers/u-boot-brain.git
 [submodule "linux-brain"]
 	path = linux-brain
-	url = https://github.com/brain-hackers/linux-brain.git
+	url = https://github.com/samusun343-ai/linux-brain.git
 [submodule "nkbin_maker"]
 	path = nkbin_maker
 	url = https://github.com/brain-hackers/nkbin_maker.git
