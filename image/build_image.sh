@@ -90,6 +90,11 @@ sudo cp ${LINUX}/arch/arm/boot/zImage ${WORK}/p1/
 sudo cp ${LINUX}/arch/arm/boot/dts/imx28-pw*.dtb ${WORK}/p1/
 sudo mkdir -p ${WORK}/p1/nk
 sudo cp ${WORK}/*.bin ${WORK}/p1/nk/
+# The WinCE bootloader (EBOOT) chain-loads the model's nk image
+# (ed<model>exe.bin) from the FAT root when present; without this
+# copy the card boots into WinCE and Linux only starts via the
+# Launch Linux app. Each device picks its own model's filename.
+sudo cp ${WORK}/*.bin ${WORK}/p1/
 
 make -C ${REPO}/brainlilo
 
