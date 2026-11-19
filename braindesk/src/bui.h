@@ -71,6 +71,56 @@ typedef struct {
 } bu_theme;
 extern bu_theme bu_theme_dark;
 
+/* ---------- design tokens ----------
+ * The single source of truth for braindesk's unified design
+ * language (user design review, 2026-11-20). New UI code uses
+ * these names instead of open-coded numbers. Existing widgets
+ * adopt a token only where the value already matches, so
+ * adopting one never changes a pixel by itself. */
+
+/* spacing: 8 px base-unit scale */
+#define BD_SPACE_1 4
+#define BD_SPACE_2 8
+#define BD_SPACE_3 16
+#define BD_SPACE_4 24
+#define BD_SPACE_5 32
+
+/* corner radii */
+#define BD_RADIUS_PANEL 12	/* panels / launcher sheets */
+#define BD_RADIUS_CARD 12	/* bu_card's effective radius (skin radius + 2) */
+#define BD_RADIUS_BUTTON 10	/* bu_button's effective radius (skin radius) */
+
+/* icons and app text */
+#define BD_ICON_TILE 48		/* app icon display size */
+#define BD_TEXT_APP_NAME 12.5f	/* app name label under a tile */
+
+/* controls */
+#define BD_SEARCH_H 40		/* search field height */
+
+/* animation: the design band is 150-200 ms. The shell drives
+ * frames from its tick; bu_anim_ease() below is the shared
+ * easing curve and bu_anim_progress() the tick-side helper. */
+#define BD_ANIM_MS 175
+float bu_anim_ease(float t);	/* ease-out cubic, t clamped to 0..1 */
+float bu_anim_progress(uint32_t elapsed_ms, uint32_t duration_ms);
+
+/* shadows: DY (downward offset) / blur / alpha of the standard
+ * drop shadows. bu_shadow_round_rect() builds its falloff from
+ * the blur and its effective downward shift is blur / 2, which
+ * is what the DY values record. CARD is applied by bu_card()
+ * and KNOB by bu_slider(). PANEL is codified for the shell's
+ * panels; applying it there is a follow-up, because the shell's
+ * panel drawing lives outside libbrainui. */
+#define BD_SHADOW_CARD_DY 3
+#define BD_SHADOW_CARD_BLUR 6
+#define BD_SHADOW_CARD_ALPHA 70
+#define BD_SHADOW_PANEL_DY 3
+#define BD_SHADOW_PANEL_BLUR 6
+#define BD_SHADOW_PANEL_ALPHA 70
+#define BD_SHADOW_KNOB_DY 1
+#define BD_SHADOW_KNOB_BLUR 3
+#define BD_SHADOW_KNOB_ALPHA 90
+
 /* widgets (immediate-mode drawing; state lives in the caller) */
 typedef enum { BU_BTN_NORMAL, BU_BTN_PRIMARY, BU_BTN_GHOST, BU_BTN_DANGER } bu_btn_style;
 void bu_button(bu_canvas *c, bu_theme *t, bu_rect r, const char *label, bu_btn_style style, bool pressed);

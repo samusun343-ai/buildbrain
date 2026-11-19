@@ -21,6 +21,11 @@
 
 #define BDAPP_FONT "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"
 
+/* App frame metrics, codified from the measured values the
+ * frame has always used: the standalone title bar is 36 px
+ * high and the content area starts below it. */
+#define BDAPP_TITLEBAR_H 36
+
 typedef struct {
 	bu_display *disp;
 	bd_wm_client *wm;	/* non-NULL when running windowed under the shell */
@@ -35,7 +40,7 @@ static inline bu_rect bdapp_content(bdapp *a)
 {
 	if (a->wm)
 		return (bu_rect){ 0, 0, a->w, a->h };
-	return (bu_rect){ 0, 36, a->w, a->h - 36 };
+	return (bu_rect){ 0, BDAPP_TITLEBAR_H, a->w, a->h - BDAPP_TITLEBAR_H };
 }
 
 static inline void bdapp_frame(bdapp *a)
@@ -51,14 +56,14 @@ static inline void bdapp_frame(bdapp *a)
 	const bd_skin *sk = bd_skin_get();
 	bu_gradient_v(c, (bu_rect){ 0, 0, a->w, a->h }, sk->wall_top, sk->wall_bottom);
 	bu_color pc = t->panel; pc.a = 235;
-	bu_fill_rect(c, (bu_rect){ 0, 0, a->w, 36 }, pc);
-	bu_fill_rect(c, (bu_rect){ 0, 35, a->w, 1 }, t->line);
+	bu_fill_rect(c, (bu_rect){ 0, 0, a->w, BDAPP_TITLEBAR_H }, pc);
+	bu_fill_rect(c, (bu_rect){ 0, BDAPP_TITLEBAR_H - 1, a->w, 1 }, t->line);
 	int l = sk->layout;
 	if (l == BD_LAYOUT_MAC) {
 		/* traffic lights left, title centred */
-		bu_fill_circle(c, 16, 18, 6, BU_RGB(255, 95, 87));
-		bu_fill_circle(c, 36, 18, 6, BU_RGB(254, 188, 46));
-		bu_fill_circle(c, 56, 18, 6, BU_RGB(40, 200, 64));
+		bu_fill_circle(c, 16, BDAPP_TITLEBAR_H / 2, 6, BU_RGB(255, 95, 87));
+		bu_fill_circle(c, 36, BDAPP_TITLEBAR_H / 2, 6, BU_RGB(254, 188, 46));
+		bu_fill_circle(c, 56, BDAPP_TITLEBAR_H / 2, 6, BU_RGB(40, 200, 64));
 		bu_draw_text_centered(c, t->font, (bu_rect){ 0, 8, a->w, 20 }, a->title, 13.5, t->text);
 	} else if (l == BD_LAYOUT_CLASSIC) {
 		bu_stroke_round_rect(c, (bu_rect){ 12, 13, 10, 10 }, 0, 1, t->text_dim);
@@ -85,7 +90,7 @@ static inline bool bdapp_close_hit(bdapp *a, int x, int y)
 	if (l == BD_LAYOUT_CLASSIC)
 		return x >= 6 && x < 30 && y >= 6 && y < 30;
 	if (l >= BD_LAYOUT_WIN11)
-		return x >= a->w - 46 && x < a->w && y >= 0 && y < 36;
+		return x >= a->w - 46 && x < a->w && y >= 0 && y < BDAPP_TITLEBAR_H;
 	return x >= a->w - 40 && x < a->w - 4 && y >= 3 && y < 34;
 }
 

@@ -470,8 +470,32 @@ void bu_slider(bu_canvas *c, bu_theme *t, bu_rect r, float frac, bool active)
 	fill.w = (int)(r.w * frac);
 	bu_fill_round_rect(c, fill, 3, active ? t->accent : t->text_faint);
 	int kx = r.x + fill.w;
-	bu_shadow_round_rect(c, (bu_rect){ kx - 10, cy - 10, 20, 20 }, 10, 3, BU_RGBA(0, 0, 0, 90));
+	bu_shadow_round_rect(c, (bu_rect){ kx - 10, cy - 10, 20, 20 }, 10,
+			     BD_SHADOW_KNOB_BLUR, BU_RGBA(0, 0, 0, BD_SHADOW_KNOB_ALPHA));
 	bu_fill_circle(c, kx, cy, 10, BU_RGB(255, 255, 255));
+}
+
+/* ---------- animation ---------- */
+/* Pure helpers for tick-driven animation: the caller owns the
+ * clock (its event-loop tick) and maps elapsed time through
+ * these. Ease-out cubic: fast start, gentle landing, the
+ * standard curve for fades and slides in the 150-200 ms band. */
+
+float bu_anim_ease(float t)
+{
+	if (t < 0)
+		t = 0;
+	if (t > 1)
+		t = 1;
+	float u = 1.0f - t;
+	return 1.0f - u * u * u;
+}
+
+float bu_anim_progress(uint32_t elapsed_ms, uint32_t duration_ms)
+{
+	if (duration_ms == 0 || elapsed_ms >= duration_ms)
+		return 1.0f;
+	return bu_anim_ease((float)elapsed_ms / (float)duration_ms);
 }
 
 void bu_card(bu_canvas *c, bu_theme *t, bu_rect r)
@@ -481,7 +505,8 @@ void bu_card(bu_canvas *c, bu_theme *t, bu_rect r)
 		bu_bevel_rect(c, r, true);
 		return;
 	}
-	bu_shadow_round_rect(c, r, t->radius + 2, 6, BU_RGBA(0, 0, 0, 70));
+	bu_shadow_round_rect(c, r, t->radius + 2, BD_SHADOW_CARD_BLUR,
+			     BU_RGBA(0, 0, 0, BD_SHADOW_CARD_ALPHA));
 	bu_fill_round_rect(c, r, t->radius + 2, t->surface);
 }
 
