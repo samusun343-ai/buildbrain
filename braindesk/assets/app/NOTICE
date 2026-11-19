@@ -1,0 +1,21 @@
+braindesk unified app icon set — attribution
+=============================================
+
+The icons in this directory (settings.png, files.png, tasks.png,
+notes.png, clock.png, calc.png, player.png, recorder.png, web.png,
+devices.png, pkg.png, dict.png, terminal.png, home.png,
+brightness.png, volume.png, trash.png) are derived from the
+Papirus Icon Theme:
+
+  Papirus Icon Theme
+  Copyright (C) 2016-2026 Papirus Development Team
+  https://github.com/PapirusDevelopmentTeam/papirus-icon-theme
+
+License: GNU General Public License v3.0 (GPL-3.0).
+The full license text is available in the upstream repository
+(https://github.com/PapirusDevelopmentTeam/papirus-icon-theme/blob/master/LICENSE).
+
+Each PNG is a 128x128 rasterization of the corresponding upstream
+SVG (see docs/design-system.md section 8 for the per-icon source
+paths), downscaled and quantized to 256 colors for size. No other
+modifications were made.

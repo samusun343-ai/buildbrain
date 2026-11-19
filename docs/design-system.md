@@ -19,13 +19,12 @@ Windows 11 のスタート（中央配置・検索・ピン留め）、macOS の
 | 基本余白単位 | 8px（半単位 4px） | すべての余白・間隔はこの倍数 |
 | アイコン表示サイズ | 48×48px | ランチャー / Dock / アプリ一覧 |
 | アイコンマスター | 128×128px PNG | `braindesk/assets/app/` に格納 |
-| アイコン角丸 | 外形の 22% | 角丸四角（スクワークル）で統一 |
+| アイコン外形 | 取得セット（Papirus）のデザインに従う | §3 参照。自前描画はしない |
 | アプリ名ラベル | 12–13px | アイコン下のラベル |
 | パネル角丸 | 12px | シート / カード / 検索欄の標準半径 |
 | 検索欄の高さ | 40px | ランチャー上部の検索 |
 | アニメーション | 150–200ms | 開閉・切替の標準時間 |
 | パネル（タスクバー）高さ | 42px | 現行値。変更時はここを更新 |
-| グリフ線幅 | 輪郭 6 / 細部 4.5–5（128 マスター基準） | アイコン内図形の統一感 |
 
 ## 2. 色
 
@@ -63,30 +62,24 @@ Windows 11 のスタート（中央配置・検索・ピン留め）、macOS の
 統一アイコンセットを `braindesk/assets/app/` に置く。旧来の
 OS 再現用アイコン（`assets/mac|win11|xp/`）は新デザインでは使わない。
 
-- 外形: 角丸四角（半径 22%）で全アイコン統一。円形・素の画像は混ぜない。
-- 背景: 縦グラデーション（上端は基調色を白へ +20%、下端は黒へ −12%）。
-- グリフ: 白（`#FFFFFF`）単色。単純な幾何図形と線だけでアプリを表す。
-  線幅はトークンのグリフ線幅に従う。写真・他 OS のアイコン流用は禁止。
-- **一般アプリ**はカテゴリ色の背景を持ち、色でアプリを識別する。
-- **システム機能**はスレート背景（surface3 `#323C4E` 基調のグラデ）で
-  統一し、一般アプリと視覚的に区別する。
-- 生成方法: PIL によるプログラム描画（4 倍スーパーサンプリング →
-  128×128 へ縮小）→ 256 色量子化（FAStOCTREE + Floyd–Steinberg、
-  `optimize-icons.py` と同じ手順）。1 枚あたり約 2.3KB。
-
-カテゴリ色（一般アプリ）:
-
-| アプリ | 色 | 由来 |
-|---|---|---|
-| ファイル | `#E8A33D` | フォルダの琥珀色 |
-| タスク | `#9775FA` | 独自割当（紫） |
-| メモ | `#E9B949` | 紙の金色 |
-| 時計 | `#74C0FC` | 空色 |
-| 電卓 | `#2D9CDB` | accent |
-| 音楽 | `#F06595` | 薔薇色 |
-| 録音 | `#FA5252` | 録音の赤 |
-| ブラウザ | `#20C997` | accent2 |
-| 辞書 | `#4C6EF5` | 藍色 |
+- 取得方針（2026-11-20 ユーザー指示）: アイコンは自前生成しない。
+  web 上の統一された高品質なアイコンセットから取得する。
+- 採用セット: **Papirus Icon Theme**（カラーのフルアイコンセット。
+  外形・色彩・描画密度がセット内で統一されている）。
+  - 取得元: https://github.com/PapirusDevelopmentTeam/papirus-icon-theme
+  - ライセンス: GPL-3.0。帰属表示は `braindesk/assets/app/NOTICE` に置く。
+- 単一セット主義: 原則として Papirus のみから選ぶ。セット外の
+  アイコンを混ぜる場合は理由を本書に記録すること（現時点で混在なし）。
+- 選定基準: アプリのメタファーが 48px 表示で判別できること。
+  似たメタファーを複数タイルで重ねないこと（例: 音楽は音符、
+  音量はスピーカー、と競合させない）。
+- 変換手順: 上流 SVG をラスタライズ（512×512 → 128×128 へ縮小）
+  → 256 色量子化（FASTOCTREE + Floyd–Steinberg、
+  `optimize-icons.py` と同じ量子化手順）。テーマ内蔵のパディングを
+  保つためトリミングはしない。1 枚あたり約 2.2KB。
+- 一般アプリ / システム機能の区別はアイコンの背景色では行わず、
+  ランチャー内のグルーピング（§6）で視覚的に区別する。
+- 個別の対応は §8 のマニフェスト（取得元パス付き）を正とする。
 
 ## 4. コンポーネント規格
 
@@ -120,8 +113,8 @@ OS 再現用アイコン（`assets/mac|win11|xp/`）は新デザインでは使�
 
 ## 6. アプリ分類
 
-一般アプリとシステム機能は分類し、アイコン背景とランチャー内の
-グルーピングで視覚的に区別する。
+一般アプリとシステム機能は分類し、ランチャー内のグルーピングで
+視覚的に区別する（アイコン自体は §3 の単一セットで統一する）。
 
 **一般アプリ**（9）: ファイル / ブラウザ / 音楽 / メモ / 録音 /
 時計 / 電卓 / 辞書 / タスク
@@ -144,25 +137,35 @@ OS 再現用アイコン（`assets/mac|win11|xp/`）は新デザインでは使�
 `braindesk/assets/app/`（→ `/usr/share/braindesk/assets/app/`、
 既存の再帰インストールで配布される）。シェル側の参照切替は別作業。
 
-| ファイル | アプリ | 分類 | 対応プログラム | グリフ | 背景 |
-|---|---|---|---|---|---|
-| files.png | ファイル | 一般 | bd-files | フォルダ | `#E8A33D` |
-| tasks.png | タスク | 一般 | bd-tasks | チェックリスト | `#9775FA` |
-| notes.png | メモ | 一般 | bd-notes | 罫線ノート | `#E9B949` |
-| clock.png | 時計 | 一般 | bd-clock | 時計 | `#74C0FC` |
-| calc.png | 電卓 | 一般 | bd-calc | 電卓 | `#2D9CDB` |
-| player.png | 音楽 | 一般 | bd-player | 音符 | `#F06595` |
-| recorder.png | 録音 | 一般 | bd-recorder | マイク | `#FA5252` |
-| web.png | ブラウザ | 一般 | bd-web | 地球 | `#20C997` |
-| dict.png | 辞書 | 一般 | （未実装） | 開いた本 | `#4C6EF5` |
-| settings.png | 設定 | システム | シェル設定画面 | 歯車 | スレート |
-| devices.png | デバイス | システム | bd-devices | チップ | スレート |
-| pkg.png | パッケージ | システム | bd-pkg | 箱（立方体） | スレート |
-| terminal.png | 端末 | システム | 端末アプリ | `>_` | スレート |
-| home.png | ホーム | システム | シェル | 家 | スレート |
-| brightness.png | 明るさ | システム | シェル | 太陽 | スレート |
-| volume.png | 音量 | システム | シェル | スピーカー | スレート |
-| trash.png | ゴミ箱 | システム | bd-files / Dock | ゴミ箱 | スレート |
+取得元は Papirus Icon Theme リポジトリ内のパス（`Papirus/` 配下）。
 
-セット実測（2026-11-20 生成）: 17 枚、合計 38,836 バイト（約 37.9KiB）。
-生成スクリプトは PIL 描画 + 量子化で再現可能（手順は §3）。
+| ファイル | アプリ | 分類 | 対応プログラム | 取得元（Papirus） |
+|---|---|---|---|---|
+| files.png | ファイル | 一般 | bd-files | 64x64/places/folder.svg |
+| tasks.png | タスク | 一般 | bd-tasks | 64x64/apps/org.gnome.Todo.svg |
+| notes.png | メモ | 一般 | bd-notes | 64x64/apps/org.gnome.Notes.svg |
+| clock.png | 時計 | 一般 | bd-clock | 64x64/apps/gnome-clocks.svg |
+| calc.png | 電卓 | 一般 | bd-calc | 64x64/apps/accessories-calculator.svg |
+| player.png | 音楽 | 一般 | bd-player | 64x64/mimetypes/audio-x-generic.svg |
+| recorder.png | 録音 | 一般 | bd-recorder | 64x64/apps/org.gnome.SoundRecorder.svg |
+| web.png | ブラウザ | 一般 | bd-web | 64x64/apps/web-browser.svg |
+| dict.png | 辞書 | 一般 | （未実装） | 64x64/apps/accessories-dictionary.svg |
+| settings.png | 設定 | システム | シェル設定画面 | 64x64/apps/preferences-system.svg |
+| devices.png | デバイス | システム | bd-devices | 64x64/devices/cpu.svg |
+| pkg.png | パッケージ | システム | bd-pkg | 64x64/apps/system-software-install.svg |
+| terminal.png | 端末 | システム | 端末アプリ | 64x64/apps/utilities-terminal.svg |
+| home.png | ホーム | システム | シェル | 64x64/places/user-home.svg |
+| brightness.png | 明るさ | システム | シェル | 48x48/status/weather-clear.svg |
+| volume.png | 音量 | システム | シェル | 32x32/status/audio-volume-high.svg |
+| trash.png | ゴミ箱 | システム | bd-files / Dock | 64x64/places/user-trash.svg |
+
+選定メモ:
+- player.png: `org.gnome.Music` はスピーカー図柄で音量タイルと
+  競合するため、音符の `audio-x-generic` を採用した。
+- brightness.png: Papirus に専用の明るさカラーアイコンが無いため、
+  太陽の `weather-clear` を採用した（次点はモニタ図柄の
+  `preferences-desktop-display`）。
+
+セット実測（2026-11-20 取得）: 17 枚、合計 37,058 バイト（約 36.2KiB）。
+取得・変換手順は §3。ファイル名は自前生成版と同一に保ち、
+シェル側の参照は変更不要。
