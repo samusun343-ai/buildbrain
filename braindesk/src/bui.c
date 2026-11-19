@@ -408,6 +408,14 @@ void bu_button(bu_canvas *c, bu_theme *t, bu_rect r, const char *label, bu_btn_s
 		bu_draw_text_centered(c, t->font, (bu_rect){ r.x + (pressed ? 1 : 0), r.y + 2, r.w, r.h - 4 }, label, 13.5, t->text);
 		return;
 	}
+	if (bu_chrome == BU_CHROME_BEVEL && style == BU_BTN_PRIMARY) {
+		/* A primary action on the bevel families is a square
+		 * accent button with a raised border, not a round pill. */
+		bu_fill_rect(c, r, t->accent);
+		bu_bevel_rect(c, r, !pressed);
+		bu_draw_text_centered(c, t->font, (bu_rect){ r.x + (pressed ? 1 : 0), r.y + 2, r.w, r.h - 4 }, label, 13.5, BU_RGB(255, 255, 255));
+		return;
+	}
 	bu_color fill, fg = t->text;
 	switch (style) {
 	case BU_BTN_PRIMARY: fill = t->accent; fg = BU_RGB(255, 255, 255); break;
@@ -491,9 +499,15 @@ void bu_list_row(bu_canvas *c, bu_theme *t, bu_rect r, const char *title, const 
 
 void bu_text_field(bu_canvas *c, bu_theme *t, bu_rect r, const char *placeholder, const char *masked, bool focused)
 {
-	bu_fill_round_rect(c, r, t->radius, t->surface2);
-	if (focused)
-		bu_stroke_round_rect(c, r, t->radius, 2, t->accent);
+	if (bu_chrome == BU_CHROME_BEVEL) {
+		/* Square sunken field on the bevel families. */
+		bu_fill_rect(c, r, t->surface2);
+		bu_bevel_rect(c, r, false);
+	} else {
+		bu_fill_round_rect(c, r, t->radius, t->surface2);
+		if (focused)
+			bu_stroke_round_rect(c, r, t->radius, 2, t->accent);
+	}
 	const char *s = masked ? masked : placeholder;
 	bu_color col = masked ? t->text : t->text_faint;
 	bu_draw_text(c, t->font, r.x + 14, r.y + (r.h - 22) / 2, s, 15, col);

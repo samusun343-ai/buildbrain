@@ -898,9 +898,23 @@ void bd_draw_login(bu_canvas *c, bu_theme *t, bd_state *s, const char *user)
 	wallpaper(c);
 	bu_draw_text_centered(c, t->font, (bu_rect){ 0, 58, PW, 90 }, s->clock, 64, t->text);
 	bu_draw_text_centered(c, t->font, (bu_rect){ 0, 138, PW, 30 }, s->date, 16, t->text_dim);
-	bu_rect card = { PW / 2 - 170, 196, 340, 216 };
-	bu_card(c, t, card);
-	bu_fill_circle(c, PW / 2, 240, 26, t->accent);
+	/* The login card follows the skin family: macOS, Classic Mac and
+	 * Windows 11 show the user directly on the wallpaper, like the
+	 * originals; the braindesk and Windows families keep a panel card. */
+	int l = skin_layout();
+	if (l == BD_LAYOUT_BD || l == BD_LAYOUT_WIN) {
+		bu_rect card = { PW / 2 - 170, 196, 340, 216 };
+		bu_card(c, t, card);
+	}
+	/* Avatar: a square user tile with a white frame on the Windows
+	 * families (XP-style), a circle everywhere else. Geometry is
+	 * unchanged, so the greeter's hit rects still apply. */
+	if (l == BD_LAYOUT_WIN) {
+		bu_fill_rect(c, (bu_rect){ PW / 2 - 28, 212, 56, 56 }, BU_RGB(255, 255, 255));
+		bu_fill_rect(c, (bu_rect){ PW / 2 - 26, 214, 52, 52 }, t->accent);
+	} else {
+		bu_fill_circle(c, PW / 2, 240, 26, t->accent);
+	}
 	{
 		char initial[2] = { '?', '\0' };
 		if (user && user[0])
@@ -914,7 +928,11 @@ void bd_draw_login(bu_canvas *c, bu_theme *t, bd_state *s, const char *user)
 	bu_draw_text_centered(c, t->font, (bu_rect){ PW - 96, PH - 52, 60, 18 }, "電源", 11, t->text_dim);
 	bu_icon_gear(c, PW - 126, PH - 66, t->text_dim);
 	bu_draw_text_centered(c, t->font, (bu_rect){ PW - 156, PH - 52, 60, 18 }, "再起動", 11, t->text_dim);
-	bu_draw_text(c, t->font, 16, PH - 30, "Brainux", 12, t->text_faint);
+	/* Title names the active skin, so the greeter shows which family
+	 * is selected. */
+	char title[64];
+	snprintf(title, sizeof(title), "Brainux · %s", bd_skin_get()->name);
+	bu_draw_text(c, t->font, 16, PH - 30, title, 12, t->text_faint);
 }
 
 static float slider_frac(bu_rect r, int x)
