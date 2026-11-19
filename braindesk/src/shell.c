@@ -449,6 +449,7 @@ int main(int argc, char **argv)
 	{
 		const char *e;
 		if ((e = getenv("BD_SHOT_PANEL"))) s.panel_h = atoi(e);
+		if (getenv("BD_SHOT_LAUNCH")) s.view = BD_VIEW_LAUNCHER;
 		if (getenv("BD_SHOT_ASSIST")) s.assist_on = true;
 		if (getenv("BD_SHOT_ASSIST_OPEN")) { s.assist_on = true; s.assist_open = true; }
 		if (getenv("BD_SHOT_VOLPOP")) s.vol_popup = true;

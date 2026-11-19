@@ -520,8 +520,11 @@ static void draw_assist(bu_canvas *c, bu_theme *t, bd_state *s)
 static void draw_launcher(bu_canvas *c, bu_theme *t, bd_state *s)
 {
 	bu_rect sheet = launcher_sheet();
-	bu_shadow_round_rect(c, sheet, 18, 10, BU_RGBA(0, 0, 0, 110));
-	bu_fill_round_rect(c, sheet, 18, BU_RGBA(24, 30, 42, 248));
+	int srad = t->radius > 0 ? t->radius + 6 : 18;
+	bu_shadow_round_rect(c, sheet, srad, 10, BU_RGBA(0, 0, 0, 110));
+	bu_color sf = t->surface;
+	sf.a = 248;
+	bu_fill_round_rect(c, sheet, srad, sf);
 	bu_rect search = { sheet.x + 22, sheet.y + 18, sheet.w - 44, 38 };
 	bu_fill_round_rect(c, search, 10, t->surface2);
 	bu_icon_search(c, search.x + 22, search.y + 19, t->text_faint);
