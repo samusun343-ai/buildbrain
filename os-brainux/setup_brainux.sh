@@ -113,8 +113,6 @@ DEBIAN_FRONTEND=noninteractive \
 make -C /opt/braindesk -j$(nproc) shell greeter
 install -m 0755 /opt/braindesk/shell /usr/local/bin/braindesk
 install -m 0755 /opt/braindesk/greeter /usr/local/bin/braingreeter
-# the shell reads evdev directly
-usermod -a -G input user
 # Not enabled yet: ly stays the default greeter until braindesk is
 # verified on the image. Enable with:
 #   systemctl disable ly && systemctl enable braindesk-session
@@ -129,6 +127,8 @@ update-mime-database /usr/share/mime
 adduser --gecos "" --disabled-password --home /home/user user
 echo user:brain | chpasswd
 echo "user ALL=(ALL:ALL) ALL" > /etc/sudoers.d/user
+# the braindesk shell reads evdev directly
+usermod -a -G input user
 echo -e "127.0.1.1\tbrain" >> /etc/hosts
 
 echo root:root | chpasswd
