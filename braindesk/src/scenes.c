@@ -37,6 +37,21 @@ static bu_rect mode_row(int vi)
 	bu_rect p = pane_rect();
 	return (bu_rect){ p.x + 8, p.y + 76 + vi * 56, p.w - 70, 50 };
 }
+static bu_rect kbd_repeat_row(void)
+{
+	bu_rect p = pane_rect();
+	return (bu_rect){ p.x + 8, p.y + 84, p.w - 16, 42 };
+}
+static bu_rect kbd_rate_row(void)
+{
+	bu_rect p = pane_rect();
+	return (bu_rect){ p.x + 8, p.y + 132, p.w - 16, 42 };
+}
+static bu_rect osk_mode_row(void)
+{
+	bu_rect p = pane_rect();
+	return (bu_rect){ p.x + 8, p.y + 84, p.w - 16, 42 };
+}
 static int mode_current(bd_state *s)
 {
 	for (int i = 0; i < s->mode_count; i++)
@@ -477,6 +492,45 @@ static void draw_settings(bu_canvas *c, bu_theme *t, bd_state *s)
 			bu_button(c, t, mode_deck_btn(), s->mode_launch_label[cur][0] ? s->mode_launch_label[cur] : "アプリを開く", BU_BTN_PRIMARY, false);
 		return;
 	}
+	if (s->settings_cat == 3) {
+		bu_draw_text(c, t->font, pane.x + 22, pane.y + 16, "キーボード", 19, t->text);
+		bu_draw_text(c, t->font, pane.x + 22, pane.y + 50,
+			     s->kbd_name[0] ? s->kbd_name : "Brain マトリクスキーボード", 12.5, t->text_dim);
+		bu_rect rr = kbd_repeat_row();
+		bu_fill_round_rect(c, rr, 8, t->surface2);
+		bu_draw_text(c, t->font, rr.x + 14, rr.y + (rr.h - 22) / 2, "キーリピート", 15, t->text);
+		bu_toggle(c, t, rr.x + rr.w - 60, rr.y + 8, s->kbd_repeat);
+		bu_rect kr = kbd_rate_row();
+		bu_fill_round_rect(c, kr, 8, t->surface2);
+		bu_draw_text(c, t->font, kr.x + 14, kr.y + (kr.h - 22) / 2, "リピートの速さ", 15,
+			     s->kbd_repeat ? t->text : t->text_faint);
+		static const char *rates[] = { "遅い", "普通", "速い" };
+		bu_draw_text_right(c, t->font, (bu_rect){ kr.x, kr.y + (kr.h - 22) / 2, kr.w - 14, 22 },
+				   rates[s->kbd_rate >= 0 && s->kbd_rate < 3 ? s->kbd_rate : 1], 14, t->text_dim);
+		bu_draw_text(c, t->font, pane.x + 22, pane.y + 200, "特殊キーの割り当て (ドライバ)", 13, t->text_dim);
+		static const char *combos[] = {
+			"記号 + ← →   音量の上げ下げ",
+			"記号 + ↑ ↓   画面の輝度",
+			"記号 + Space   ミュート",
+			"戻る / Home   前の画面 / ランチャ",
+		};
+		for (int i = 0; i < 4; i++)
+			bu_draw_text(c, t->font, pane.x + 22, pane.y + 228 + i * 26, combos[i], 13, t->text);
+		return;
+	}
+	if (s->settings_cat == 6) {
+		bu_draw_text(c, t->font, pane.x + 22, pane.y + 16, "入力と日本語", 19, t->text);
+		bu_draw_text(c, t->font, pane.x + 22, pane.y + 48, "スクリーンキーボード (OSK) の動作を決めます。全アプリ共通です。", 12.5, t->text_dim);
+		bu_rect orow = osk_mode_row();
+		bu_fill_round_rect(c, orow, 8, t->surface2);
+		bu_draw_text(c, t->font, orow.x + 14, orow.y + (orow.h - 22) / 2, "OSK の初期モード", 15, t->text);
+		bu_draw_text_right(c, t->font, (bu_rect){ orow.x, orow.y + (orow.h - 22) / 2, orow.w - 14, 22 },
+				   s->osk_kana ? "かな" : "ABC", 14, t->text_dim);
+		bu_draw_text(c, t->font, pane.x + 22, pane.y + 150, "かな入力: ローマ字 → ひらがな変換 (Hepburn)", 13, t->text);
+		bu_draw_text(c, t->font, pane.x + 22, pane.y + 178, "X セッションの入力メソッド: fcitx + anthy", 13, t->text_dim);
+		bu_draw_text(c, t->font, pane.x + 22, pane.y + 206, "物理キーボードはドライバ側で変換され、そのまま使えます。", 13, t->text_dim);
+		return;
+	}
 	if (s->settings_cat == 5) {
 		bu_draw_text(c, t->font, pane.x + 22, pane.y + 16, "バッテリー", 19, t->text);
 		if (!s->batt_present) {
@@ -663,6 +717,17 @@ int bd_handle_event(bd_state *s, int ev_type, int code, int value, int x, int y,
 			}
 			if (s->settings_cat == 7)
 				return BD_ACT_NONE;
+			if (s->settings_cat == 5)
+				return BD_ACT_NONE;
+			if (s->settings_cat == 3) {
+				if (in_rect(kbd_repeat_row(), x, y)) { s->kbd_repeat = !s->kbd_repeat; *changed = true; return BD_ACT_NONE; }
+				if (in_rect(kbd_rate_row(), x, y)) { s->kbd_rate = (s->kbd_rate + 1) % 3; *changed = true; return BD_ACT_NONE; }
+				return BD_ACT_NONE;
+			}
+			if (s->settings_cat == 6) {
+				if (in_rect(osk_mode_row(), x, y)) { s->osk_kana = !s->osk_kana; *changed = true; return BD_ACT_NONE; }
+				return BD_ACT_NONE;
+			}
 			if (s->settings_cat == 1) {
 				bu_rect pane = pane_rect();
 				if (in_rect((bu_rect){ pane.x + pane.w - 54, pane.y + 76, 46, 60 }, x, y)) {

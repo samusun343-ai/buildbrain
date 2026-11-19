@@ -21,5 +21,8 @@ bu_input *bu_input_open(int screen_w, int screen_h);
 void bu_input_close(bu_input *in);
 /* Wait up to timeout_ms for an event. Returns false on timeout. */
 bool bu_input_next(bu_input *in, bu_event *ev, int timeout_ms);
+/* Set key autorepeat (EVIOCSREP) on all non-touch devices.
+ * period_ms = 0 disables autorepeat. */
+void bu_input_set_repeat(bu_input *in, int delay_ms, int period_ms);
 
 #endif

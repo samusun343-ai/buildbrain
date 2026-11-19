@@ -66,6 +66,17 @@ void bu_input_close(bu_input *in)
 	free(in);
 }
 
+void bu_input_set_repeat(bu_input *in, int delay_ms, int period_ms)
+{
+	if (!in) return;
+	unsigned int rep[2] = { (unsigned int)delay_ms, (unsigned int)period_ms };
+	for (int i = 0; i < in->n; i++) {
+		if (in->is_touch[i])
+			continue;
+		ioctl(in->fds[i].fd, EVIOCSREP, rep);
+	}
+}
+
 static int scale(int v, int mn, int mx, int out)
 {
 	if (mx <= mn) return 0;

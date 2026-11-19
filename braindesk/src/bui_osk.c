@@ -1,4 +1,5 @@
 #include "bui_osk.h"
+#include "brainreg.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -61,7 +62,9 @@ static bool conv_is_prefix(const char *s, int len)
 void bu_osk_init(bu_osk *o)
 {
 	memset(o, 0, sizeof(*o));
-	o->kana = true;
+	/* Default mode is a user setting (設定 > 入力と日本語);
+	 * historically the OSK always opened in kana mode. */
+	o->kana = brainreg_get_bool("input", "osk_kana_default", true);
 }
 
 /* Feed one romaji letter; writes converted kana (or the letter

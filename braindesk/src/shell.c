@@ -222,6 +222,48 @@ static void ps_read_str(const char *dir, const char *name, char *out, size_t n)
 	out[strcspn(out, "\n")] = 0;
 }
 
+/* Keyboard device display name for the settings page: the
+ * first /sys/class/input node whose name mentions a keyboard. */
+static void fill_kbd_name(bd_state *s)
+{
+	s->kbd_name[0] = 0;
+	DIR *d = opendir("/sys/class/input");
+	if (!d)
+		return;
+	struct dirent *e;
+	while ((e = readdir(d))) {
+		if (strncmp(e->d_name, "event", 5))
+			continue;
+		char path[320], name[64];
+		snprintf(path, sizeof(path), "/sys/class/input/%s/device", e->d_name);
+		ps_read_str(path, "name", name, sizeof(name));
+		if (strstr(name, "keyboard") || strstr(name, "kbd") ||
+		    strstr(name, "Keyboard")) {
+			snprintf(s->kbd_name, sizeof(s->kbd_name), "%s", name);
+			break;
+		}
+		if (!s->kbd_name[0] && name[0])
+			snprintf(s->kbd_name, sizeof(s->kbd_name), "%s", name);
+	}
+	closedir(d);
+}
+
+static void input_prefs_load(bd_state *s)
+{
+	s->kbd_repeat = brainreg_get_bool("keyboard", "repeat", true);
+	s->kbd_rate = brainreg_get_int("keyboard", "rate", 1);
+	if (s->kbd_rate < 0 || s->kbd_rate > 2)
+		s->kbd_rate = 1;
+	s->osk_kana = brainreg_get_bool("input", "osk_kana_default", true);
+}
+
+static void apply_kbd_repeat(bu_input *input, bd_state *s)
+{
+	static const int periods[3] = { 400, 250, 120 };
+	bu_input_set_repeat(input, 400,
+			    s->kbd_repeat ? periods[s->kbd_rate] : 0);
+}
+
 /* Battery state from /sys/class/power_supply. The Brain's gauge
  * may expose charge_* (uAh) or only capacity (%); the time
  * estimate is computed only when both charge and current are
@@ -399,6 +441,11 @@ int main(int argc, char **argv)
 	s.skin = bd_skin_current;
 	int last_skin = s.skin;
 	panel_prefs_load(&s);
+	input_prefs_load(&s);
+	fill_kbd_name(&s);
+	bool last_kbd_repeat = s.kbd_repeat;
+	int last_kbd_rate = s.kbd_rate;
+	bool last_osk_kana = s.osk_kana;
 	{
 		const char *e;
 		if ((e = getenv("BD_SHOT_PANEL"))) s.panel_h = atoi(e);
@@ -419,6 +466,15 @@ int main(int argc, char **argv)
 			snprintf(s.mode_launch[1], 32, "bd-deck");
 			snprintf(s.mode_launch_label[1], 48, "コントロールデッキを開く");
 			snprintf(s.mode_name, sizeof(s.mode_name), "deck");
+		}
+		if (getenv("BD_SHOT_KBD")) {
+			s.settings_open = true; s.settings_cat = 3;
+			snprintf(s.kbd_name, sizeof(s.kbd_name), "brain-keyboard");
+			s.kbd_repeat = true; s.kbd_rate = 1;
+		}
+		if (getenv("BD_SHOT_INPUT")) {
+			s.settings_open = true; s.settings_cat = 6;
+			s.osk_kana = true;
 		}
 		if (getenv("BD_SHOT_BATT")) {
 			s.settings_open = true; s.settings_cat = 5;
@@ -457,6 +513,7 @@ int main(int argc, char **argv)
 	}
 
 	bu_input *input = bu_input_open(W, H);
+	apply_kbd_repeat(input, &s);
 	float last_brightness = s.brightness;
 	float last_volume = s.volume;
 	for (;;) {
@@ -550,6 +607,19 @@ int main(int argc, char **argv)
 				snprintf(s.mode_name, sizeof(s.mode_name), "%s", s.mode_ids[s.mode_set]);
 			s.mode_set = -1;
 			changed = true;
+		}
+		if (s.kbd_repeat != last_kbd_repeat || s.kbd_rate != last_kbd_rate) {
+			apply_kbd_repeat(input, &s);
+			brainreg_set("keyboard", "repeat", s.kbd_repeat ? "true" : "false");
+			char rb[8];
+			snprintf(rb, sizeof(rb), "%d", s.kbd_rate);
+			brainreg_set("keyboard", "rate", rb);
+			last_kbd_repeat = s.kbd_repeat;
+			last_kbd_rate = s.kbd_rate;
+		}
+		if (s.osk_kana != last_osk_kana) {
+			brainreg_set("input", "osk_kana_default", s.osk_kana ? "true" : "false");
+			last_osk_kana = s.osk_kana;
 		}
 		if (s.panel_h != last_panel_h || s.assist_on != last_assist_on) {
 			panel_prefs_save(&s);

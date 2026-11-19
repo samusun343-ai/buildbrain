@@ -43,6 +43,12 @@ typedef struct {
 	char net_status[96];
 	/* system page (filled by the shell) */
 	char sysinfo[6][96];
+	/* keyboard page */
+	bool kbd_repeat;
+	int kbd_rate;		/* 0 slow, 1 normal, 2 fast */
+	char kbd_name[64];
+	/* input page */
+	bool osk_kana;		/* OSK opens in kana mode */
 	/* battery page (filled by the shell from
 	 * /sys/class/power_supply) */
 	int batt_present;
