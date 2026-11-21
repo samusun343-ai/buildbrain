@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=メモ
+Name[en]=Notes
+GenericName=ノート
+Comment=メモを書く・整理する
+Exec=bd-notes %f
+Icon=bd-notes
+Categories=Office;Utility;
+Keywords=notes;memo;text;

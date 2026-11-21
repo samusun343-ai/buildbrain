@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=設定
+Comment=端末の設定
+Exec=bd-settings
+Icon=preferences-system
+Terminal=false
+Categories=Settings;System;

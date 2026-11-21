@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=電卓
+Comment=関数・プログラマ・単位変換
+Exec=bd-calc
+Icon=accessories-calculator
+Terminal=false
+Categories=Utility;Calculator;

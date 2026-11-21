@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=ボイスレコーダー
+Comment=録音と再生
+Exec=bd-recorder
+Icon=media-record
+Terminal=false
+Categories=AudioVideo;Audio;Recorder;

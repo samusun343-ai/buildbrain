@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=ソフトウェア
+Comment=パッケージのインストールと更新
+Exec=bd-pkg
+Icon=system-software-install
+Terminal=false
+Categories=System;PackageManager;Settings;

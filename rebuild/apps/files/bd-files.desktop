@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=ファイル
+Name[en]=Files
+GenericName=ファイルマネージャー
+Comment=ファイルとフォルダを管理
+Exec=bd-files %f
+Icon=bd-files
+Categories=System;FileManager;
+Keywords=files;folder;trash;

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=リマインダー
+Name[en]=Reminders
+GenericName=タスク管理
+Comment=やることリストとリマインダー
+Exec=bd-tasks %f
+Icon=bd-tasks
+Categories=Office;Utility;
+Keywords=tasks;reminders;todo;

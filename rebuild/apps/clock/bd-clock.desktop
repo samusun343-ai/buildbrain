@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=時計
+Comment=世界時計・アラーム・ストップウォッチ・タイマー
+Exec=bd-clock
+Icon=clock
+Categories=Utility;

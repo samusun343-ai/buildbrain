@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=ミュージック
+Comment=音楽プレイヤー
+Exec=bd-player %F
+Icon=multimedia-player
+Terminal=false
+Categories=AudioVideo;Audio;Player;
+MimeType=audio/mpeg;audio/ogg;audio/x-wav;audio/flac;

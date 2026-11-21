@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=システムモニタ
+Comment=プロセス・ストレージ・メモリ・ログ
+Exec=bd-admin
+Icon=utilities-system-monitor
+Terminal=false
+Categories=System;Monitor;
