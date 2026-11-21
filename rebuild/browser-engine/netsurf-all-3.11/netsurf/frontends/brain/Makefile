@@ -64,7 +64,7 @@ LDFLAGS += -Wl,-u,brain_rtns
 # subset font by name as well as by explicit option.  The
 # source-tree entries simply do not exist on the device and are
 # skipped there; the installed locations follow them.
-BRAIN_RESPATH := frontends/brain/res/:../../../fonts/:$${HOME}/.netsurf/:$${NETSURFRES}:/usr/share/netsurf:/usr/share/fonts/libbrainui2/
+BRAIN_RESPATH := frontends/brain/res/:../../../fonts/:$${HOME}/.netsurf/:$${NETSURFRES}:/usr/share/netsurf:/usr/local/share/fonts/libbrainui2/
 
 CFLAGS += -DNETSURF_BRAIN_RESPATH='"$(BRAIN_RESPATH)"'
 CFLAGS += -DNETSURF_FB_FONTPATH='"$(BRAIN_RESPATH)"'

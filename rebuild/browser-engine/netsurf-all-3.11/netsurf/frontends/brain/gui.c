@@ -899,7 +899,10 @@ static void resolve_page_font(void)
 		NULL, /* $BRAINUI_FONT_PATH */
 		"../../../fonts/brainui-jp-subset.ttf",
 		"./fonts/brainui-jp-subset.ttf",
-		"/usr/share/fonts/libbrainui2/brainui-jp-subset.ttf",
+		/* the toolkit's installed location (same /usr/local
+		 * prefix as libbrainui2 itself; tk_font.c's first
+		 * absolute candidate) */
+		"/usr/local/share/fonts/libbrainui2/brainui-jp-subset.ttf",
 		"/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
 		NULL,
 	};
