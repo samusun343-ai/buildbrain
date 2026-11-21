@@ -2218,13 +2218,16 @@ int main(int argc, char **argv)
     const char *files[64];
     size_t nf = 0;
     for (int i = 1; i < argc && nf < 64; i++) files[nf++] = argv[i];
+    /* fb first, real panel size (see bd_calc.c main note) */
+    tk_fb *fb = tk_fb_open("/dev/fb0");
+    int vw = fb ? tk_fb_width(fb) : 480;
+    int vh = fb ? tk_fb_height(fb) : 272;
     player_app *app = player_app_new(data, dirs, nd, mk_alsa, NULL,
-                                     480, 272);
+                                     vw, vh);
     if (!app) { fprintf(stderr, "bd-player: init failed\n"); return 1; }
     if (nf) player_app_open_files(app, files, nf);
 
-    tk_canvas *canvas = tk_canvas_new(480, 272);
-    tk_fb *fb = tk_fb_open("/dev/fb0");
+    tk_canvas *canvas = tk_canvas_new(vw, vh);
     const tk_theme *theme = tk_theme_default();
     if (fb && canvas) {
         tk_evdev *ev = tk_evdev_open("/dev/input/event0");

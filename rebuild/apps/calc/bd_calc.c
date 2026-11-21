@@ -1210,11 +1210,17 @@ int main(void)
 
     tk_font *font = tk_font_load_default();
     if (font) tk_font_install(font);
-    calc_app *app = calc_app_new(root, 480, 272);
+    /* Open the fb first and build at the panel's real size: a
+     * hardcoded size that differs from the fb makes every flush a
+     * no-op (integration phase-2 defect). The fallback size is
+     * only for the headless smoke paint below. */
+    tk_fb *fb = tk_fb_open("/dev/fb0");
+    int vw = fb ? tk_fb_width(fb) : 480;
+    int vh = fb ? tk_fb_height(fb) : 272;
+    calc_app *app = calc_app_new(root, vw, vh);
     if (!app) { fprintf(stderr, "bd-calc: cannot build UI\n"); return 1; }
 
-    tk_canvas *canvas = tk_canvas_new(480, 272);
-    tk_fb *fb = tk_fb_open("/dev/fb0");
+    tk_canvas *canvas = tk_canvas_new(vw, vh);
     const tk_theme *theme = tk_theme_default();
     if (fb && canvas) {
         tk_evdev *ev = tk_evdev_open("/dev/input/event0");

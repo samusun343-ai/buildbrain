@@ -1353,11 +1353,14 @@ int main(int argc, char **argv)
     if (argc > 1) dict = argv[1];
     eng = bi_engine_open(dict);
 
-    notes_app *app = notes_app_new(store, 480, 272, true);
+    /* fb first, real panel size (see bd_calc.c main note) */
+    tk_fb *fb = tk_fb_open("/dev/fb0");
+    int vw = fb ? tk_fb_width(fb) : 480;
+    int vh = fb ? tk_fb_height(fb) : 272;
+    notes_app *app = notes_app_new(store, vw, vh, true);
     if (eng) notes_app_set_engine(app, eng);
 
-    tk_canvas *canvas = tk_canvas_new(480, 272);
-    tk_fb *fb = tk_fb_open("/dev/fb0");
+    tk_canvas *canvas = tk_canvas_new(vw, vh);
     const tk_theme *theme = tk_theme_default();
     if (fb && canvas) {
         tk_evdev *ev = tk_evdev_open("/dev/input/event0");
