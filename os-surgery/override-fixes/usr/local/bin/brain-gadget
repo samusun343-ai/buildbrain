@@ -1,0 +1,127 @@
+#!/bin/sh
+# brain-gadget — build/tear down the composite USB gadget for the
+# current gadget profile. Exactly one gadget can be bound to the
+# single UDC (ci_hdrc.0), so every profile is a function set inside
+# one gadget directory.
+#
+#   brain-gadget net    NCM network only (stock behaviour)
+#   brain-gadget deck   HID keyboard + ACM serial + NCM network
+#   brain-gadget share  mass storage + NCM network
+#   brain-gadget off    unbind and remove all gadgets
+#
+# HID/ACM/mass-storage functions need CONFIG_USB_CONFIGFS_F_HID,
+# CONFIG_USB_CONFIGFS_ACM and CONFIG_USB_CONFIGFS_MASS_STORAGE in
+# brain_defconfig (linux-brain fork).
+
+G=/sys/kernel/config/usb_gadget/brain
+LEGACY=/sys/kernel/config/usb_gadget/eth
+UDC=ci_hdrc.0
+
+teardown_one() {
+    d=$1
+    [ -d "$d" ] || return 0
+    [ -f "$d/UDC" ] && echo "" > "$d/UDC" 2>/dev/null
+    for c in "$d"/configs/*/; do
+        [ -d "$c" ] || continue
+        for l in "$c"*; do [ -L "$l" ] && rm "$l"; done
+        rmdir "$c"strings/0x409 2>/dev/null
+        rmdir "$c" 2>/dev/null
+    done
+    for f in "$d"/functions/*/; do [ -d "$f" ] && rmdir "$f"; done
+    rmdir "$d"/strings/0x409 2>/dev/null
+    rmdir "$d" 2>/dev/null
+}
+
+teardown() {
+    teardown_one "$G"
+    teardown_one "$LEGACY"
+}
+
+setup_common() {
+    mkdir -p "$G"
+    echo 0x1d6b > "$G/idVendor"
+    echo 0x0104 > "$G/idProduct"
+    echo 0x0200 > "$G/bcdUSB"
+    echo 0x0100 > "$G/bcdDevice"
+    mkdir -p "$G/strings/0x409"
+    echo "PW-SH6" > "$G/strings/0x409/serialnumber"
+    echo "SHARP" > "$G/strings/0x409/manufacturer"
+    echo "Brain" > "$G/strings/0x409/product"
+    mkdir -p "$G/configs/c.1/strings/0x409"
+    echo "Brain gadget" > "$G/configs/c.1/strings/0x409/configuration"
+    echo 250 > "$G/configs/c.1/MaxPower"
+}
+
+add_ncm() {
+    mkdir -p "$G/functions/ncm.usb0"
+    echo "8a:15:8b:44:3a:02" > "$G/functions/ncm.usb0/dev_addr"
+    echo "8a:15:8b:44:3a:01" > "$G/functions/ncm.usb0/host_addr"
+    ln -s "$G/functions/ncm.usb0" "$G/configs/c.1/"
+}
+
+add_hid_keyboard() {
+    mkdir -p "$G/functions/hid.usb0"
+    echo 1 > "$G/functions/hid.usb0/protocol"
+    echo 1 > "$G/functions/hid.usb0/subclass"
+    echo 8 > "$G/functions/hid.usb0/report_length"
+    # Standard boot-keyboard report descriptor (63 bytes).
+    printf '\x05\x01\x09\x06\xa1\x01\x05\x07\x19\xe0\x29\xe7\x15\x00\x25\x01\x75\x01\x95\x08\x81\x02\x95\x01\x75\x08\x81\x01\x95\x05\x75\x01\x05\x08\x19\x01\x29\x05\x91\x02\x95\x01\x75\x03\x91\x01\x95\x06\x75\x08\x15\x00\x25\x65\x05\x07\x19\x00\x29\x65\x81\x00\xc0' \
+        > "$G/functions/hid.usb0/report_desc"
+    ln -s "$G/functions/hid.usb0" "$G/configs/c.1/"
+}
+
+add_hid_consumer() {
+    mkdir -p "$G/functions/hid.usb1"
+    echo 0 > "$G/functions/hid.usb1/protocol"
+    echo 0 > "$G/functions/hid.usb1/subclass"
+    echo 1 > "$G/functions/hid.usb1/report_length"
+    # Consumer control: 7 one-bit usages (play/pause, next, prev,
+    # stop, mute, vol+, vol-) + 1 pad bit = 1-byte reports.
+    printf '\x05\x0c\x09\x01\xa1\x01\x15\x00\x25\x01\x09\xcd\x09\xb5\x09\xb6\x09\xb7\x09\xe2\x09\xe9\x09\xea\x75\x01\x95\x07\x81\x02\x95\x01\x81\x01\xc0' \
+        > "$G/functions/hid.usb1/report_desc"
+    ln -s "$G/functions/hid.usb1" "$G/configs/c.1/"
+}
+
+add_acm() {
+    mkdir -p "$G/functions/acm.usb0"
+    ln -s "$G/functions/acm.usb0" "$G/configs/c.1/"
+}
+
+add_msc() {
+    # Present /srv/usb-share.img as the shared volume. Create it on
+    # first use (sparse 256MB, FAT-formatted when mkfs.vfat exists;
+    # otherwise the host PC can format it on first mount).
+    if [ ! -f /srv/usb-share.img ]; then
+        mkdir -p /srv
+        truncate -s 256M /srv/usb-share.img || return 0
+        command -v mkfs.vfat >/dev/null && \
+            mkfs.vfat -n BRAINSHARE /srv/usb-share.img >/dev/null 2>&1 || true
+    fi
+    mkdir -p "$G/functions/mass_storage.usb0"
+    echo 1 > "$G/functions/mass_storage.usb0/stall"
+    echo /srv/usb-share.img > "$G/functions/mass_storage.usb0/lun.0/file"
+    echo "Brain share" > "$G/functions/mass_storage.usb0/lun.0/inquiry_string"
+    ln -s "$G/functions/mass_storage.usb0" "$G/configs/c.1/"
+}
+
+bind() {
+    echo "$UDC" > "$G/UDC"
+    if [ -d "$G/functions/ncm.usb0" ]; then
+        sleep 1
+        ip link set usb0 up 2>/dev/null
+        dhcpcd usb0 2>/dev/null || true
+    fi
+}
+
+case "$1" in
+    net)
+        teardown; setup_common; add_ncm; bind ;;
+    deck)
+        teardown; setup_common; add_hid_keyboard; add_hid_consumer; add_acm; add_ncm; bind ;;
+    share)
+        teardown; setup_common; add_msc; add_ncm; bind ;;
+    off)
+        teardown ;;
+    *)
+        echo "usage: brain-gadget {net|deck|share|off}" >&2; exit 2 ;;
+esac

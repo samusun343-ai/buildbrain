@@ -1,0 +1,121 @@
+{
+ "applies_with": "apply-changes.sh <rootfs> (plus override-fixes/ dropped into the repo os-brainux/override tree by the image rebuild line)",
+ "base": "image-work/rootfs snapshot: 659 packages, Installed-Size 1346.3 MiB",
+ "changes": [
+  {
+   "action": "symlink /etc/systemd/system/<unit> -> /dev/null",
+   "id": "timers-mask",
+   "kept_enabled": [
+    "fake-hwclock-save.timer",
+    "logrotate.timer"
+   ],
+   "source": "phase-1 §5.4",
+   "units": [
+    "apt-daily.timer",
+    "apt-daily-upgrade.timer",
+    "dpkg-db-backup.timer",
+    "e2scrub_all.timer",
+    "fstrim.timer",
+    "man-db.timer"
+   ],
+   "verified": "systemctl is-enabled in qemu-arm chroot: 6x masked, 2x enabled"
+  },
+  {
+   "action": "add /etc/systemd/journald.conf.d/50-brainux.conf",
+   "id": "journald-cap",
+   "note": "capacity-based cap, not day-based (standing project rule)",
+   "settings": {
+    "RuntimeMaxUse": "16M",
+    "SystemMaxUse": "32M"
+   },
+   "source": "phase-1 §5.4"
+  },
+  {
+   "action": [
+    "/usr/bin/enable_ethernet_gadget: trailing bare `dhclient` -> `dhcpcd usb0`",
+    "override-fixes/usr/local/bin/brain-gadget (repo override, not in current rootfs): bind() `dhclient usb0 &` -> `dhcpcd usb0 || true`",
+    "apt-get purge isc-dhcp-client (chroot)"
+   ],
+   "id": "dhcp-unify",
+   "prerequisite_check": "rootfs-wide grep: no other dhclient callers (interfaces.d empty, ifupdown has no dhcp stanzas)",
+   "size_delta": "Installed-Size 1346.3 -> 1343.6 MiB (-2.7 MiB); apt reported 2817 kB freed",
+   "source": "phase-1 §5.3",
+   "verified": "dpkg status: isc-dhcp-client absent; no dhclient references remain in usr/bin, usr/local, etc/systemd, etc/network, usr/lib/systemd; dhcpcd 10.1.0 runs in chroot; gadget script sh -n OK"
+  }
+ ],
+ "date": "2026-11-21",
+ "name": "os-surgery phase 2 change set",
+ "rejected_by_user_2026-11-21": [
+  {
+   "disposition": "NOT applied - dev tools stay",
+   "item": "phase-1 §5.1 dev-tool separation (71 pkgs / 327.0 MiB)"
+  },
+  {
+   "disposition": "NOT applied - openssh-server stays and stays enabled; access is via the USB gadget network",
+   "item": "phase-1 §5.2 ssh removal (7 pkgs / 4.0 MiB)"
+  }
+ ],
+ "result": "658 packages, Installed-Size 1343.6 MiB",
+ "library_evaluations_phase2": [
+  {
+   "item": "mesa/libllvm19 (111.6 MiB)",
+   "decision": "NOT applied at package level",
+   "reason": "apt-get -s purge libllvm19 cascades to 16 packages incl. netsurf-fb and libsdl2/libsdl1.2 (SDL hard-depends on libgl1/libegl1) - breaks existing apps. libLLVM.so.19.1 has exactly 1 consumer file (mesa-libgallium)."
+  },
+  {
+   "item": "libicu76 data (libicudata 30.4 MiB)",
+   "decision": "NOT applied at package level",
+   "reason": "only external consumer is libvte-2.91-0 (lxterminal); Debian package cannot trim data."
+  },
+  {
+   "item": "fonts-noto-cjk (89.1 MiB)",
+   "decision": "NOT adopted",
+   "reason": "measured with fontTools: TTC faces share one 65,535-glyph pool (44,810 codepoints every face). Extracted JP faces total 111.6 MiB standalone (worse); JP proportional only = 79.7 MiB (-9.3 MiB) but loses Mono JP. Glyph subsetting would cut JIS coverage a dictionary device needs."
+  },
+  {
+   "item": "TLS dual stack (OpenSSL + GnuTLS, 15.8 MiB cluster)",
+   "decision": "keep both",
+   "reason": "disjoint consumer sets (libssl 18 files / libcrypto 68; libgnutls 13); consolidation needs consumer rebuilds."
+  },
+  {
+   "item": "zlib",
+   "decision": "keep",
+   "reason": "260 consumer files; no zlib-ng package exists in Debian trixie (apt-cache verified in rootfs)."
+  },
+  {
+   "item": "libc (glibc)",
+   "decision": "keep",
+   "reason": "sole libc; musl/uClibc are not ABI-compatible drop-ins for a Debian system."
+  },
+  {
+   "item": "coreutils vs busybox",
+   "decision": "keep both",
+   "reason": "coreutils is Essential: yes; busybox (1.05 MiB) already coexists for initramfs duties."
+  },
+  {
+   "item": "stock IME (fcitx + anthy + presage = 69.3 MiB)",
+   "decision": "keep in staging",
+   "reason": "it is the current image's Japanese input; replacement is the rebuild line's libbrainime (BIDF dictionary 7.76 MB), applied at integration time, not here."
+  }
+ ],
+ "candidates_for_rebuild_line": [
+  {
+   "id": "C-1",
+   "item": "mesa rebuilt without LLVM (softpipe only)",
+   "prize": "libllvm19 111.6 MiB disk; RAM effect unmeasured (needs guest)",
+   "note": "keeps package/soname structure; llvmpipe is mesa's only LLVM consumer"
+  },
+  {
+   "id": "C-2",
+   "item": "ICU data filtered via ICU_DATA_FILTER_FILE (ja+en)",
+   "prize": "libicudata 30.4 MiB is the target; OE precedent: 27MB -> 12MB for 3 locales",
+   "note": "official ICU Data Build Tool; only consumer is libvte (lxterminal)"
+  }
+ ],
+ "arch_findings": {
+  "rootfs": "2,593 ELF: v5TE 2491 / v5TEJ 32 / v4 34 (klibc) / v6 2 files / v7 3 files. Debian armel baseline is ARMv5TE since buster (Debian bugs #882174, #933101) - the armv4t premise is outdated.",
+  "outliers_verified": "libatomic (68 IFUNCs) and libnettle (fat _arm/_armv6/_neon) functionally tested under qemu -cpu arm926 (ARM926EJ-S): atomics correct; AES-128/SHA-1/SHA-256 known-answer tests pass. libdav1d imports getauxval (runtime detection); decode run not performed.",
+  "rebuild_stack": "libbrainui2.so is v5TEJ via toolchain default; rebuild Makefile CFLAGS has no explicit -mcpu/-march. Proposal: pin -mcpu=arm926ej-s (ISA unchanged, scheduling + explicitness only; no perf number claimed).",
+  "kernel": "CONFIG_CPU_ARM926T=y / CONFIG_CPU_32v5=y - already exact-CPU."
+ }
+}

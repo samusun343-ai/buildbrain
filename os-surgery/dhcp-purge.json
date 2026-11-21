@@ -1,0 +1,12 @@
+{
+ "seeds_present": [
+  "isc-dhcp-client"
+ ],
+ "seeds_missing": [],
+ "removed_count": 1,
+ "removed_MiB": 2.7,
+ "violations": [],
+ "removed": [
+  "isc-dhcp-client"
+ ]
+}

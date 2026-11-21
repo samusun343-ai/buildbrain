@@ -1,0 +1,5678 @@
+{
+ "elf_count": 2593,
+ "pkg_real_bytes": {
+  "zstd": 2460976,
+  "xkb-data": 6796822,
+  "adduser": 341127,
+  "wpasupplicant": 3447917,
+  "vim-runtime": 37559361,
+  "passwd": 4830965,
+  "xz-utils": 1396180,
+  "procps": 2796690,
+  "man-db": 3099437,
+  "xserver-xorg-core": 6390403,
+  "sensible-utils": 33467,
+  "psmisc": 1068078,
+  "xserver-xorg-dev": 3645748,
+  "xserver-common": 2514157,
+  "adwaita-icon-theme": 13341197,
+  "vim-common": 1823208,
+  "xserver-xorg": 178299,
+  "xtrans-dev": 320453,
+  "x11-common": 241503,
+  "alsa-utils": 3434666,
+  "zlib1g": 194777,
+  "libasound2-data": 156947,
+  "wget": 3728828,
+  "anthy-common": 28638754,
+  "anthy": 45368,
+  "apt-transport-https": 42596,
+  "apt-utils": 1013028,
+  "apt": 4476499,
+  "sudo": 7003599,
+  "shared-mime-info": 5029495,
+  "pcmanfm": 1455774,
+  "libvte-2.91-common": 264133,
+  "debian-archive-keyring": 267648,
+  "debconf": 248558,
+  "systemd": 12373332,
+  "initramfs-tools": 24275,
+  "logrotate": 111837,
+  "whiptail": 83568,
+  "dpkg-dev": 1557508,
+  "openssh-server": 3337778,
+  "at-spi2-common": 1113007,
+  "libgtk-3-common": 31253659,
+  "lxterminal": 406919,
+  "libpam-runtime": 739735,
+  "dictionaries-common": 497405,
+  "autoconf": 2190522,
+  "automake": 1864594,
+  "autotools-dev": 129863,
+  "libmagic1t64": 236492,
+  "avahi-daemon": 211361,
+  "base-files": 419636,
+  "triggerhappy": 69234,
+  "dpkg": 6680781,
+  "bash": 7184468,
+  "sl": 23222,
+  "zlib1g-dev": 1322479,
+  "libpython3.13-dev": 18455684,
+  "cron-daemon-common": 19750,
+  "base-passwd": 115761,
+  "tmux": 1042728,
+  "libelf1t64": 1216422,
+  "dash": 173504,
+  "binutils-arm-linux-gnueabi": 5021020,
+  "binutils": 68221,
+  "binutils-common": 16328879,
+  "bison": 2885819,
+  "brain-config": 24835,
+  "bsdextrautils": 536111,
+  "bsdutils": 536297,
+  "build-essential": 5989,
+  "busybox": 1099317,
+  "udev": 10735081,
+  "initramfs-tools-core": 113612,
+  "bzip2": 76091,
+  "ca-certificates": 269028,
+  "openssl": 2143207,
+  "coreutils": 20415479,
+  "cpio": 1100803,
+  "cpp-14-arm-linux-gnueabi": 28021769,
+  "gcc-14-arm-linux-gnueabi": 58426603,
+  "cpp-14": 73,
+  "gcc": 4013,
+  "cpp-arm-linux-gnueabi": 4521,
+  "cpp": 54,
+  "e2fsprogs": 2014376,
+  "fake-hwclock": 7006,
+  "cron": 236241,
+  "util-linux": 6498364,
+  "curl": 497212,
+  "sqv": 2710640,
+  "fastfetch": 1664529,
+  "dbus-bin": 406719,
+  "dbus-daemon": 410580,
+  "dbus-system-bus-common": 68658,
+  "dbus-session-bus-common": 65747,
+  "dbus-user-session": 63834,
+  "dbus": 134787,
+  "libglib2.0-0t64": 4232749,
+  "dconf-gsettings-backend": 70895,
+  "dconf-service": 137673,
+  "debconf-i18n": 674336,
+  "xinput-calibrator": 154396,
+  "debianutils": 298670,
+  "device-tree-compiler": 632768,
+  "dhcpcd-base": 539384,
+  "dhcpcd": 20490,
+  "dialog": 305075,
+  "libnewt0.52": 187295,
+  "emacsen-common": 25819,
+  "diffutils": 1743961,
+  "dirmngr": 976603,
+  "gpg": 1475437,
+  "dmsetup": 258764,
+  "libdpkg-perl": 2000917,
+  "dracut-install": 141662,
+  "kmod": 231592,
+  "fbterm": 102406,
+  "ncurses-base": 337616,
+  "fcitx-modules": 5596473,
+  "fcitx-anthy": 408936,
+  "fcitx-data": 866210,
+  "hicolor-icon-theme": 68567,
+  "fcitx-bin": 163512,
+  "fdisk": 599274,
+  "file": 106658,
+  "findutils": 2061314,
+  "flex": 1117424,
+  "fonts-noto-cjk": 93385001,
+  "fontconfig-config": 421859,
+  "fontconfig": 1123054,
+  "fonts-dejavu-mono": 1287514,
+  "fonts-dejavu-core": 2311788,
+  "fonts-dejavu-extra": 6877269,
+  "fonts-dejavu": 28278,
+  "g++-14-arm-linux-gnueabi": 30254625,
+  "libstdc++-14-dev": 21162069,
+  "g++-14": 21592,
+  "g++-arm-linux-gnueabi": 90,
+  "g++": 54,
+  "gcc-14-base": 105530,
+  "gcc-14": 571669,
+  "gcc-arm-linux-gnueabi": 389,
+  "git-man": 2197053,
+  "git": 46908576,
+  "gnupg-l10n": 5029479,
+  "gpgconf": 380440,
+  "gnupg": 449166,
+  "gpg-agent": 911868,
+  "gpgsm": 633329,
+  "grep": 1136499,
+  "groff-base": 3984658,
+  "vorbis-tools": 1743342,
+  "gtk-update-icon-cache": 122376,
+  "gzip": 259819,
+  "hostname": 18809,
+  "htop": 386850,
+  "hunspell-en-us": 1583881,
+  "ifupdown": 188803,
+  "init-system-helpers": 97272,
+  "init": 6909,
+  "initramfs-tools-bin": 78457,
+  "iproute2": 4033898,
+  "iputils-ping": 231965,
+  "ipython3": 39902,
+  "iw": 274439,
+  "jwm": 426321,
+  "keyboard-configuration": 62372,
+  "klibc-utils": 302118,
+  "libkmod2": 153588,
+  "less": 477147,
+  "libacl1": 48733,
+  "libanthy1t64": 304897,
+  "libanthyinput0t64": 59271,
+  "libao-common": 8533,
+  "libao4": 99464,
+  "libapparmor1": 149585,
+  "libapt-pkg7.0": 3304722,
+  "libasan8": 10105989,
+  "libasound2t64": 1001145,
+  "libaspell15": 2600196,
+  "libassuan9": 103087,
+  "libasyncns0": 20833,
+  "libatk-bridge2.0-0t64": 283113,
+  "libatk1.0-0t64": 150179,
+  "libatomic1": 67073,
+  "libatopology2t64": 138489,
+  "libatspi2.0-0t64": 281414,
+  "libattr1": 83130,
+  "libaudio2": 125288,
+  "libaudit-common": 12224,
+  "libaudit1": 209447,
+  "libavahi-client3": 95211,
+  "libavahi-common-data": 655443,
+  "libexif12": 2775307,
+  "libavahi-common3": 95309,
+  "libavahi-core7": 291748,
+  "libbinutils": 1056081,
+  "libblas3": 665286,
+  "libblkid1": 440114,
+  "libbpf1": 404362,
+  "libbrotli-dev": 960819,
+  "libbrotli1": 927292,
+  "libbsd0": 179309,
+  "libbz2-1.0": 79365,
+  "libbz2-dev": 76460,
+  "libc-bin": 2105337,
+  "libc6": 23179357,
+  "locales": 15795187,
+  "libc-dev-bin": 157207,
+  "libc-l10n": 4742356,
+  "libc6-dev": 7354641,
+  "linux-libc-dev": 9413712,
+  "libstdc++6": 2185351,
+  "libcairo-gobject2": 206545,
+  "libcairo2": 1281175,
+  "libcap-ng0": 140658,
+  "libcap2-bin": 286710,
+  "libcap2": 143101,
+  "libcbor0.10": 56189,
+  "libcc1-0": 133914,
+  "libcloudproviders0": 135750,
+  "libcolord2": 553771,
+  "libcom-err2": 100406,
+  "libcrypt-dev": 316236,
+  "libcrypt1": 282543,
+  "libctf-nobfd0": 265318,
+  "libctf0": 198798,
+  "libcups2t64": 616305,
+  "libcurl3t64-gnutls": 891349,
+  "libcurl4t64": 891093,
+  "libdaemon0": 69859,
+  "libdatrie1": 48104,
+  "libdav1d7": 799071,
+  "libdb5.3t64": 1642136,
+  "libdbus-1-3": 391148,
+  "libdbus-glib-1-2": 211588,
+  "libdconf1": 84124,
+  "libdebconfclient0": 77361,
+  "libdecor-0-0": 30323,
+  "libdeflate0": 70693,
+  "libdevmapper1.02.1": 545035,
+  "libdialog15": 221583,
+  "libdrm-amdgpu1": 85544,
+  "libdrm-common": 37714,
+  "libdrm-dev": 1091737,
+  "libdrm-exynos1": 85287,
+  "libdrm-freedreno1": 85538,
+  "libdrm-nouveau2": 85420,
+  "libdrm-omap1": 85295,
+  "libdrm-radeon1": 85366,
+  "libdrm-tegra0": 85297,
+  "libdrm2": 151219,
+  "libedit2": 217122,
+  "libegl-mesa0": 360490,
+  "libegl1": 77674,
+  "libenchant-2-2": 286864,
+  "libepoxy0": 963962,
+  "liberror-perl": 53282,
+  "libevdev2": 139392,
+  "libevent-core-2.1-7t64": 258144,
+  "libexpat1-dev": 708048,
+  "libpng-dev": 948909,
+  "libexpat1": 438324,
+  "libext2fs2t64": 562974,
+  "libfcitx-config4": 107495,
+  "libfcitx-core0": 142937,
+  "libfcitx-utils0": 92454,
+  "libfdisk1": 570758,
+  "libfdt1": 74340,
+  "libffi8": 79256,
+  "libfftw3-single3": 1451721,
+  "libfido2-1": 215650,
+  "libflac14": 363206,
+  "libfm-data": 1445649,
+  "libfm-gtk-data": 144932,
+  "libfm-extra4t64": 87174,
+  "libfm-gtk3-4t64": 416315,
+  "libfm4t64": 352588,
+  "libfontconfig-dev": 715457,
+  "libfontconfig1-dev": 267461,
+  "libfontconfig1": 596504,
+  "x11proto-dev": 1613455,
+  "libfontenc-dev": 42037,
+  "libfontenc1": 80820,
+  "libfreetype-dev": 1891242,
+  "libfreetype6": 841573,
+  "libfribidi0": 122741,
+  "libfs-dev": 106090,
+  "libfs6": 61596,
+  "libgbm1": 164031,
+  "libgcc-14-dev": 6816305,
+  "libgcc-s1": 132932,
+  "libgcrypt20": 1464880,
+  "libgdbm-compat4t64": 55579,
+  "libgdbm6t64": 104882,
+  "libgdk-pixbuf-2.0-0": 1025551,
+  "libgdk-pixbuf2.0-common": 2332449,
+  "libgettextpo0": 487986,
+  "libgfortran5": 1052291,
+  "libgl-dev": 1376765,
+  "libgl1-mesa-dri": 238684,
+  "libgl1": 519713,
+  "libglvnd0": 446154,
+  "libglx-dev": 71182,
+  "libglx-mesa0": 490827,
+  "libglx0": 69351,
+  "libgmp10": 784769,
+  "libgnutls30t64": 3312803,
+  "libgomp1": 330307,
+  "libgpg-error0": 154379,
+  "libgpm2": 72278,
+  "libgraphite2-3": 147309,
+  "libgssapi-krb5-2": 399796,
+  "libgtk-3-0t64": 9859685,
+  "libharfbuzz0b": 1413502,
+  "libhogweed6t64": 423502,
+  "libhunspell-1.7-0": 799716,
+  "libi2c0": 74921,
+  "libice-dev": 187437,
+  "libice6": 110928,
+  "libicu76": 37305115,
+  "libidn2-0": 365467,
+  "libisl23": 1597720,
+  "libjack-jackd2-0": 1088799,
+  "libjansson4": 77904,
+  "libjbig0": 60236,
+  "libjemalloc2": 631181,
+  "libjpeg-dev": 101154,
+  "libjpeg62-turbo-dev": 632066,
+  "libjpeg62-turbo": 401669,
+  "libjs-jquery": 705410,
+  "libjs-underscore": 345800,
+  "libjs-sphinxdoc": 70982,
+  "libjson-c5": 80552,
+  "libk5crypto3": 265979,
+  "libkeyutils1": 70389,
+  "libklibc": 89644,
+  "libkrb5-3": 938655,
+  "libkrb5support0": 135230,
+  "libksba8": 260871,
+  "liblapack3": 7288528,
+  "liblastlog2-2": 111749,
+  "liblcms2-2": 416375,
+  "libldap2": 542669,
+  "liblerc4": 544168,
+  "libllvm19": 117007425,
+  "libtext-iconv-perl": 25290,
+  "liblocale-gettext-perl": 28902,
+  "liblz4-1": 203341,
+  "liblzma5": 423083,
+  "liblzo2-2": 124864,
+  "libmagic-mgc": 10382681,
+  "libmd0": 65874,
+  "libmenu-cache-bin": 140830,
+  "libmenu-cache3": 73289,
+  "libmnl0": 22130,
+  "libmount1": 505526,
+  "libmp3lame0": 527262,
+  "libmpc3": 110440,
+  "libmpfr6": 951390,
+  "libmpg123-0t64": 334304,
+  "libmtdev1t64": 82360,
+  "libncurses6": 334261,
+  "libncursesw6": 399837,
+  "libnettle8t64": 514461,
+  "libnftables1": 968887,
+  "libnftnl11": 207288,
+  "libnghttp2-14": 211127,
+  "libnghttp3-9": 216483,
+  "libngtcp2-16": 351397,
+  "libngtcp2-crypto-gnutls8": 89202,
+  "libnl-3-200": 146849,
+  "libnl-genl-3-200": 78906,
+  "libnl-route-3-200": 547993,
+  "libnpth0t64": 83724,
+  "libogg0": 33090,
+  "libopenal-data": 248216,
+  "libopenal1": 1555631,
+  "libopus0": 393999,
+  "libopusfile0": 89608,
+  "libout123-0t64": 71124,
+  "libp11-kit0": 1670797,
+  "libpam-modules-bin": 428274,
+  "libpam-modules": 2999354,
+  "libpam-systemd": 733140,
+  "libpam0g": 231052,
+  "libpango-1.0-0": 535338,
+  "libpangocairo-1.0-0": 95029,
+  "libpangoft2-1.0-0": 160504,
+  "libpangoxft-1.0-0": 94959,
+  "libparted2t64": 523421,
+  "libpciaccess-dev": 101330,
+  "libpciaccess0": 106794,
+  "libpcre2-8-0": 524187,
+  "libpcsclite1": 168380,
+  "libperl5.40": 24951787,
+  "libpipeline1": 65875,
+  "libpixman-1-0": 688612,
+  "libpixman-1-dev": 53655,
+  "libpkgconf3": 68257,
+  "libpng16-16t64": 393125,
+  "libpopt0": 128662,
+  "libportaudio2": 182271,
+  "libpresage-data": 36534147,
+  "libpresage1v5": 459019,
+  "libproc2-0": 154992,
+  "libpsl5t64": 74754,
+  "libpulse0": 963186,
+  "libpython3-dev": 20943,
+  "libpython3-stdlib": 20836,
+  "python3.13": 846549,
+  "libpython3.13": 6270695,
+  "libpython3.13-minimal": 5384539,
+  "libpython3.13-stdlib": 10102348,
+  "libreadline8t64": 357436,
+  "librsvg2-2": 5052969,
+  "librtmp1": 112844,
+  "libsamplerate0": 1516164,
+  "libsasl2-2": 166381,
+  "libsasl2-modules-db": 95301,
+  "libsdl1.2debian": 220114,
+  "libsdl2-2.0-0": 1788143,
+  "libseccomp2": 206346,
+  "libselinux1": 203374,
+  "libsemanage-common": 8711,
+  "libsemanage2": 267502,
+  "libsensors-config": 26977,
+  "libsensors5": 83778,
+  "libsepol2": 793536,
+  "libsframe1": 133663,
+  "libsharpyuv0": 173553,
+  "libslang2": 2397224,
+  "libsm-dev": 82042,
+  "libsm6": 90290,
+  "libsmartcols1": 374150,
+  "libsndfile1": 545536,
+  "libsodium23": 352993,
+  "libspeex1": 110901,
+  "libsqlite3-0": 1630204,
+  "libss2": 100409,
+  "libssh2-1t64": 397861,
+  "libssl3t64": 5547602,
+  "libsyn123-0t64": 201985,
+  "libsystemd-shared": 6302296,
+  "libsystemd0": 1117660,
+  "libtasn1-6": 151771,
+  "libtext-charwidth-perl": 18048,
+  "libtext-wrapi18n-perl": 13255,
+  "libthai-data": 622871,
+  "libthai0": 67170,
+  "libtiff6": 750599,
+  "libtinfo6": 525298,
+  "libtinyxml2.6.2v5": 81166,
+  "libtirpc-common": 19983,
+  "libtirpc3t64": 216366,
+  "libtool": 1249835,
+  "libubsan1": 3263571,
+  "libuchardet0": 181443,
+  "libudev1": 329168,
+  "libunistring5": 2010202,
+  "libunwind8": 338816,
+  "libusb-1.0-0": 145651,
+  "libuuid1": 111891,
+  "libvncserver1": 477728,
+  "libvorbis0a": 204926,
+  "libvorbisenc2": 598077,
+  "libvorbisfile3": 73725,
+  "libvte-2.91-0": 802376,
+  "libvulkan1": 600213,
+  "libwayland-client0": 71268,
+  "libwayland-cursor0": 83308,
+  "libwayland-egl1": 70490,
+  "libwayland-server0": 71408,
+  "libwebp7": 502034,
+  "libwrap0": 108787,
+  "libwtmpdb0": 72709,
+  "libx11-6": 1475721,
+  "xserver-xorg-input-evdev": 162482,
+  "libx11-data": 1446226,
+  "libx11-dev": 2272815,
+  "libx11-xcb1": 351821,
+  "libxau-dev": 34351,
+  "libxau6": 24910,
+  "libxaw7-dev": 892535,
+  "libxaw7": 420532,
+  "libxcb-damage0": 109791,
+  "libxcb-dri3-0": 113909,
+  "libxcb-glx0": 187628,
+  "libxcb-icccm4": 36421,
+  "libxcb-image0": 29026,
+  "libxcb-keysyms1": 80839,
+  "libxcb-present0": 109792,
+  "libxcb-randr0": 154970,
+  "libxcb-render0": 142671,
+  "libxcb-shm0": 109795,
+  "libxcb-sync1": 122121,
+  "libxcb-util1": 84210,
+  "libxcb-xfixes0": 126178,
+  "libxcb1-dev": 726213,
+  "libxcb1": 237243,
+  "libxcomposite-dev": 26595,
+  "libxcomposite1": 22605,
+  "libxcursor-dev": 88989,
+  "libxcursor1": 89567,
+  "libxcvt-dev": 7474,
+  "libxcvt0": 70268,
+  "libxdamage-dev": 18684,
+  "libxdamage1": 20816,
+  "libxdmcp-dev": 63681,
+  "libxdmcp6": 37529,
+  "libxext-dev": 226136,
+  "libxext6": 100504,
+  "libxfixes-dev": 42385,
+  "libxfixes3": 79810,
+  "libxfont-dev": 356627,
+  "libxfont2": 254122,
+  "libxft-dev": 154384,
+  "libxft2": 147040,
+  "libxi-dev": 628255,
+  "libxi6": 113086,
+  "libxinerama-dev": 26917,
+  "libxinerama1": 81056,
+  "libxkbcommon0": 334503,
+  "libxkbfile-dev": 248193,
+  "libxkbfile1": 212643,
+  "libxml2": 1646197,
+  "libxmu-dev": 164295,
+  "libxmu-headers": 301869,
+  "libxmu6": 151382,
+  "libxmuu-dev": 31632,
+  "libxmuu1": 84532,
+  "libxpm-dev": 205748,
+  "libxpm4": 93807,
+  "libxrandr-dev": 94809,
+  "libxrandr2": 89816,
+  "libxrender-dev": 98379,
+  "libxrender1": 79755,
+  "libxres-dev": 25566,
+  "libxres1": 22301,
+  "libxshmfence1": 74588,
+  "libxss-dev": 30233,
+  "libxss1": 80255,
+  "libxt-dev": 979968,
+  "libxt6t64": 437985,
+  "libxtables12": 72431,
+  "libxtst-dev": 52399,
+  "libxtst6": 87505,
+  "libxv-dev": 63787,
+  "libxv1": 83694,
+  "libxvmc-dev": 65654,
+  "libxvmc1": 147104,
+  "libxxf86dga-dev": 42805,
+  "libxxf86dga1": 78922,
+  "libxxf86vm-dev": 40823,
+  "libxxf86vm1": 78974,
+  "libxxhash0": 74497,
+  "libyaml-0-2": 138757,
+  "libyyjson0": 279391,
+  "libz3-4": 25026202,
+  "libzstd1": 817060,
+  "linux-base": 38612,
+  "linux-sysctl-defaults": 8852,
+  "login.defs": 189808,
+  "login": 368568,
+  "logsave": 101328,
+  "lua5.1": 342877,
+  "lxmenu-data": 58999,
+  "m4": 559603,
+  "make": 1696629,
+  "mawk": 303942,
+  "media-types": 87794,
+  "mesa-common-dev": 3374390,
+  "mesa-libgallium": 28300515,
+  "mount": 507143,
+  "mpg123": 1036900,
+  "nano": 2776782,
+  "ncurses-bin": 903167,
+  "net-tools": 1195530,
+  "netbase": 22658,
+  "netsurf-common": 980674,
+  "netsurf-fb": 3843565,
+  "netsurf-gtk": 5030255,
+  "nftables": 183528,
+  "openssh-client": 4995874,
+  "openssh-sftp-server": 200767,
+  "openssl-provider-legacy": 414393,
+  "parted": 203455,
+  "patch": 261989,
+  "perl-base": 11252725,
+  "perl": 851980,
+  "perl-modules-5.40": 19611174,
+  "pinentry-curses": 129407,
+  "pkg-config": 17335,
+  "pkgconf-bin": 57156,
+  "pkgconf": 38570,
+  "python3-asttokens": 67853,
+  "python3-autocommand": 40763,
+  "python3-decorator": 46624,
+  "python3": 47654,
+  "python3-dev": 130436,
+  "python3-executing": 91635,
+  "python3-inflect": 127987,
+  "python3-ipython": 2643859,
+  "python3-jaraco.text": 26533,
+  "python3-jaraco.context": 17259,
+  "python3-jaraco.functools": 28857,
+  "python3-jedi": 4360306,
+  "python3-matplotlib-inline": 21690,
+  "python3-minimal": 92708,
+  "python3-more-itertools": 276465,
+  "python3-numpy-dev": 690278,
+  "python3-numpy": 18079738,
+  "python3-packaging": 236975,
+  "python3-parso": 344638,
+  "python3-pexpect": 200351,
+  "python3-pip": 9977740,
+  "python3-pkg-resources": 647310,
+  "python3-setuptools": 3702110,
+  "python3-prompt-toolkit": 1400247,
+  "python3-ptyprocess": 40743,
+  "python3-pure-eval": 33101,
+  "python3-pygments": 4434273,
+  "python3-smbus": 76022,
+  "python3-stack-data": 75867,
+  "python3-traitlets": 322634,
+  "python3-typeguard": 143043,
+  "python3-typeshed": 11372752,
+  "python3-typing-extensions": 509296,
+  "python3-wcwidth": 665343,
+  "python3-wheel": 67113,
+  "python3-zipp": 23478,
+  "python3.13-dev": 504118,
+  "python3.13-minimal": 5814697,
+  "readline-common": 71156,
+  "rpcsvc-proto": 262007,
+  "runit-helper": 10991,
+  "sed": 894319,
+  "ssh": 149804,
+  "systemd-sysv": 70366,
+  "systemd-timesyncd": 214421,
+  "sysvinit-utils": 175478,
+  "tar": 3044152,
+  "tzdata": 729922,
+  "ucf": 89375,
+  "usbutils": 351193,
+  "usr-is-merged": 3834,
+  "uuid-dev": 97752,
+  "vim-tiny": 2072987,
+  "vim": 3631401,
+  "x11-apps": 2016779,
+  "x11-ico-dvd": 2098388,
+  "x11-xkb-utils": 411391,
+  "xauth": 57456,
+  "xinit": 54129,
+  "xorg-dev": 6692,
+  "xorg-sgml-doctools": 73484,
+  "xserver-xorg-video-fbdev": 35337,
+  "zip": 733422
+ },
+ "arch_distribution": {
+  "v5TEJ": 32,
+  "v5TE": 2491,
+  "v7": 5,
+  "v6": 2,
+  "v4": 34
+ },
+ "libs": {
+  "libc.so.6": {
+   "consumer_files": 2418,
+   "consumer_pkgs": [
+    "?",
+    "alsa-utils",
+    "anthy",
+    "apt",
+    "apt-utils",
+    "avahi-daemon",
+    "base-passwd",
+    "bash",
+    "binutils",
+    "binutils-arm-linux-gnueabi",
+    "bison",
+    "bsdextrautils",
+    "bsdutils",
+    "busybox",
+    "bzip2",
+    "coreutils",
+    "cpio",
+    "cpp",
+    "cpp-14",
+    "cpp-14-arm-linux-gnueabi",
+    "cpp-arm-linux-gnueabi",
+    "cron",
+    "curl",
+    "dash",
+    "dbus",
+    "dbus-bin",
+    "dbus-daemon",
+    "dconf-gsettings-backend",
+    "dconf-service",
+    "debianutils",
+    "device-tree-compiler",
+    "dhcpcd-base",
+    "dialog",
+    "diffutils",
+    "dirmngr",
+    "dmsetup",
+    "dpkg",
+    "dracut-install",
+    "e2fsprogs",
+    "fastfetch",
+    "fbterm",
+    "fcitx-anthy",
+    "fcitx-bin",
+    "fcitx-modules",
+    "fdisk",
+    "file",
+    "findutils",
+    "flex",
+    "fontconfig",
+    "g++",
+    "g++-14",
+    "g++-14-arm-linux-gnueabi",
+    "g++-arm-linux-gnueabi",
+    "gcc",
+    "gcc-14",
+    "gcc-14-arm-linux-gnueabi",
+    "gcc-arm-linux-gnueabi",
+    "git",
+    "gpg",
+    "gpg-agent",
+    "gpgconf",
+    "gpgsm",
+    "grep",
+    "groff-base",
+    "gtk-update-icon-cache",
+    "gzip",
+    "hostname",
+    "htop",
+    "ifupdown",
+    "initramfs-tools-bin",
+    "iproute2",
+    "iputils-ping",
+    "iw",
+    "jwm",
+    "kmod",
+    "less",
+    "libacl1",
+    "libanthy1t64",
+    "libanthyinput0t64",
+    "libao4",
+    "libapparmor1",
+    "libapt-pkg7.0",
+    "libasan8",
+    "libasound2t64",
+    "libaspell15",
+    "libassuan9",
+    "libasyncns0",
+    "libatk-bridge2.0-0t64",
+    "libatk1.0-0t64",
+    "libatomic1",
+    "libatopology2t64",
+    "libatspi2.0-0t64",
+    "libattr1",
+    "libaudio2",
+    "libaudit1",
+    "libavahi-client3",
+    "libavahi-common3",
+    "libavahi-core7",
+    "libbinutils",
+    "libblas3",
+    "libblkid1",
+    "libbpf1",
+    "libbrotli-dev",
+    "libbrotli1",
+    "libbsd0",
+    "libbz2-1.0",
+    "libbz2-dev",
+    "libc-bin",
+    "libc-dev-bin",
+    "libc6",
+    "libc6-dev",
+    "libcairo2",
+    "libcap-ng0",
+    "libcap2",
+    "libcap2-bin",
+    "libcbor0.10",
+    "libcc1-0",
+    "libcloudproviders0",
+    "libcolord2",
+    "libcom-err2",
+    "libcrypt-dev",
+    "libcrypt1",
+    "libctf-nobfd0",
+    "libctf0",
+    "libcups2t64",
+    "libcurl3t64-gnutls",
+    "libcurl4t64",
+    "libdaemon0",
+    "libdatrie1",
+    "libdav1d7",
+    "libdb5.3t64",
+    "libdbus-1-3",
+    "libdbus-glib-1-2",
+    "libdconf1",
+    "libdebconfclient0",
+    "libdecor-0-0",
+    "libdeflate0",
+    "libdevmapper1.02.1",
+    "libdialog15",
+    "libdrm-amdgpu1",
+    "libdrm-dev",
+    "libdrm-exynos1",
+    "libdrm-freedreno1",
+    "libdrm-nouveau2",
+    "libdrm-omap1",
+    "libdrm-radeon1",
+    "libdrm-tegra0",
+    "libdrm2",
+    "libedit2",
+    "libegl-mesa0",
+    "libegl1",
+    "libelf1t64",
+    "libenchant-2-2",
+    "libepoxy0",
+    "libevdev2",
+    "libevent-core-2.1-7t64",
+    "libexif12",
+    "libexpat1",
+    "libexpat1-dev",
+    "libext2fs2t64",
+    "libfcitx-config4",
+    "libfcitx-core0",
+    "libfcitx-utils0",
+    "libfdisk1",
+    "libfdt1",
+    "libffi8",
+    "libfftw3-single3",
+    "libfido2-1",
+    "libflac14",
+    "libfm-extra4t64",
+    "libfm-gtk3-4t64",
+    "libfm4t64",
+    "libfontconfig-dev",
+    "libfontconfig1",
+    "libfontenc-dev",
+    "libfontenc1",
+    "libfreetype-dev",
+    "libfreetype6",
+    "libfribidi0",
+    "libfs-dev",
+    "libfs6",
+    "libgbm1",
+    "libgcc-14-dev",
+    "libgcc-s1",
+    "libgcrypt20",
+    "libgdbm-compat4t64",
+    "libgdbm6t64",
+    "libgdk-pixbuf-2.0-0",
+    "libgettextpo0",
+    "libgfortran5",
+    "libgl-dev",
+    "libgl1",
+    "libgl1-mesa-dri",
+    "libglib2.0-0t64",
+    "libglvnd0",
+    "libglx-dev",
+    "libglx-mesa0",
+    "libglx0",
+    "libgmp10",
+    "libgnutls30t64",
+    "libgomp1",
+    "libgpg-error0",
+    "libgpm2",
+    "libgraphite2-3",
+    "libgssapi-krb5-2",
+    "libgtk-3-0t64",
+    "libharfbuzz0b",
+    "libhogweed6t64",
+    "libhunspell-1.7-0",
+    "libi2c0",
+    "libice-dev",
+    "libice6",
+    "libicu76",
+    "libidn2-0",
+    "libisl23",
+    "libjack-jackd2-0",
+    "libjansson4",
+    "libjbig0",
+    "libjemalloc2",
+    "libjpeg62-turbo",
+    "libjpeg62-turbo-dev",
+    "libjson-c5",
+    "libk5crypto3",
+    "libkeyutils1",
+    "libkmod2",
+    "libkrb5-3",
+    "libkrb5support0",
+    "libksba8",
+    "liblapack3",
+    "liblastlog2-2",
+    "liblcms2-2",
+    "libldap2",
+    "liblerc4",
+    "libllvm19",
+    "liblocale-gettext-perl",
+    "liblz4-1",
+    "liblzma5",
+    "liblzo2-2",
+    "libmagic1t64",
+    "libmd0",
+    "libmenu-cache-bin",
+    "libmenu-cache3",
+    "libmnl0",
+    "libmount1",
+    "libmp3lame0",
+    "libmpc3",
+    "libmpfr6",
+    "libmpg123-0t64",
+    "libmtdev1t64",
+    "libncurses6",
+    "libncursesw6",
+    "libnettle8t64",
+    "libnewt0.52",
+    "libnftables1",
+    "libnftnl11",
+    "libnghttp2-14",
+    "libnghttp3-9",
+    "libngtcp2-16",
+    "libngtcp2-crypto-gnutls8",
+    "libnl-3-200",
+    "libnl-genl-3-200",
+    "libnl-route-3-200",
+    "libnpth0t64",
+    "libogg0",
+    "libopenal1",
+    "libopus0",
+    "libopusfile0",
+    "libout123-0t64",
+    "libp11-kit0",
+    "libpam-modules",
+    "libpam-modules-bin",
+    "libpam-systemd",
+    "libpam0g",
+    "libpango-1.0-0",
+    "libpangocairo-1.0-0",
+    "libpangoft2-1.0-0",
+    "libpangoxft-1.0-0",
+    "libparted2t64",
+    "libpciaccess-dev",
+    "libpciaccess0",
+    "libpcre2-8-0",
+    "libpcsclite1",
+    "libperl5.40",
+    "libpipeline1",
+    "libpixman-1-0",
+    "libpixman-1-dev",
+    "libpkgconf3",
+    "libpng-dev",
+    "libpng16-16t64",
+    "libpopt0",
+    "libportaudio2",
+    "libpresage1v5",
+    "libproc2-0",
+    "libpsl5t64",
+    "libpulse0",
+    "libpython3.13",
+    "libpython3.13-dev",
+    "libpython3.13-minimal",
+    "libpython3.13-stdlib",
+    "libreadline8t64",
+    "librsvg2-2",
+    "librtmp1",
+    "libsamplerate0",
+    "libsasl2-2",
+    "libsasl2-modules-db",
+    "libsdl1.2debian",
+    "libsdl2-2.0-0",
+    "libseccomp2",
+    "libselinux1",
+    "libsemanage2",
+    "libsensors5",
+    "libsepol2",
+    "libsframe1",
+    "libsharpyuv0",
+    "libslang2",
+    "libsm-dev",
+    "libsm6",
+    "libsmartcols1",
+    "libsndfile1",
+    "libsodium23",
+    "libspeex1",
+    "libsqlite3-0",
+    "libss2",
+    "libssh2-1t64",
+    "libssl3t64",
+    "libstdc++-14-dev",
+    "libstdc++6",
+    "libsyn123-0t64",
+    "libsystemd-shared",
+    "libsystemd0",
+    "libtasn1-6",
+    "libtext-charwidth-perl",
+    "libtext-iconv-perl",
+    "libthai0",
+    "libtiff6",
+    "libtinfo6",
+    "libtinyxml2.6.2v5",
+    "libtirpc3t64",
+    "libubsan1",
+    "libuchardet0",
+    "libudev1",
+    "libunistring5",
+    "libunwind8",
+    "libusb-1.0-0",
+    "libuuid1",
+    "libvncserver1",
+    "libvorbis0a",
+    "libvorbisenc2",
+    "libvorbisfile3",
+    "libvte-2.91-0",
+    "libvte-2.91-common",
+    "libvulkan1",
+    "libwayland-client0",
+    "libwayland-cursor0",
+    "libwayland-egl1",
+    "libwayland-server0",
+    "libwebp7",
+    "libwrap0",
+    "libwtmpdb0",
+    "libx11-6",
+    "libx11-dev",
+    "libxau-dev",
+    "libxau6",
+    "libxaw7",
+    "libxaw7-dev",
+    "libxcb-damage0",
+    "libxcb-dri3-0",
+    "libxcb-glx0",
+    "libxcb-icccm4",
+    "libxcb-image0",
+    "libxcb-keysyms1",
+    "libxcb-present0",
+    "libxcb-randr0",
+    "libxcb-render0",
+    "libxcb-shm0",
+    "libxcb-sync1",
+    "libxcb-util1",
+    "libxcb-xfixes0",
+    "libxcb1",
+    "libxcb1-dev",
+    "libxcomposite-dev",
+    "libxcomposite1",
+    "libxcursor-dev",
+    "libxcursor1",
+    "libxcvt-dev",
+    "libxcvt0",
+    "libxdamage-dev",
+    "libxdamage1",
+    "libxdmcp-dev",
+    "libxdmcp6",
+    "libxext-dev",
+    "libxext6",
+    "libxfixes-dev",
+    "libxfixes3",
+    "libxfont-dev",
+    "libxfont2",
+    "libxft-dev",
+    "libxft2",
+    "libxi-dev",
+    "libxi6",
+    "libxinerama-dev",
+    "libxinerama1",
+    "libxkbcommon0",
+    "libxkbfile-dev",
+    "libxkbfile1",
+    "libxml2",
+    "libxmu-dev",
+    "libxmu6",
+    "libxmuu-dev",
+    "libxmuu1",
+    "libxpm-dev",
+    "libxpm4",
+    "libxrandr-dev",
+    "libxrandr2",
+    "libxrender-dev",
+    "libxrender1",
+    "libxres-dev",
+    "libxres1",
+    "libxshmfence1",
+    "libxss-dev",
+    "libxss1",
+    "libxt-dev",
+    "libxt6t64",
+    "libxtables12",
+    "libxtst-dev",
+    "libxtst6",
+    "libxv-dev",
+    "libxv1",
+    "libxvmc-dev",
+    "libxvmc1",
+    "libxxf86dga-dev",
+    "libxxf86dga1",
+    "libxxf86vm-dev",
+    "libxxf86vm1",
+    "libxxhash0",
+    "libyaml-0-2",
+    "libyyjson0",
+    "libz3-4",
+    "libzstd1",
+    "login",
+    "logrotate",
+    "logsave",
+    "lua5.1",
+    "lxterminal",
+    "m4",
+    "make",
+    "man-db",
+    "mawk",
+    "mesa-libgallium",
+    "mount",
+    "mpg123",
+    "nano",
+    "ncurses-bin",
+    "net-tools",
+    "netsurf-fb",
+    "netsurf-gtk",
+    "nftables",
+    "openssh-client",
+    "openssh-server",
+    "openssh-sftp-server",
+    "openssl",
+    "openssl-provider-legacy",
+    "parted",
+    "passwd",
+    "patch",
+    "pcmanfm",
+    "perl-base",
+    "pinentry-curses",
+    "pkgconf",
+    "pkgconf-bin",
+    "procps",
+    "psmisc",
+    "python3-minimal",
+    "python3-numpy",
+    "python3-smbus",
+    "python3.13-minimal",
+    "rpcsvc-proto",
+    "sed",
+    "shared-mime-info",
+    "sl",
+    "sqv",
+    "sudo",
+    "systemd",
+    "systemd-sysv",
+    "systemd-timesyncd",
+    "sysvinit-utils",
+    "tar",
+    "tmux",
+    "triggerhappy",
+    "udev",
+    "usbutils",
+    "util-linux",
+    "uuid-dev",
+    "vim",
+    "vim-tiny",
+    "vorbis-tools",
+    "wget",
+    "whiptail",
+    "wpasupplicant",
+    "x11-apps",
+    "x11-xkb-utils",
+    "xauth",
+    "xinit",
+    "xinput-calibrator",
+    "xserver-xorg-core",
+    "xserver-xorg-input-evdev",
+    "xserver-xorg-video-fbdev",
+    "xz-utils",
+    "zip",
+    "zlib1g",
+    "zlib1g-dev",
+    "zstd"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libc.so.6",
+   "lib_pkg": "libc6",
+   "lib_bytes": 1581220
+  },
+  "ld-linux.so.3": {
+   "consumer_files": 2196,
+   "consumer_pkgs": [
+    "?",
+    "alsa-utils",
+    "anthy",
+    "apt",
+    "apt-utils",
+    "avahi-daemon",
+    "base-passwd",
+    "bash",
+    "bison",
+    "bsdextrautils",
+    "bsdutils",
+    "busybox",
+    "bzip2",
+    "coreutils",
+    "cpio",
+    "cpp",
+    "cpp-14",
+    "cpp-14-arm-linux-gnueabi",
+    "cpp-arm-linux-gnueabi",
+    "cron",
+    "curl",
+    "dash",
+    "dbus",
+    "dbus-bin",
+    "dbus-daemon",
+    "dconf-gsettings-backend",
+    "dconf-service",
+    "debianutils",
+    "device-tree-compiler",
+    "dhcpcd-base",
+    "dialog",
+    "diffutils",
+    "dirmngr",
+    "dmsetup",
+    "dpkg",
+    "dracut-install",
+    "e2fsprogs",
+    "fastfetch",
+    "fbterm",
+    "fcitx-anthy",
+    "fcitx-bin",
+    "fcitx-modules",
+    "fdisk",
+    "file",
+    "findutils",
+    "flex",
+    "fontconfig",
+    "g++",
+    "g++-14",
+    "g++-14-arm-linux-gnueabi",
+    "g++-arm-linux-gnueabi",
+    "gcc",
+    "gcc-14",
+    "gcc-14-arm-linux-gnueabi",
+    "gcc-arm-linux-gnueabi",
+    "git",
+    "gpg",
+    "gpg-agent",
+    "gpgconf",
+    "gpgsm",
+    "grep",
+    "groff-base",
+    "gtk-update-icon-cache",
+    "gzip",
+    "hostname",
+    "htop",
+    "ifupdown",
+    "initramfs-tools-bin",
+    "iproute2",
+    "iputils-ping",
+    "iw",
+    "jwm",
+    "kmod",
+    "less",
+    "libacl1",
+    "libanthy1t64",
+    "libanthyinput0t64",
+    "libapparmor1",
+    "libapt-pkg7.0",
+    "libasound2t64",
+    "libaspell15",
+    "libassuan9",
+    "libasyncns0",
+    "libatk-bridge2.0-0t64",
+    "libatk1.0-0t64",
+    "libatopology2t64",
+    "libatspi2.0-0t64",
+    "libattr1",
+    "libaudio2",
+    "libaudit1",
+    "libavahi-client3",
+    "libavahi-common3",
+    "libavahi-core7",
+    "libbinutils",
+    "libblas3",
+    "libblkid1",
+    "libbpf1",
+    "libbrotli-dev",
+    "libbrotli1",
+    "libbsd0",
+    "libbz2-1.0",
+    "libbz2-dev",
+    "libc-bin",
+    "libc-dev-bin",
+    "libc6",
+    "libc6-dev",
+    "libcairo2",
+    "libcap-ng0",
+    "libcap2",
+    "libcap2-bin",
+    "libcbor0.10",
+    "libcloudproviders0",
+    "libcolord2",
+    "libcom-err2",
+    "libcrypt-dev",
+    "libcrypt1",
+    "libcups2t64",
+    "libcurl3t64-gnutls",
+    "libcurl4t64",
+    "libdaemon0",
+    "libdatrie1",
+    "libdav1d7",
+    "libdb5.3t64",
+    "libdbus-1-3",
+    "libdbus-glib-1-2",
+    "libdconf1",
+    "libdebconfclient0",
+    "libdecor-0-0",
+    "libdeflate0",
+    "libdevmapper1.02.1",
+    "libdialog15",
+    "libdrm-amdgpu1",
+    "libdrm-dev",
+    "libdrm-exynos1",
+    "libdrm-freedreno1",
+    "libdrm-nouveau2",
+    "libdrm-omap1",
+    "libdrm-radeon1",
+    "libdrm-tegra0",
+    "libdrm2",
+    "libedit2",
+    "libegl-mesa0",
+    "libegl1",
+    "libelf1t64",
+    "libenchant-2-2",
+    "libepoxy0",
+    "libevdev2",
+    "libevent-core-2.1-7t64",
+    "libexif12",
+    "libexpat1",
+    "libexpat1-dev",
+    "libext2fs2t64",
+    "libfcitx-config4",
+    "libfcitx-core0",
+    "libfcitx-utils0",
+    "libfdisk1",
+    "libfdt1",
+    "libffi8",
+    "libfido2-1",
+    "libflac14",
+    "libfm-extra4t64",
+    "libfm-gtk3-4t64",
+    "libfm4t64",
+    "libfontconfig-dev",
+    "libfontconfig1",
+    "libfontenc-dev",
+    "libfontenc1",
+    "libfreetype-dev",
+    "libfreetype6",
+    "libfribidi0",
+    "libfs-dev",
+    "libfs6",
+    "libgbm1",
+    "libgcc-14-dev",
+    "libgcrypt20",
+    "libgdbm-compat4t64",
+    "libgdbm6t64",
+    "libgdk-pixbuf-2.0-0",
+    "libgettextpo0",
+    "libgfortran5",
+    "libgl1-mesa-dri",
+    "libglib2.0-0t64",
+    "libglvnd0",
+    "libglx-dev",
+    "libglx-mesa0",
+    "libglx0",
+    "libgmp10",
+    "libgnutls30t64",
+    "libgpg-error0",
+    "libgpm2",
+    "libgraphite2-3",
+    "libgssapi-krb5-2",
+    "libgtk-3-0t64",
+    "libharfbuzz0b",
+    "libhogweed6t64",
+    "libhunspell-1.7-0",
+    "libi2c0",
+    "libice-dev",
+    "libice6",
+    "libicu76",
+    "libidn2-0",
+    "libisl23",
+    "libjack-jackd2-0",
+    "libjansson4",
+    "libjbig0",
+    "libjemalloc2",
+    "libjpeg62-turbo",
+    "libjpeg62-turbo-dev",
+    "libjson-c5",
+    "libk5crypto3",
+    "libkeyutils1",
+    "libkmod2",
+    "libkrb5-3",
+    "libkrb5support0",
+    "libksba8",
+    "liblapack3",
+    "liblastlog2-2",
+    "liblcms2-2",
+    "libldap2",
+    "liblerc4",
+    "libllvm19",
+    "liblocale-gettext-perl",
+    "liblz4-1",
+    "liblzma5",
+    "liblzo2-2",
+    "libmagic1t64",
+    "libmd0",
+    "libmenu-cache-bin",
+    "libmenu-cache3",
+    "libmnl0",
+    "libmount1",
+    "libmp3lame0",
+    "libmpc3",
+    "libmpfr6",
+    "libmpg123-0t64",
+    "libmtdev1t64",
+    "libncurses6",
+    "libncursesw6",
+    "libnettle8t64",
+    "libnewt0.52",
+    "libnftables1",
+    "libnftnl11",
+    "libnghttp2-14",
+    "libnghttp3-9",
+    "libngtcp2-16",
+    "libngtcp2-crypto-gnutls8",
+    "libnl-3-200",
+    "libnl-genl-3-200",
+    "libnl-route-3-200",
+    "libnpth0t64",
+    "libogg0",
+    "libopenal1",
+    "libopus0",
+    "libopusfile0",
+    "libout123-0t64",
+    "libp11-kit0",
+    "libpam-modules",
+    "libpam-modules-bin",
+    "libpam-systemd",
+    "libpam0g",
+    "libpango-1.0-0",
+    "libpangocairo-1.0-0",
+    "libpangoft2-1.0-0",
+    "libpangoxft-1.0-0",
+    "libparted2t64",
+    "libpciaccess-dev",
+    "libpciaccess0",
+    "libpcre2-8-0",
+    "libpcsclite1",
+    "libperl5.40",
+    "libpipeline1",
+    "libpixman-1-0",
+    "libpixman-1-dev",
+    "libpkgconf3",
+    "libpng-dev",
+    "libpng16-16t64",
+    "libpopt0",
+    "libportaudio2",
+    "libpresage1v5",
+    "libproc2-0",
+    "libpsl5t64",
+    "libpulse0",
+    "libpython3.13",
+    "libpython3.13-dev",
+    "libpython3.13-minimal",
+    "libpython3.13-stdlib",
+    "libreadline8t64",
+    "librsvg2-2",
+    "librtmp1",
+    "libsamplerate0",
+    "libsasl2-2",
+    "libsasl2-modules-db",
+    "libsdl1.2debian",
+    "libsdl2-2.0-0",
+    "libseccomp2",
+    "libselinux1",
+    "libsemanage2",
+    "libsensors5",
+    "libsepol2",
+    "libsharpyuv0",
+    "libslang2",
+    "libsm-dev",
+    "libsm6",
+    "libsmartcols1",
+    "libsndfile1",
+    "libsodium23",
+    "libspeex1",
+    "libsqlite3-0",
+    "libss2",
+    "libssh2-1t64",
+    "libssl3t64",
+    "libstdc++-14-dev",
+    "libstdc++6",
+    "libsyn123-0t64",
+    "libsystemd-shared",
+    "libsystemd0",
+    "libtasn1-6",
+    "libtext-charwidth-perl",
+    "libtext-iconv-perl",
+    "libthai0",
+    "libtiff6",
+    "libtinfo6",
+    "libtinyxml2.6.2v5",
+    "libtirpc3t64",
+    "libubsan1",
+    "libuchardet0",
+    "libudev1",
+    "libunistring5",
+    "libunwind8",
+    "libusb-1.0-0",
+    "libuuid1",
+    "libvncserver1",
+    "libvorbis0a",
+    "libvorbisenc2",
+    "libvorbisfile3",
+    "libvte-2.91-0",
+    "libvulkan1",
+    "libwayland-client0",
+    "libwayland-cursor0",
+    "libwayland-server0",
+    "libwebp7",
+    "libwrap0",
+    "libwtmpdb0",
+    "libx11-6",
+    "libx11-dev",
+    "libxau-dev",
+    "libxau6",
+    "libxaw7",
+    "libxaw7-dev",
+    "libxcb-damage0",
+    "libxcb-dri3-0",
+    "libxcb-glx0",
+    "libxcb-image0",
+    "libxcb-present0",
+    "libxcb-randr0",
+    "libxcb-render0",
+    "libxcb-shm0",
+    "libxcb-sync1",
+    "libxcb-util1",
+    "libxcb-xfixes0",
+    "libxcb1",
+    "libxcb1-dev",
+    "libxcomposite-dev",
+    "libxcomposite1",
+    "libxcursor-dev",
+    "libxcursor1",
+    "libxdamage-dev",
+    "libxdamage1",
+    "libxdmcp-dev",
+    "libxdmcp6",
+    "libxext-dev",
+    "libxext6",
+    "libxfixes-dev",
+    "libxfixes3",
+    "libxfont-dev",
+    "libxfont2",
+    "libxft-dev",
+    "libxft2",
+    "libxi-dev",
+    "libxi6",
+    "libxinerama-dev",
+    "libxinerama1",
+    "libxkbcommon0",
+    "libxkbfile-dev",
+    "libxkbfile1",
+    "libxml2",
+    "libxmu-dev",
+    "libxmu6",
+    "libxmuu-dev",
+    "libxmuu1",
+    "libxpm-dev",
+    "libxpm4",
+    "libxrandr-dev",
+    "libxrandr2",
+    "libxrender-dev",
+    "libxrender1",
+    "libxres-dev",
+    "libxres1",
+    "libxshmfence1",
+    "libxss-dev",
+    "libxss1",
+    "libxt-dev",
+    "libxt6t64",
+    "libxtables12",
+    "libxtst-dev",
+    "libxtst6",
+    "libxv-dev",
+    "libxv1",
+    "libxvmc-dev",
+    "libxvmc1",
+    "libxxf86dga-dev",
+    "libxxf86dga1",
+    "libxxf86vm-dev",
+    "libxxf86vm1",
+    "libxxhash0",
+    "libyaml-0-2",
+    "libyyjson0",
+    "libz3-4",
+    "libzstd1",
+    "login",
+    "logrotate",
+    "logsave",
+    "lua5.1",
+    "lxterminal",
+    "m4",
+    "make",
+    "man-db",
+    "mawk",
+    "mesa-libgallium",
+    "mount",
+    "mpg123",
+    "nano",
+    "ncurses-bin",
+    "net-tools",
+    "netsurf-fb",
+    "netsurf-gtk",
+    "nftables",
+    "openssh-client",
+    "openssh-server",
+    "openssh-sftp-server",
+    "openssl",
+    "openssl-provider-legacy",
+    "parted",
+    "passwd",
+    "patch",
+    "pcmanfm",
+    "perl-base",
+    "pinentry-curses",
+    "pkgconf",
+    "pkgconf-bin",
+    "procps",
+    "psmisc",
+    "python3-minimal",
+    "python3-numpy",
+    "python3-smbus",
+    "python3.13-minimal",
+    "rpcsvc-proto",
+    "sed",
+    "shared-mime-info",
+    "sqv",
+    "sudo",
+    "systemd",
+    "systemd-sysv",
+    "systemd-timesyncd",
+    "sysvinit-utils",
+    "tar",
+    "tmux",
+    "triggerhappy",
+    "udev",
+    "usbutils",
+    "util-linux",
+    "uuid-dev",
+    "vim",
+    "vim-tiny",
+    "vorbis-tools",
+    "wget",
+    "whiptail",
+    "wpasupplicant",
+    "x11-apps",
+    "x11-xkb-utils",
+    "xauth",
+    "xinit",
+    "xinput-calibrator",
+    "xserver-xorg-core",
+    "xserver-xorg-input-evdev",
+    "xserver-xorg-video-fbdev",
+    "xz-utils",
+    "zip",
+    "zlib1g",
+    "zlib1g-dev",
+    "zstd"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/ld-linux.so.3",
+   "lib_pkg": "libc6",
+   "lib_bytes": 199304
+  },
+  "libm.so.6": {
+   "consumer_files": 322,
+   "consumer_pkgs": [
+    "?",
+    "alsa-utils",
+    "apt-utils",
+    "cpp-14-arm-linux-gnueabi",
+    "fastfetch",
+    "findutils",
+    "flex",
+    "g++-14-arm-linux-gnueabi",
+    "gcc",
+    "gcc-14",
+    "gcc-14-arm-linux-gnueabi",
+    "gcc-arm-linux-gnueabi",
+    "groff-base",
+    "htop",
+    "iproute2",
+    "libanthy1t64",
+    "libapt-pkg7.0",
+    "libasan8",
+    "libasound2t64",
+    "libaspell15",
+    "libaudio2",
+    "libblas3",
+    "libbrotli-dev",
+    "libbrotli1",
+    "libcairo2",
+    "libcolord2",
+    "libcups2t64",
+    "libdevmapper1.02.1",
+    "libdialog15",
+    "libegl-mesa0",
+    "libexif12",
+    "libfftw3-single3",
+    "libflac14",
+    "libfm-gtk3-4t64",
+    "libgbm1",
+    "libgcc-14-dev",
+    "libgdk-pixbuf-2.0-0",
+    "libgfortran5",
+    "libgl1-mesa-dri",
+    "libglib2.0-0t64",
+    "libglx-mesa0",
+    "libgtk-3-0t64",
+    "libharfbuzz0b",
+    "libicu76",
+    "libjack-jackd2-0",
+    "liblapack3",
+    "liblcms2-2",
+    "liblerc4",
+    "libllvm19",
+    "libmp3lame0",
+    "libmpc3",
+    "libmpg123-0t64",
+    "libopenal1",
+    "libopus0",
+    "libpam-systemd",
+    "libpango-1.0-0",
+    "libpangocairo-1.0-0",
+    "libpangoft2-1.0-0",
+    "libpangoxft-1.0-0",
+    "libperl5.40",
+    "libpixman-1-0",
+    "libpixman-1-dev",
+    "libpng-dev",
+    "libpng16-16t64",
+    "libportaudio2",
+    "libpresage1v5",
+    "libpulse0",
+    "libpython3.13",
+    "libpython3.13-dev",
+    "libpython3.13-stdlib",
+    "librsvg2-2",
+    "libsamplerate0",
+    "libsdl2-2.0-0",
+    "libsensors5",
+    "libsharpyuv0",
+    "libslang2",
+    "libsndfile1",
+    "libspeex1",
+    "libsqlite3-0",
+    "libstdc++-14-dev",
+    "libstdc++6",
+    "libsyn123-0t64",
+    "libsystemd-shared",
+    "libsystemd0",
+    "libtiff6",
+    "libvorbis0a",
+    "libvte-2.91-0",
+    "libwebp7",
+    "libxfont-dev",
+    "libxfont2",
+    "libxml2",
+    "libz3-4",
+    "lua5.1",
+    "mawk",
+    "mesa-libgallium",
+    "mpg123",
+    "netsurf-fb",
+    "netsurf-gtk",
+    "pcmanfm",
+    "perl-base",
+    "python3-minimal",
+    "python3-numpy",
+    "python3.13-minimal",
+    "sqv",
+    "systemd",
+    "systemd-timesyncd",
+    "tmux",
+    "vim",
+    "vim-tiny",
+    "vorbis-tools",
+    "wpasupplicant",
+    "x11-apps",
+    "xinput-calibrator",
+    "xserver-xorg-core"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libm.so.6",
+   "lib_pkg": "libc6",
+   "lib_bytes": 525736
+  },
+  "libz.so.1": {
+   "consumer_files": 260,
+   "consumer_pkgs": [
+    "?",
+    "binutils",
+    "binutils-arm-linux-gnueabi",
+    "cpp-14-arm-linux-gnueabi",
+    "curl",
+    "dpkg",
+    "g++-14-arm-linux-gnueabi",
+    "gcc",
+    "gcc-14",
+    "gcc-14-arm-linux-gnueabi",
+    "gcc-arm-linux-gnueabi",
+    "git",
+    "gpg",
+    "libapt-pkg7.0",
+    "libbinutils",
+    "libbpf1",
+    "libcairo2",
+    "libctf-nobfd0",
+    "libctf0",
+    "libcups2t64",
+    "libcurl3t64-gnutls",
+    "libcurl4t64",
+    "libelf1t64",
+    "libenchant-2-2",
+    "libfido2-1",
+    "libfontenc-dev",
+    "libfontenc1",
+    "libfreetype-dev",
+    "libfreetype6",
+    "libglib2.0-0t64",
+    "libllvm19",
+    "libmagic1t64",
+    "libpciaccess-dev",
+    "libpciaccess0",
+    "libperl5.40",
+    "libpng-dev",
+    "libpng16-16t64",
+    "libpython3.13",
+    "libpython3.13-dev",
+    "librtmp1",
+    "libssh2-1t64",
+    "libssl3t64",
+    "libtiff6",
+    "libvncserver1",
+    "libxfont-dev",
+    "libxfont2",
+    "libxml2",
+    "man-db",
+    "mesa-libgallium",
+    "netsurf-fb",
+    "netsurf-gtk",
+    "openssh-client",
+    "openssh-server",
+    "python3-minimal",
+    "python3.13-minimal",
+    "sudo",
+    "wget",
+    "zstd"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libz.so.1.3.1",
+   "lib_pkg": "zlib1g",
+   "lib_bytes": 132752
+  },
+  "libgcc_s.so.1": {
+   "consumer_files": 199,
+   "consumer_pkgs": [
+    "apt",
+    "apt-utils",
+    "fbterm",
+    "fcitx-anthy",
+    "gcc-14-arm-linux-gnueabi",
+    "groff-base",
+    "libapt-pkg7.0",
+    "libasan8",
+    "libaspell15",
+    "libblas3",
+    "libcc1-0",
+    "libegl-mesa0",
+    "libenchant-2-2",
+    "libexpat1",
+    "libexpat1-dev",
+    "libffi8",
+    "libgbm1",
+    "libgcc-14-dev",
+    "libgfortran5",
+    "libgl1-mesa-dri",
+    "libglx-mesa0",
+    "libhunspell-1.7-0",
+    "libicu76",
+    "libjack-jackd2-0",
+    "libjemalloc2",
+    "liblapack3",
+    "liblerc4",
+    "libllvm19",
+    "libopenal1",
+    "libpresage1v5",
+    "librsvg2-2",
+    "libstdc++-14-dev",
+    "libstdc++6",
+    "libtinyxml2.6.2v5",
+    "libubsan1",
+    "libuchardet0",
+    "libunwind8",
+    "libvte-2.91-0",
+    "libvte-2.91-common",
+    "libwtmpdb0",
+    "libz3-4",
+    "mesa-libgallium",
+    "python3-numpy",
+    "shared-mime-info",
+    "sqv",
+    "xinput-calibrator",
+    "zstd"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libgcc_s.so.1",
+   "lib_pkg": "libgcc-s1",
+   "lib_bytes": 132876
+  },
+  "libpcre2-8.so.0": {
+   "consumer_files": 164,
+   "consumer_pkgs": [
+    "git",
+    "grep",
+    "libglib2.0-0t64",
+    "libselinux1",
+    "libvte-2.91-0",
+    "wget"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libpcre2-8.so.0.14.0",
+   "lib_pkg": "libpcre2-8-0",
+   "lib_bytes": 460484
+  },
+  "libX11.so.6": {
+   "consumer_files": 130,
+   "consumer_pkgs": [
+    "jwm",
+    "libatspi2.0-0t64",
+    "libcairo2",
+    "libglx-dev",
+    "libglx-mesa0",
+    "libglx0",
+    "libgtk-3-0t64",
+    "libpangoxft-1.0-0",
+    "libpulse0",
+    "libsdl2-2.0-0",
+    "libxaw7",
+    "libxaw7-dev",
+    "libxcomposite-dev",
+    "libxcomposite1",
+    "libxcursor-dev",
+    "libxcursor1",
+    "libxdamage-dev",
+    "libxdamage1",
+    "libxext-dev",
+    "libxext6",
+    "libxfixes-dev",
+    "libxfixes3",
+    "libxft-dev",
+    "libxft2",
+    "libxi-dev",
+    "libxi6",
+    "libxinerama-dev",
+    "libxinerama1",
+    "libxkbfile-dev",
+    "libxkbfile1",
+    "libxmu-dev",
+    "libxmu6",
+    "libxmuu-dev",
+    "libxmuu1",
+    "libxpm-dev",
+    "libxpm4",
+    "libxrandr-dev",
+    "libxrandr2",
+    "libxrender-dev",
+    "libxrender1",
+    "libxres-dev",
+    "libxres1",
+    "libxss-dev",
+    "libxss1",
+    "libxt-dev",
+    "libxt6t64",
+    "libxtst-dev",
+    "libxtst6",
+    "libxv-dev",
+    "libxv1",
+    "libxvmc-dev",
+    "libxvmc1",
+    "libxxf86dga-dev",
+    "libxxf86dga1",
+    "libxxf86vm-dev",
+    "libxxf86vm1",
+    "lxterminal",
+    "pcmanfm",
+    "x11-apps",
+    "x11-xkb-utils",
+    "xauth",
+    "xinit",
+    "xinput-calibrator"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libX11.so.6.4.0",
+   "lib_pkg": "libx11-6",
+   "lib_bytes": 1190588
+  },
+  "libsystemd-shared-257.so": {
+   "consumer_files": 115,
+   "consumer_pkgs": [
+    "libsystemd-shared",
+    "systemd",
+    "systemd-sysv",
+    "systemd-timesyncd",
+    "udev"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/systemd/libsystemd-shared-257.so",
+   "lib_pkg": "libsystemd-shared",
+   "lib_bytes": 4137112
+  },
+  "libstdc++.so.6": {
+   "consumer_files": 108,
+   "consumer_pkgs": [
+    "apt",
+    "apt-utils",
+    "fbterm",
+    "fcitx-anthy",
+    "gcc-14-arm-linux-gnueabi",
+    "groff-base",
+    "libapt-pkg7.0",
+    "libaspell15",
+    "libcc1-0",
+    "libenchant-2-2",
+    "libgcc-14-dev",
+    "libhunspell-1.7-0",
+    "libicu76",
+    "libjack-jackd2-0",
+    "libjemalloc2",
+    "liblerc4",
+    "libllvm19",
+    "libopenal1",
+    "libpresage1v5",
+    "libtinyxml2.6.2v5",
+    "libubsan1",
+    "libuchardet0",
+    "libvte-2.91-0",
+    "libz3-4",
+    "mesa-libgallium",
+    "python3-numpy",
+    "shared-mime-info",
+    "xinput-calibrator",
+    "zstd"
+   ],
+   "lib_file": "/usr/lib/gcc/arm-linux-gnueabi/14/libstdc++.so",
+   "lib_pkg": "libstdc++-14-dev",
+   "lib_bytes": 2040680
+  },
+  "libselinux.so.1": {
+   "consumer_files": 92,
+   "consumer_pkgs": [
+    "?",
+    "base-passwd",
+    "coreutils",
+    "cron",
+    "dbus-daemon",
+    "dpkg",
+    "findutils",
+    "iproute2",
+    "libdevmapper1.02.1",
+    "libglib2.0-0t64",
+    "libmount1",
+    "libpam-modules",
+    "libpam-modules-bin",
+    "libsemanage2",
+    "libsystemd-shared",
+    "logrotate",
+    "mount",
+    "net-tools",
+    "openssh-client",
+    "openssh-server",
+    "passwd",
+    "sed",
+    "sudo",
+    "systemd",
+    "systemd-sysv",
+    "tar",
+    "util-linux",
+    "vim",
+    "vim-tiny",
+    "xserver-xorg-core"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libselinux.so.1",
+   "lib_pkg": "libselinux1",
+   "lib_bytes": 198140
+  },
+  "libglib-2.0.so.0": {
+   "consumer_files": 92,
+   "consumer_pkgs": [
+    "dconf-gsettings-backend",
+    "dconf-service",
+    "gtk-update-icon-cache",
+    "jwm",
+    "libatk-bridge2.0-0t64",
+    "libatk1.0-0t64",
+    "libatspi2.0-0t64",
+    "libcairo-gobject2",
+    "libcloudproviders0",
+    "libcolord2",
+    "libdbus-glib-1-2",
+    "libdconf1",
+    "libenchant-2-2",
+    "libfm-extra4t64",
+    "libfm-gtk3-4t64",
+    "libfm4t64",
+    "libgdk-pixbuf-2.0-0",
+    "libglib2.0-0t64",
+    "libgtk-3-0t64",
+    "libharfbuzz0b",
+    "libmenu-cache-bin",
+    "libmenu-cache3",
+    "libpango-1.0-0",
+    "libpangocairo-1.0-0",
+    "libpangoft2-1.0-0",
+    "libpangoxft-1.0-0",
+    "librsvg2-2",
+    "libvte-2.91-0",
+    "lxterminal",
+    "netsurf-gtk",
+    "pcmanfm",
+    "shared-mime-info"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libglib-2.0.so.0.8400.4",
+   "lib_pkg": "libglib2.0-0t64",
+   "lib_bytes": 1313100
+  },
+  "libgobject-2.0.so.0": {
+   "consumer_files": 87,
+   "consumer_pkgs": [
+    "dconf-gsettings-backend",
+    "dconf-service",
+    "jwm",
+    "libatk-bridge2.0-0t64",
+    "libatk1.0-0t64",
+    "libatspi2.0-0t64",
+    "libcairo-gobject2",
+    "libcloudproviders0",
+    "libcolord2",
+    "libdbus-glib-1-2",
+    "libdconf1",
+    "libenchant-2-2",
+    "libfm-extra4t64",
+    "libfm-gtk3-4t64",
+    "libfm4t64",
+    "libgdk-pixbuf-2.0-0",
+    "libglib2.0-0t64",
+    "libgtk-3-0t64",
+    "libmenu-cache-bin",
+    "libmenu-cache3",
+    "libpango-1.0-0",
+    "libpangocairo-1.0-0",
+    "libpangoft2-1.0-0",
+    "libpangoxft-1.0-0",
+    "librsvg2-2",
+    "libvte-2.91-0",
+    "lxterminal",
+    "netsurf-gtk",
+    "pcmanfm"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libgobject-2.0.so.0.8400.4",
+   "lib_pkg": "libglib2.0-0t64",
+   "lib_bytes": 395636
+  },
+  "libtinfo.so.6": {
+   "consumer_files": 74,
+   "consumer_pkgs": [
+    "?",
+    "alsa-utils",
+    "bash",
+    "bsdextrautils",
+    "dialog",
+    "fdisk",
+    "htop",
+    "less",
+    "libdialog15",
+    "libedit2",
+    "libncurses6",
+    "libncursesw6",
+    "libpython3.13-stdlib",
+    "libreadline8t64",
+    "libtinfo6",
+    "nano",
+    "ncurses-bin",
+    "parted",
+    "pinentry-curses",
+    "procps",
+    "psmisc",
+    "sl",
+    "tmux",
+    "util-linux",
+    "vim",
+    "vim-tiny"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libtinfo.so.6.5",
+   "lib_pkg": "libtinfo6",
+   "lib_bytes": 198788
+  },
+  "libcrypto.so.3": {
+   "consumer_files": 68,
+   "consumer_pkgs": [
+    "?",
+    "apt",
+    "coreutils",
+    "dhcpcd-base",
+    "kmod",
+    "libapt-pkg7.0",
+    "libcurl4t64",
+    "libfido2-1",
+    "libkmod2",
+    "libkrb5-3",
+    "libldap2",
+    "libopusfile0",
+    "libpython3.13-minimal",
+    "libsasl2-2",
+    "libssh2-1t64",
+    "libssl3t64",
+    "libsystemd-shared",
+    "netsurf-fb",
+    "netsurf-gtk",
+    "openssh-client",
+    "openssh-server",
+    "openssl",
+    "openssl-provider-legacy",
+    "sudo",
+    "systemd",
+    "wpasupplicant"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libcrypto.so.3",
+   "lib_pkg": "libssl3t64",
+   "lib_bytes": 4135044
+  },
+  "libpam.so.0": {
+   "consumer_files": 64,
+   "consumer_pkgs": [
+    "cron",
+    "libpam-modules",
+    "libpam-modules-bin",
+    "libpam-systemd",
+    "libpam0g",
+    "libsystemd-shared",
+    "login",
+    "openssh-server",
+    "passwd",
+    "sudo",
+    "systemd",
+    "util-linux"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libpam.so.0.85.1",
+   "lib_pkg": "libpam0g",
+   "lib_bytes": 66980
+  },
+  "libXext.so.6": {
+   "consumer_files": 54,
+   "consumer_pkgs": [
+    "jwm",
+    "libcairo2",
+    "libglx-mesa0",
+    "libgtk-3-0t64",
+    "libsdl2-2.0-0",
+    "libxaw7",
+    "libxaw7-dev",
+    "libxi-dev",
+    "libxi6",
+    "libxinerama-dev",
+    "libxinerama1",
+    "libxmu-dev",
+    "libxmu6",
+    "libxrandr-dev",
+    "libxrandr2",
+    "libxres-dev",
+    "libxres1",
+    "libxss-dev",
+    "libxss1",
+    "libxtst-dev",
+    "libxtst6",
+    "libxv-dev",
+    "libxv1",
+    "libxvmc-dev",
+    "libxvmc1",
+    "libxxf86dga-dev",
+    "libxxf86dga1",
+    "libxxf86vm-dev",
+    "libxxf86vm1",
+    "x11-apps",
+    "xauth"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libXext.so.6.4.0",
+   "lib_pkg": "libxext6",
+   "lib_bytes": 67760
+  },
+  "libgbm.so.1": {
+   "consumer_files": 52,
+   "consumer_pkgs": [
+    "libegl-mesa0",
+    "libgl1-mesa-dri",
+    "libsdl2-2.0-0",
+    "xserver-xorg-core"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libgbm.so.1.0.0",
+   "lib_pkg": "libgbm1",
+   "lib_bytes": 67112
+  },
+  "libgio-2.0.so.0": {
+   "consumer_files": 46,
+   "consumer_pkgs": [
+    "dconf-gsettings-backend",
+    "dconf-service",
+    "libatspi2.0-0t64",
+    "libcloudproviders0",
+    "libcolord2",
+    "libdbus-glib-1-2",
+    "libdconf1",
+    "libfm-gtk3-4t64",
+    "libfm4t64",
+    "libgdk-pixbuf-2.0-0",
+    "libglib2.0-0t64",
+    "libgtk-3-0t64",
+    "libmenu-cache-bin",
+    "libmenu-cache3",
+    "libpango-1.0-0",
+    "libpangoft2-1.0-0",
+    "librsvg2-2",
+    "libvte-2.91-0",
+    "netsurf-gtk",
+    "pcmanfm"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libgio-2.0.so.0.8400.4",
+   "lib_pkg": "libglib2.0-0t64",
+   "lib_bytes": 1837188
+  },
+  "libaudit.so.1": {
+   "consumer_files": 41,
+   "consumer_pkgs": [
+    "dbus-daemon",
+    "libpam-modules",
+    "libpam-modules-bin",
+    "libpam0g",
+    "libsemanage2",
+    "libsystemd-shared",
+    "login",
+    "openssh-server",
+    "passwd",
+    "sudo",
+    "xserver-xorg-core"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libaudit.so.1.0.0",
+   "lib_pkg": "libaudit1",
+   "lib_bytes": 197952
+  },
+  "libxcb.so.1": {
+   "consumer_files": 40,
+   "consumer_pkgs": [
+    "libcairo2",
+    "libegl-mesa0",
+    "libglx-mesa0",
+    "libpulse0",
+    "libx11-6",
+    "libx11-dev",
+    "libxcb-damage0",
+    "libxcb-dri3-0",
+    "libxcb-glx0",
+    "libxcb-icccm4",
+    "libxcb-image0",
+    "libxcb-keysyms1",
+    "libxcb-present0",
+    "libxcb-randr0",
+    "libxcb-render0",
+    "libxcb-shm0",
+    "libxcb-sync1",
+    "libxcb-util1",
+    "libxcb-xfixes0",
+    "mesa-libgallium",
+    "netsurf-fb",
+    "x11-apps"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libxcb.so.1.1.0",
+   "lib_pkg": "libxcb1",
+   "lib_bytes": 137044
+  },
+  "libblkid.so.1": {
+   "consumer_files": 35,
+   "consumer_pkgs": [
+    "e2fsprogs",
+    "libfdisk1",
+    "libmount1",
+    "libparted2t64",
+    "libsystemd-shared",
+    "mount",
+    "udev",
+    "util-linux"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libblkid.so.1.1.0",
+   "lib_pkg": "libblkid1",
+   "lib_bytes": 395204
+  },
+  "libasound.so.2": {
+   "consumer_files": 34,
+   "consumer_pkgs": [
+    "?",
+    "alsa-utils",
+    "libao4",
+    "libatopology2t64",
+    "libportaudio2",
+    "libsdl2-2.0-0",
+    "mpg123"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libasound.so.2.0.0",
+   "lib_pkg": "libasound2t64",
+   "lib_bytes": 984768
+  },
+  "libcap.so.2": {
+   "consumer_files": 33,
+   "consumer_pkgs": [
+    "avahi-daemon",
+    "coreutils",
+    "iproute2",
+    "iputils-ping",
+    "libcap2-bin",
+    "libpam-systemd",
+    "libsystemd-shared",
+    "libsystemd0",
+    "libudev1"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libcap.so.2.75",
+   "lib_pkg": "libcap2",
+   "lib_bytes": 67076
+  },
+  "libdrm.so.2": {
+   "consumer_files": 33,
+   "consumer_pkgs": [
+    "libdrm-amdgpu1",
+    "libdrm-dev",
+    "libdrm-exynos1",
+    "libdrm-freedreno1",
+    "libdrm-nouveau2",
+    "libdrm-omap1",
+    "libdrm-radeon1",
+    "libdrm-tegra0",
+    "libegl-mesa0",
+    "libgbm1",
+    "libglx-mesa0",
+    "libsdl2-2.0-0",
+    "mesa-libgallium",
+    "xserver-xorg-core"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libdrm.so.2.124.0",
+   "lib_pkg": "libdrm2",
+   "lib_bytes": 132872
+  },
+  "liblzma.so.5": {
+   "consumer_files": 32,
+   "consumer_pkgs": [
+    "?",
+    "dpkg",
+    "libapt-pkg7.0",
+    "libmagic1t64",
+    "libpython3.13-stdlib",
+    "libtiff6",
+    "libunwind8",
+    "libxml2",
+    "xz-utils",
+    "zstd"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/liblzma.so.5.8.1",
+   "lib_pkg": "liblzma5",
+   "lib_bytes": 197996
+  },
+  "libbfd-2.44-system.so": {
+   "consumer_files": 32,
+   "consumer_pkgs": [
+    "binutils",
+    "binutils-arm-linux-gnueabi",
+    "libbinutils",
+    "libctf0"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libbfd-2.44-system.so",
+   "lib_pkg": "libbinutils",
+   "lib_bytes": 857680
+  },
+  "libapt-pkg.so.7.0": {
+   "consumer_files": 31,
+   "consumer_pkgs": [
+    "apt",
+    "apt-utils"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libapt-pkg.so.7.0.0",
+   "lib_pkg": "libapt-pkg7.0",
+   "lib_bytes": 2165356
+  },
+  "libcom_err.so.2": {
+   "consumer_files": 31,
+   "consumer_pkgs": [
+    "e2fsprogs",
+    "libext2fs2t64",
+    "libgssapi-krb5-2",
+    "libkrb5-3",
+    "libss2",
+    "openssh-server"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libcom_err.so.2.1",
+   "lib_pkg": "libcom-err2",
+   "lib_bytes": 66864
+  },
+  "libsystemd.so.0": {
+   "consumer_files": 31,
+   "consumer_pkgs": [
+    "apt",
+    "avahi-daemon",
+    "bsdutils",
+    "coreutils",
+    "dbus",
+    "dbus-daemon",
+    "libapt-pkg7.0",
+    "libdbus-1-3",
+    "libpam-modules",
+    "libpam-modules-bin",
+    "libproc2-0",
+    "libpulse0",
+    "libvte-2.91-0",
+    "procps",
+    "tmux",
+    "triggerhappy",
+    "util-linux",
+    "xserver-xorg-core"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libsystemd.so.0.40.0",
+   "lib_pkg": "libsystemd0",
+   "lib_bytes": 1052480
+  },
+  "libXt.so.6": {
+   "consumer_files": 29,
+   "consumer_pkgs": [
+    "libaudio2",
+    "libxaw7",
+    "libxaw7-dev",
+    "libxmu-dev",
+    "libxmu6",
+    "x11-apps",
+    "x11-xkb-utils"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libXt.so.6.0.0",
+   "lib_pkg": "libxt6t64",
+   "lib_bytes": 404476
+  },
+  "libzstd.so.1": {
+   "consumer_files": 28,
+   "consumer_pkgs": [
+    "binutils",
+    "binutils-arm-linux-gnueabi",
+    "cpp-14-arm-linux-gnueabi",
+    "dpkg",
+    "g++-14-arm-linux-gnueabi",
+    "gcc",
+    "gcc-14",
+    "gcc-14-arm-linux-gnueabi",
+    "gcc-arm-linux-gnueabi",
+    "libapt-pkg7.0",
+    "libbinutils",
+    "libcurl3t64-gnutls",
+    "libcurl4t64",
+    "libelf1t64",
+    "libllvm19",
+    "libssl3t64",
+    "libtiff6",
+    "mesa-libgallium"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libzstd.so.1.5.7",
+   "lib_pkg": "libzstd1",
+   "lib_bytes": 787912
+  },
+  "libexpat.so.1": {
+   "consumer_files": 26,
+   "consumer_pkgs": [
+    "?",
+    "avahi-daemon",
+    "dbus",
+    "dbus-daemon",
+    "git",
+    "libegl-mesa0",
+    "libfontconfig-dev",
+    "libfontconfig1",
+    "libgbm1",
+    "libglx-mesa0",
+    "libpython3.13",
+    "libpython3.13-dev",
+    "mesa-libgallium",
+    "netsurf-fb",
+    "netsurf-gtk",
+    "python3-minimal",
+    "python3.13-minimal"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libexpat.so.1.13.0",
+   "lib_pkg": "libexpat1",
+   "lib_bytes": 198216
+  },
+  "libbsd.so.0": {
+   "consumer_files": 25,
+   "consumer_pkgs": [
+    "libedit2",
+    "passwd"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libbsd.so.0.12.2",
+   "lib_pkg": "libbsd0",
+   "lib_bytes": 63524
+  },
+  "libfontconfig.so.1": {
+   "consumer_files": 25,
+   "consumer_pkgs": [
+    "fbterm",
+    "fontconfig",
+    "libcairo2",
+    "libgtk-3-0t64",
+    "libpangocairo-1.0-0",
+    "libpangoft2-1.0-0",
+    "libpangoxft-1.0-0",
+    "libxft-dev",
+    "libxft2"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libfontconfig.so.1.12.1",
+   "lib_pkg": "libfontconfig1",
+   "lib_bytes": 329020
+  },
+  "libuuid.so.1": {
+   "consumer_files": 25,
+   "consumer_pkgs": [
+    "e2fsprogs",
+    "fcitx-modules",
+    "libfdisk1",
+    "libparted2t64",
+    "libpython3.13-stdlib",
+    "libsm-dev",
+    "libsm6",
+    "parted",
+    "util-linux",
+    "wget"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libuuid.so.1.3.0",
+   "lib_pkg": "libuuid1",
+   "lib_bytes": 67072
+  },
+  "libgdk_pixbuf-2.0.so.0": {
+   "consumer_files": 24,
+   "consumer_pkgs": [
+    "gtk-update-icon-cache",
+    "libfm-gtk3-4t64",
+    "libgdk-pixbuf-2.0-0",
+    "libgtk-3-0t64",
+    "librsvg2-2",
+    "lxterminal",
+    "netsurf-gtk",
+    "pcmanfm"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libgdk_pixbuf-2.0.so.0.4200.12",
+   "lib_pkg": "libgdk-pixbuf-2.0-0",
+   "lib_bytes": 198176
+  },
+  "libdbus-1.so.3": {
+   "consumer_files": 24,
+   "consumer_pkgs": [
+    "avahi-daemon",
+    "dbus",
+    "dbus-bin",
+    "dbus-daemon",
+    "fcitx-bin",
+    "fcitx-modules",
+    "libatk-bridge2.0-0t64",
+    "libatspi2.0-0t64",
+    "libavahi-client3",
+    "libdbus-glib-1-2",
+    "libpulse0",
+    "wpasupplicant",
+    "xserver-xorg-core"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libdbus-1.so.3.38.3",
+   "lib_pkg": "libdbus-1-3",
+   "lib_bytes": 329164
+  },
+  "libgtk-3.so.0": {
+   "consumer_files": 24,
+   "consumer_pkgs": [
+    "libfm-gtk3-4t64",
+    "libgtk-3-0t64",
+    "libvte-2.91-0",
+    "lxterminal",
+    "netsurf-gtk",
+    "pcmanfm"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libgtk-3.so.0.2417.32",
+   "lib_pkg": "libgtk-3-0t64",
+   "lib_bytes": 7675540
+  },
+  "libgpg-error.so.0": {
+   "consumer_files": 23,
+   "consumer_pkgs": [
+    "?",
+    "dirmngr",
+    "gpg",
+    "gpg-agent",
+    "gpgconf",
+    "gpgsm",
+    "libassuan9",
+    "libgcrypt20",
+    "libksba8",
+    "pinentry-curses"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libgpg-error.so.0.38.0",
+   "lib_pkg": "libgpg-error0",
+   "lib_bytes": 132496
+  },
+  "libgmp.so.10": {
+   "consumer_files": 23,
+   "consumer_pkgs": [
+    "coreutils",
+    "cpp-14-arm-linux-gnueabi",
+    "g++-14-arm-linux-gnueabi",
+    "gcc",
+    "gcc-14",
+    "gcc-14-arm-linux-gnueabi",
+    "gcc-arm-linux-gnueabi",
+    "libgnutls30t64",
+    "libhogweed6t64",
+    "libisl23",
+    "libmpc3",
+    "libmpfr6",
+    "libnftables1",
+    "librtmp1",
+    "sqv"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libgmp.so.10.5.0",
+   "lib_pkg": "libgmp10",
+   "lib_bytes": 461712
+  },
+  "libpango-1.0.so.0": {
+   "consumer_files": 23,
+   "consumer_pkgs": [
+    "jwm",
+    "libfm-gtk3-4t64",
+    "libgtk-3-0t64",
+    "libpangocairo-1.0-0",
+    "libpangoft2-1.0-0",
+    "libpangoxft-1.0-0",
+    "librsvg2-2",
+    "libvte-2.91-0",
+    "lxterminal",
+    "netsurf-gtk",
+    "pcmanfm"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libpango-1.0.so.0.5600.3",
+   "lib_pkg": "libpango-1.0-0",
+   "lib_bytes": 460872
+  },
+  "libcrypt.so.1": {
+   "consumer_files": 22,
+   "consumer_pkgs": [
+    "?",
+    "libpam-modules",
+    "libpam-modules-bin",
+    "libperl5.40",
+    "libsystemd-shared",
+    "login",
+    "openssh-server",
+    "passwd",
+    "perl-base",
+    "util-linux"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libcrypt.so.1.1.0",
+   "lib_pkg": "libcrypt1",
+   "lib_bytes": 263584
+  },
+  "libncursesw.so.6": {
+   "consumer_files": 20,
+   "consumer_pkgs": [
+    "?",
+    "alsa-utils",
+    "dialog",
+    "fdisk",
+    "htop",
+    "libdialog15",
+    "libncursesw6",
+    "libpython3.13-stdlib",
+    "nano",
+    "pinentry-curses",
+    "procps"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libncursesw.so.6.5",
+   "lib_pkg": "libncursesw6",
+   "lib_bytes": 197948
+  },
+  "libmount.so.1": {
+   "consumer_files": 20,
+   "consumer_pkgs": [
+    "fdisk",
+    "libglib2.0-0t64",
+    "libsystemd-shared",
+    "mount",
+    "systemd",
+    "util-linux"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libmount.so.1.1.0",
+   "lib_pkg": "libmount1",
+   "lib_bytes": 460616
+  },
+  "libXmu.so.6": {
+   "consumer_files": 20,
+   "consumer_pkgs": [
+    "jwm",
+    "libxaw7",
+    "libxaw7-dev",
+    "x11-apps"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libXmu.so.6.2.0",
+   "lib_pkg": "libxmu6",
+   "lib_bytes": 133832
+  },
+  "libseccomp.so.2": {
+   "consumer_files": 20,
+   "consumer_pkgs": [
+    "apt",
+    "libsystemd-shared",
+    "man-db",
+    "systemd"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libseccomp.so.2.6.0",
+   "lib_pkg": "libseccomp2",
+   "lib_bytes": 198244
+  },
+  "libext2fs.so.2": {
+   "consumer_files": 20,
+   "consumer_pkgs": [
+    "e2fsprogs"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libext2fs.so.2.4",
+   "lib_pkg": "libext2fs2t64",
+   "lib_bytes": 461224
+  },
+  "libbz2.so.1.0": {
+   "consumer_files": 19,
+   "consumer_pkgs": [
+    "bzip2",
+    "dpkg",
+    "gpg",
+    "libapt-pkg7.0",
+    "libfreetype-dev",
+    "libfreetype6",
+    "libmagic1t64",
+    "libperl5.40",
+    "libpython3.13-stdlib",
+    "libsemanage2",
+    "libxfont-dev",
+    "libxfont2",
+    "zip"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libbz2.so.1.0.4",
+   "lib_pkg": "libbz2-1.0",
+   "lib_bytes": 69940
+  },
+  "libsmartcols.so.1": {
+   "consumer_files": 19,
+   "consumer_pkgs": [
+    "bsdextrautils",
+    "fdisk",
+    "mount",
+    "util-linux"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libsmartcols.so.1.1.0",
+   "lib_pkg": "libsmartcols1",
+   "lib_bytes": 329228
+  },
+  "libmnl.so.0": {
+   "consumer_files": 19,
+   "consumer_pkgs": [
+    "iproute2",
+    "libnftables1",
+    "libnftnl11"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libmnl.so.0.2.0",
+   "lib_pkg": "libmnl0",
+   "lib_bytes": 17772
+  },
+  "libcairo.so.2": {
+   "consumer_files": 19,
+   "consumer_pkgs": [
+    "jwm",
+    "libcairo-gobject2",
+    "libfm-gtk3-4t64",
+    "libgtk-3-0t64",
+    "libpangocairo-1.0-0",
+    "librsvg2-2",
+    "libvte-2.91-0",
+    "netsurf-gtk",
+    "pcmanfm"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libcairo.so.2.11804.4",
+   "lib_pkg": "libcairo2",
+   "lib_bytes": 1249500
+  },
+  "libXrender.so.1": {
+   "consumer_files": 19,
+   "consumer_pkgs": [
+    "jwm",
+    "libcairo2",
+    "libpangoxft-1.0-0",
+    "libxcursor-dev",
+    "libxcursor1",
+    "libxft-dev",
+    "libxft2",
+    "libxrandr-dev",
+    "libxrandr2",
+    "x11-apps"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libXrender.so.1.3.0",
+   "lib_pkg": "libxrender1",
+   "lib_bytes": 67212
+  },
+  "libssl.so.3": {
+   "consumer_files": 18,
+   "consumer_pkgs": [
+    "?",
+    "apt",
+    "libcurl4t64",
+    "libldap2",
+    "libopusfile0",
+    "libpython3.13-minimal",
+    "netsurf-fb",
+    "netsurf-gtk",
+    "openssl",
+    "sudo",
+    "wpasupplicant"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libssl.so.3",
+   "lib_pkg": "libssl3t64",
+   "lib_bytes": 995832
+  },
+  "libfreetype.so.6": {
+   "consumer_files": 18,
+   "consumer_pkgs": [
+    "fbterm",
+    "fontconfig",
+    "libcairo2",
+    "libfontconfig-dev",
+    "libfontconfig1",
+    "libharfbuzz0b",
+    "libpangoft2-1.0-0",
+    "libxfont-dev",
+    "libxfont2",
+    "libxft-dev",
+    "libxft2",
+    "netsurf-fb"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libfreetype.so.6.20.2",
+   "lib_pkg": "libfreetype6",
+   "lib_bytes": 722404
+  },
+  "libudev.so.1": {
+   "consumer_files": 18,
+   "consumer_pkgs": [
+    "dhcpcd-base",
+    "libapt-pkg7.0",
+    "libcolord2",
+    "libdevmapper1.02.1",
+    "libfido2-1",
+    "libusb-1.0-0",
+    "usbutils",
+    "util-linux",
+    "xserver-xorg-core",
+    "xserver-xorg-input-evdev"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libudev.so.1.7.10",
+   "lib_pkg": "libudev1",
+   "lib_bytes": 263988
+  },
+  "libacl.so.1": {
+   "consumer_files": 17,
+   "consumer_pkgs": [
+    "?",
+    "coreutils",
+    "libsystemd-shared",
+    "logrotate",
+    "passwd",
+    "sed",
+    "systemd",
+    "tar",
+    "vim",
+    "vim-tiny"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libacl.so.1.1.2302",
+   "lib_pkg": "libacl1",
+   "lib_bytes": 30008
+  },
+  "libXaw.so.7": {
+   "consumer_files": 17,
+   "consumer_pkgs": [
+    "x11-apps",
+    "x11-xkb-utils"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libXaw7.so.7.0.0",
+   "lib_pkg": "libxaw7",
+   "lib_bytes": 376924
+  },
+  "libapt-private.so.0.0": {
+   "consumer_files": 16,
+   "consumer_pkgs": [
+    "apt",
+    "apt-utils"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libapt-private.so.0.0.0",
+   "lib_pkg": "apt",
+   "lib_bytes": 657440
+  },
+  "libe2p.so.2": {
+   "consumer_files": 16,
+   "consumer_pkgs": [
+    "e2fsprogs"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libe2p.so.2.3",
+   "lib_pkg": "libext2fs2t64",
+   "lib_bytes": 68128
+  },
+  "libgcrypt.so.20": {
+   "consumer_files": 16,
+   "consumer_pkgs": [
+    "dirmngr",
+    "gpg",
+    "gpg-agent",
+    "gpgconf",
+    "gpgsm",
+    "libvncserver1"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libgcrypt.so.20.5.0",
+   "lib_pkg": "libgcrypt20",
+   "lib_bytes": 1135940
+  },
+  "libgdk-3.so.0": {
+   "consumer_files": 16,
+   "consumer_pkgs": [
+    "libfm-gtk3-4t64",
+    "libgtk-3-0t64",
+    "libvte-2.91-0",
+    "lxterminal",
+    "netsurf-gtk",
+    "pcmanfm"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libgdk-3.so.0.2417.32",
+   "lib_pkg": "libgtk-3-0t64",
+   "lib_bytes": 921204
+  },
+  "libogg.so.0": {
+   "consumer_files": 15,
+   "consumer_pkgs": [
+    "libflac14",
+    "libopusfile0",
+    "libsndfile1",
+    "libvorbis0a",
+    "libvorbisfile3",
+    "vorbis-tools"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libogg.so.0.8.5",
+   "lib_pkg": "libogg0",
+   "lib_bytes": 25856
+  },
+  "libman-2.13.1.so": {
+   "consumer_files": 14,
+   "consumer_pkgs": [
+    "man-db"
+   ],
+   "lib_file": "/usr/lib/man-db/libman-2.13.1.so",
+   "lib_pkg": "man-db",
+   "lib_bytes": 264736
+  },
+  "libproc2.so.0": {
+   "consumer_files": 14,
+   "consumer_pkgs": [
+    "procps"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libproc2.so.0.0.2",
+   "lib_pkg": "libproc2-0",
+   "lib_bytes": 132836
+  },
+  "libpng16.so.16": {
+   "consumer_files": 13,
+   "consumer_pkgs": [
+    "?",
+    "jwm",
+    "libcairo2",
+    "libfreetype-dev",
+    "libfreetype6",
+    "libgdk-pixbuf-2.0-0",
+    "netsurf-fb",
+    "netsurf-gtk",
+    "x11-apps"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libpng16.so.16.48.0",
+   "lib_pkg": "libpng16-16t64",
+   "lib_bytes": 197996
+  },
+  "libidn2.so.0": {
+   "consumer_files": 13,
+   "consumer_pkgs": [
+    "iputils-ping",
+    "libcurl3t64-gnutls",
+    "libcurl4t64",
+    "libgnutls30t64",
+    "libpsl5t64",
+    "wget"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libidn2.so.0.4.0",
+   "lib_pkg": "libidn2-0",
+   "lib_bytes": 198036
+  },
+  "libatomic.so.1": {
+   "consumer_files": 13,
+   "consumer_pkgs": [
+    "libglib2.0-0t64",
+    "libllvm19",
+    "libpython3.13",
+    "libpython3.13-dev",
+    "libpython3.13-stdlib",
+    "libssl3t64",
+    "mesa-libgallium",
+    "python3-minimal",
+    "python3.13-minimal"
+   ],
+   "lib_file": "/usr/lib/gcc/arm-linux-gnueabi/14/libatomic.so",
+   "lib_pkg": "libgcc-14-dev",
+   "lib_bytes": 67044
+  },
+  "libsudo_util.so.0": {
+   "consumer_files": 13,
+   "consumer_pkgs": [
+    "sudo"
+   ],
+   "lib_file": "/usr/libexec/sudo/libsudo_util.so.0.0.0",
+   "lib_pkg": "sudo",
+   "lib_bytes": 132880
+  },
+  "libgnutls.so.30": {
+   "consumer_files": 13,
+   "consumer_pkgs": [
+    "dirmngr",
+    "libcups2t64",
+    "libcurl3t64-gnutls",
+    "libngtcp2-crypto-gnutls8",
+    "librtmp1",
+    "libvncserver1",
+    "libvte-2.91-0",
+    "wget"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libgnutls.so.30.40.3",
+   "lib_pkg": "libgnutls30t64",
+   "lib_bytes": 2104504
+  },
+  "libgmodule-2.0.so.0": {
+   "consumer_files": 13,
+   "consumer_pkgs": [
+    "libenchant-2-2",
+    "libgdk-pixbuf-2.0-0",
+    "libglib2.0-0t64",
+    "libgtk-3-0t64"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libgmodule-2.0.so.0.8400.4",
+   "lib_pkg": "libglib2.0-0t64",
+   "lib_bytes": 66984
+  },
+  "libdb-5.3.so": {
+   "consumer_files": 12,
+   "consumer_pkgs": [
+    "apt-utils",
+    "iproute2",
+    "libjack-jackd2-0",
+    "libpam-modules",
+    "libperl5.40",
+    "libpython3.13-stdlib",
+    "libsasl2-modules-db"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libdb-5.3.so",
+   "lib_pkg": "libdb5.3t64",
+   "lib_bytes": 1623160
+  },
+  "libassuan.so.9": {
+   "consumer_files": 12,
+   "consumer_pkgs": [
+    "dirmngr",
+    "gpg",
+    "gpg-agent",
+    "gpgconf",
+    "gpgsm",
+    "pinentry-curses"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libassuan.so.9.0.2",
+   "lib_pkg": "libassuan9",
+   "lib_bytes": 66996
+  },
+  "libwayland-client.so.0": {
+   "consumer_files": 12,
+   "consumer_pkgs": [
+    "libdecor-0-0",
+    "libegl-mesa0",
+    "libgtk-3-0t64",
+    "libsdl2-2.0-0",
+    "libwayland-cursor0",
+    "netsurf-fb"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libwayland-client.so.0.23.1",
+   "lib_pkg": "libwayland-client0",
+   "lib_bytes": 67636
+  },
+  "libvorbis.so.0": {
+   "consumer_files": 12,
+   "consumer_pkgs": [
+    "libsndfile1",
+    "libvorbisenc2",
+    "libvorbisfile3",
+    "vorbis-tools"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libvorbis.so.0.4.9",
+   "lib_pkg": "libvorbis0a",
+   "lib_bytes": 197940
+  },
+  "libjpeg.so.62": {
+   "consumer_files": 11,
+   "consumer_pkgs": [
+    "?",
+    "jwm",
+    "libgdk-pixbuf-2.0-0",
+    "libtiff6",
+    "libvncserver1",
+    "netsurf-fb",
+    "netsurf-gtk"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libjpeg.so.62.3.0",
+   "lib_pkg": "libjpeg62-turbo",
+   "lib_bytes": 329120
+  },
+  "libnettle.so.8": {
+   "consumer_files": 11,
+   "consumer_pkgs": [
+    "libcurl3t64-gnutls",
+    "libgnutls30t64",
+    "libhogweed6t64",
+    "librtmp1",
+    "sqv",
+    "wget",
+    "xserver-xorg-core"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libnettle.so.8.10",
+   "lib_pkg": "libnettle8t64",
+   "lib_bytes": 329164
+  },
+  "libgssapi_krb5.so.2": {
+   "consumer_files": 11,
+   "consumer_pkgs": [
+    "libcups2t64",
+    "libcurl3t64-gnutls",
+    "libcurl4t64",
+    "libtirpc3t64",
+    "openssh-client",
+    "openssh-server"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libgssapi_krb5.so.2.2",
+   "lib_pkg": "libgssapi-krb5-2",
+   "lib_bytes": 332204
+  },
+  "libffi.so.8": {
+   "consumer_files": 11,
+   "consumer_pkgs": [
+    "libglib2.0-0t64",
+    "libllvm19",
+    "libp11-kit0",
+    "libpython3.13-stdlib",
+    "libwayland-client0",
+    "libwayland-server0"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libffi.so.8.1.4",
+   "lib_pkg": "libffi8",
+   "lib_bytes": 67276
+  },
+  "libgdbm.so.6": {
+   "consumer_files": 10,
+   "consumer_pkgs": [
+    "libgdbm-compat4t64",
+    "libperl5.40",
+    "man-db"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libgdbm.so.6.0.0",
+   "lib_pkg": "libgdbm6t64",
+   "lib_bytes": 58796
+  },
+  "libmd.so.0": {
+   "consumer_files": 10,
+   "consumer_pkgs": [
+    "dpkg",
+    "libbsd0"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libmd.so.0.1.0",
+   "lib_pkg": "libmd0",
+   "lib_bytes": 46508
+  },
+  "libxcb-shm.so.0": {
+   "consumer_files": 10,
+   "consumer_pkgs": [
+    "libcairo2",
+    "libegl-mesa0",
+    "libglx-mesa0",
+    "libxcb-image0",
+    "netsurf-fb"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libxcb-shm.so.0.0.0",
+   "lib_pkg": "libxcb-shm0",
+   "lib_bytes": 9592
+  },
+  "libpangocairo-1.0.so.0": {
+   "consumer_files": 10,
+   "consumer_pkgs": [
+    "libgtk-3-0t64",
+    "librsvg2-2",
+    "libvte-2.91-0",
+    "netsurf-gtk",
+    "pcmanfm"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libpangocairo-1.0.so.0.5600.3",
+   "lib_pkg": "libpangocairo-1.0-0",
+   "lib_bytes": 66884
+  },
+  "libxkbfile.so.1": {
+   "consumer_files": 10,
+   "consumer_pkgs": [
+    "x11-apps",
+    "x11-xkb-utils"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libxkbfile.so.1.0.2",
+   "lib_pkg": "libxkbfile1",
+   "lib_bytes": 199084
+  },
+  "libXi.so.6": {
+   "consumer_files": 10,
+   "consumer_pkgs": [
+    "libatspi2.0-0t64",
+    "libgtk-3-0t64",
+    "libsdl2-2.0-0",
+    "x11-apps",
+    "xinput-calibrator"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libXi.so.6.1.0",
+   "lib_pkg": "libxi6",
+   "lib_bytes": 58900
+  },
+  "libicuuc.so.76": {
+   "consumer_files": 10,
+   "consumer_pkgs": [
+    "libicu76",
+    "libvte-2.91-0"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libicuuc.so.76.1",
+   "lib_pkg": "libicu76",
+   "lib_bytes": 1902008
+  },
+  "libaspell.so.15": {
+   "consumer_files": 10,
+   "consumer_pkgs": [
+    "libaspell15",
+    "libenchant-2-2"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libaspell.so.15.3.1",
+   "lib_pkg": "libaspell15",
+   "lib_bytes": 656920
+  },
+  "libpipeline.so.1": {
+   "consumer_files": 9,
+   "consumer_pkgs": [
+    "man-db"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libpipeline.so.1.5.8",
+   "lib_pkg": "libpipeline1",
+   "lib_bytes": 50488
+  },
+  "libmpfr.so.6": {
+   "consumer_files": 9,
+   "consumer_pkgs": [
+    "cpp-14-arm-linux-gnueabi",
+    "g++-14-arm-linux-gnueabi",
+    "gcc",
+    "gcc-14",
+    "gcc-14-arm-linux-gnueabi",
+    "gcc-arm-linux-gnueabi",
+    "libmpc3"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libmpfr.so.6.2.2",
+   "lib_pkg": "libmpfr6",
+   "lib_bytes": 527264
+  },
+  "liblber.so.2": {
+   "consumer_files": 9,
+   "consumer_pkgs": [
+    "dirmngr",
+    "libcurl3t64-gnutls",
+    "libcurl4t64",
+    "libldap2"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/liblber.so.2.0.200",
+   "lib_pkg": "libldap2",
+   "lib_bytes": 67100
+  },
+  "libfcitx-utils.so.0": {
+   "consumer_files": 9,
+   "consumer_pkgs": [
+    "fcitx-bin",
+    "libfcitx-config4",
+    "libfcitx-core0"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libfcitx-utils.so.0.1",
+   "lib_pkg": "libfcitx-utils0",
+   "lib_bytes": 66872
+  },
+  "libsqlite3.so.0": {
+   "consumer_files": 9,
+   "consumer_pkgs": [
+    "gpg",
+    "liblastlog2-2",
+    "libpresage1v5",
+    "libpython3.13-stdlib",
+    "libwtmpdb0"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libsqlite3.so.0.8.6",
+   "lib_pkg": "libsqlite3-0",
+   "lib_bytes": 1387192
+  },
+  "libreadline.so.8": {
+   "consumer_files": 9,
+   "consumer_pkgs": [
+    "fdisk",
+    "gpg",
+    "gpgconf",
+    "gpgsm",
+    "libpython3.13-stdlib",
+    "lua5.1",
+    "parted",
+    "wpasupplicant"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libreadline.so.8.2",
+   "lib_pkg": "libreadline8t64",
+   "lib_bytes": 281272
+  },
+  "libatk-1.0.so.0": {
+   "consumer_files": 9,
+   "consumer_pkgs": [
+    "libatk-bridge2.0-0t64",
+    "libfm-gtk3-4t64",
+    "libgtk-3-0t64",
+    "libvte-2.91-0",
+    "pcmanfm"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libatk-1.0.so.0.25611.1",
+   "lib_pkg": "libatk1.0-0t64",
+   "lib_bytes": 132448
+  },
+  "libXfixes.so.3": {
+   "consumer_files": 9,
+   "consumer_pkgs": [
+    "libgtk-3-0t64",
+    "libsdl2-2.0-0",
+    "libxcursor-dev",
+    "libxcursor1"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libXfixes.so.3.1.0",
+   "lib_pkg": "libxfixes3",
+   "lib_bytes": 66968
+  },
+  "liblz4.so.1": {
+   "consumer_files": 8,
+   "consumer_pkgs": [
+    "libapt-pkg7.0",
+    "libvte-2.91-0",
+    "zstd"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/liblz4.so.1.10.0",
+   "lib_pkg": "liblz4-1",
+   "lib_bytes": 198240
+  },
+  "libcurl-gnutls.so.4": {
+   "consumer_files": 8,
+   "consumer_pkgs": [
+    "git",
+    "vorbis-tools"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libcurl-gnutls.so.4.8.0",
+   "lib_pkg": "libcurl3t64-gnutls",
+   "lib_bytes": 855032
+  },
+  "libX11-xcb.so.1": {
+   "consumer_files": 8,
+   "consumer_pkgs": [
+    "libegl-mesa0",
+    "libglx-mesa0",
+    "libpulse0",
+    "mesa-libgallium",
+    "x11-apps"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libX11-xcb.so.1.0.0",
+   "lib_pkg": "libx11-xcb1",
+   "lib_bytes": 66744
+  },
+  "libGLdispatch.so.0": {
+   "consumer_files": 8,
+   "consumer_pkgs": [
+    "libegl1",
+    "libgl-dev",
+    "libgl1",
+    "libglx-dev",
+    "libglx0"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libGLdispatch.so.0.0.0",
+   "lib_pkg": "libglvnd0",
+   "lib_bytes": 439804
+  },
+  "libbrotlidec.so.1": {
+   "consumer_files": 8,
+   "consumer_pkgs": [
+    "libcurl3t64-gnutls",
+    "libcurl4t64",
+    "libfreetype-dev",
+    "libfreetype6"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libbrotlidec.so.1.1.0",
+   "lib_pkg": "libbrotli1",
+   "lib_bytes": 67052
+  },
+  "libfribidi.so.0": {
+   "consumer_files": 8,
+   "consumer_pkgs": [
+    "libgtk-3-0t64",
+    "libpango-1.0-0",
+    "libvte-2.91-0"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libfribidi.so.0.4.0",
+   "lib_pkg": "libfribidi0",
+   "lib_bytes": 112108
+  },
+  "libcairo-gobject.so.2": {
+   "consumer_files": 8,
+   "consumer_pkgs": [
+    "libgtk-3-0t64",
+    "librsvg2-2",
+    "libvte-2.91-0"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libcairo-gobject.so.2.11804.4",
+   "lib_pkg": "libcairo-gobject2",
+   "lib_bytes": 66760
+  },
+  "libunistring.so.5": {
+   "consumer_files": 8,
+   "consumer_pkgs": [
+    "libgettextpo0",
+    "libgnutls30t64",
+    "libidn2-0",
+    "libpsl5t64"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libunistring.so.5.2.0",
+   "lib_pkg": "libunistring5",
+   "lib_bytes": 1901916
+  },
+  "libharfbuzz.so.0": {
+   "consumer_files": 8,
+   "consumer_pkgs": [
+    "libgtk-3-0t64",
+    "libpango-1.0-0",
+    "libpangocairo-1.0-0",
+    "libpangoft2-1.0-0"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libharfbuzz.so.0.61020.0",
+   "lib_pkg": "libharfbuzz0b",
+   "lib_bytes": 1378772
+  },
+  "libopus.so.0": {
+   "consumer_files": 8,
+   "consumer_pkgs": [
+    "libjack-jackd2-0",
+    "libopusfile0",
+    "libsndfile1"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libopus.so.0.10.1",
+   "lib_pkg": "libopus0",
+   "lib_bytes": 383012
+  },
+  "libctf.so.0": {
+   "consumer_files": 7,
+   "consumer_pkgs": [
+    "binutils",
+    "binutils-arm-linux-gnueabi"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libctf.so.0.0.0",
+   "lib_pkg": "libctf0",
+   "lib_bytes": 198772
+  },
+  "libjansson.so.4": {
+   "consumer_files": 7,
+   "consumer_pkgs": [
+    "binutils",
+    "binutils-arm-linux-gnueabi",
+    "libnftables1"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libjansson.so.4.14.0",
+   "lib_pkg": "libjansson4",
+   "lib_bytes": 54836
+  },
+  "libisl.so.23": {
+   "consumer_files": 7,
+   "consumer_pkgs": [
+    "cpp-14-arm-linux-gnueabi",
+    "g++-14-arm-linux-gnueabi",
+    "gcc",
+    "gcc-14",
+    "gcc-14-arm-linux-gnueabi",
+    "gcc-arm-linux-gnueabi"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libisl.so.23.4.0",
+   "lib_pkg": "libisl23",
+   "lib_bytes": 1584488
+  },
+  "libmpc.so.3": {
+   "consumer_files": 7,
+   "consumer_pkgs": [
+    "cpp-14-arm-linux-gnueabi",
+    "g++-14-arm-linux-gnueabi",
+    "gcc",
+    "gcc-14",
+    "gcc-14-arm-linux-gnueabi",
+    "gcc-arm-linux-gnueabi"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libmpc.so.3.3.1",
+   "lib_pkg": "libmpc3",
+   "lib_bytes": 108920
+  },
+  "libpam_misc.so.0": {
+   "consumer_files": 7,
+   "consumer_pkgs": [
+    "libpam-systemd",
+    "login",
+    "passwd",
+    "util-linux"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libpam_misc.so.0.82.1",
+   "lib_pkg": "libpam0g",
+   "lib_bytes": 67012
+  },
+  "libldap.so.2": {
+   "consumer_files": 7,
+   "consumer_pkgs": [
+    "dirmngr",
+    "libcurl3t64-gnutls",
+    "libcurl4t64"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libldap.so.2.0.200",
+   "lib_pkg": "libldap2",
+   "lib_bytes": 395460
+  },
+  "libpangoft2-1.0.so.0": {
+   "consumer_files": 7,
+   "consumer_pkgs": [
+    "jwm",
+    "libgtk-3-0t64",
+    "libpangocairo-1.0-0",
+    "libpangoxft-1.0-0"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libpangoft2-1.0.so.0.5600.3",
+   "lib_pkg": "libpangoft2-1.0-0",
+   "lib_bytes": 132360
+  },
+  "libXau.so.6": {
+   "consumer_files": 7,
+   "consumer_pkgs": [
+    "libaudio2",
+    "libxcb1",
+    "libxcb1-dev",
+    "xauth",
+    "xserver-xorg-core"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libXau.so.6.0.0",
+   "lib_pkg": "libxau6",
+   "lib_bytes": 9628
+  },
+  "libxcb-present.so.0": {
+   "consumer_files": 7,
+   "consumer_pkgs": [
+    "libegl-mesa0",
+    "libglx-mesa0",
+    "mesa-libgallium",
+    "x11-apps"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libxcb-present.so.0.0.0",
+   "lib_pkg": "libxcb-present0",
+   "lib_bytes": 9584
+  },
+  "libxcb-xfixes.so.0": {
+   "consumer_files": 7,
+   "consumer_pkgs": [
+    "libegl-mesa0",
+    "libglx-mesa0",
+    "mesa-libgallium",
+    "x11-apps"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libxcb-xfixes.so.0.0.0",
+   "lib_pkg": "libxcb-xfixes0",
+   "lib_bytes": 25972
+  },
+  "libncurses.so.6": {
+   "consumer_files": 7,
+   "consumer_pkgs": [
+    "libncurses6",
+    "sl"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libncurses.so.6.5",
+   "lib_pkg": "libncurses6",
+   "lib_bytes": 132412
+  },
+  "libkrb5support.so.0": {
+   "consumer_files": 7,
+   "consumer_pkgs": [
+    "libgssapi-krb5-2",
+    "libk5crypto3",
+    "libkrb5-3"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libkrb5support.so.0.1",
+   "lib_pkg": "libkrb5support0",
+   "lib_bytes": 67580
+  },
+  "ld-linux-x86-64.so.2": {
+   "consumer_files": 6,
+   "consumer_pkgs": [
+    "?"
+   ],
+   "lib_file": null,
+   "lib_pkg": null,
+   "lib_bytes": null
+  },
+  "libwebp.so.7": {
+   "consumer_files": 6,
+   "consumer_pkgs": [
+    "?",
+    "libtiff6",
+    "netsurf-fb",
+    "netsurf-gtk"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libwebp.so.7.1.10",
+   "lib_pkg": "libwebp7",
+   "lib_bytes": 395428
+  },
+  "libmandb-2.13.1.so": {
+   "consumer_files": 6,
+   "consumer_pkgs": [
+    "man-db"
+   ],
+   "lib_file": "/usr/lib/man-db/libmandb-2.13.1.so",
+   "lib_pkg": "man-db",
+   "lib_bytes": 66940
+  },
+  "libapparmor.so.1": {
+   "consumer_files": 6,
+   "consumer_pkgs": [
+    "dbus-daemon",
+    "sudo",
+    "systemd",
+    "systemd-sysv"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libapparmor.so.1.24.2",
+   "lib_pkg": "libapparmor1",
+   "lib_bytes": 132876
+  },
+  "libresolv.so.2": {
+   "consumer_files": 6,
+   "consumer_pkgs": [
+    "busybox",
+    "libc6",
+    "libc6-dev",
+    "libkrb5-3",
+    "tmux"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libresolv.so.2",
+   "lib_pkg": "libc6",
+   "lib_bytes": 67044
+  },
+  "libelf.so.1": {
+   "consumer_files": 6,
+   "consumer_pkgs": [
+    "iproute2",
+    "libbpf1",
+    "mesa-libgallium"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libelf-0.192.so",
+   "lib_pkg": "libelf1t64",
+   "lib_bytes": 112376
+  },
+  "libXft.so.2": {
+   "consumer_files": 6,
+   "consumer_pkgs": [
+    "jwm",
+    "libpangoxft-1.0-0",
+    "x11-apps"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libXft.so.2.3.6",
+   "lib_pkg": "libxft2",
+   "lib_bytes": 133172
+  },
+  "libXpm.so.4": {
+   "consumer_files": 6,
+   "consumer_pkgs": [
+    "jwm",
+    "libxaw7",
+    "libxaw7-dev"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libXpm.so.4.11.0",
+   "lib_pkg": "libxpm4",
+   "lib_bytes": 67332
+  },
+  "libpsl.so.5": {
+   "consumer_files": 6,
+   "consumer_pkgs": [
+    "libcurl3t64-gnutls",
+    "libcurl4t64",
+    "wget"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libpsl.so.5.3.4",
+   "lib_pkg": "libpsl5t64",
+   "lib_bytes": 66816
+  },
+  "libgallium-25.0.7-2+deb13u1.so": {
+   "consumer_files": 6,
+   "consumer_pkgs": [
+    "libegl-mesa0",
+    "libgbm1",
+    "libglx-mesa0"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libgallium-25.0.7-2+deb13u1.so",
+   "lib_pkg": "mesa-libgallium",
+   "lib_bytes": 28271144
+  },
+  "libxcb-dri3.so.0": {
+   "consumer_files": 6,
+   "consumer_pkgs": [
+    "libegl-mesa0",
+    "libglx-mesa0",
+    "mesa-libgallium"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libxcb-dri3.so.0.1.0",
+   "lib_pkg": "libxcb-dri3-0",
+   "lib_bytes": 13704
+  },
+  "libpulse.so.0": {
+   "consumer_files": 6,
+   "consumer_pkgs": [
+    "libao4",
+    "libpulse0",
+    "libsdl2-2.0-0",
+    "mpg123"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libpulse.so.0.24.3",
+   "lib_pkg": "libpulse0",
+   "lib_bytes": 330028
+  },
+  "libICE.so.6": {
+   "consumer_files": 6,
+   "consumer_pkgs": [
+    "libsm-dev",
+    "libsm6",
+    "libxt-dev",
+    "libxt6t64"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libICE.so.6.3.0",
+   "lib_pkg": "libice6",
+   "lib_bytes": 84300
+  },
+  "libavahi-common.so.3": {
+   "consumer_files": 6,
+   "consumer_pkgs": [
+    "avahi-daemon",
+    "libavahi-client3",
+    "libavahi-core7",
+    "libcups2t64"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libavahi-common.so.3.5.4",
+   "lib_pkg": "libavahi-common3",
+   "lib_bytes": 67084
+  },
+  "libbrotlicommon.so.1": {
+   "consumer_files": 6,
+   "consumer_pkgs": [
+    "libbrotli-dev",
+    "libbrotli1"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libbrotlicommon.so.1.1.0",
+   "lib_pkg": "libbrotli1",
+   "lib_bytes": 132604
+  },
+  "libnl-3.so.200": {
+   "consumer_files": 6,
+   "consumer_pkgs": [
+    "iw",
+    "libnl-genl-3-200",
+    "libnl-route-3-200",
+    "wpasupplicant"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libnl-3.so.200.26.0",
+   "lib_pkg": "libnl-3-200",
+   "lib_bytes": 132528
+  },
+  "libcurl.so.4": {
+   "consumer_files": 5,
+   "consumer_pkgs": [
+    "?",
+    "curl",
+    "netsurf-fb",
+    "netsurf-gtk"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libcurl.so.4.8.0",
+   "lib_pkg": "libcurl4t64",
+   "lib_bytes": 854872
+  },
+  "libtic.so.6": {
+   "consumer_files": 5,
+   "consumer_pkgs": [
+    "ncurses-bin"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libtic.so.6.5",
+   "lib_pkg": "libtinfo6",
+   "lib_bytes": 67008
+  },
+  "libsframe.so.1": {
+   "consumer_files": 5,
+   "consumer_pkgs": [
+    "binutils",
+    "binutils-arm-linux-gnueabi",
+    "libbinutils"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libsframe.so.1.0.0",
+   "lib_pkg": "libsframe1",
+   "lib_bytes": 67048
+  },
+  "libfftw3f.so.3": {
+   "consumer_files": 5,
+   "consumer_pkgs": [
+    "alsa-utils",
+    "libfftw3-single3"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libfftw3f.so.3.6.10",
+   "lib_pkg": "libfftw3-single3",
+   "lib_bytes": 1389880
+  },
+  "libsamplerate.so.0": {
+   "consumer_files": 5,
+   "consumer_pkgs": [
+    "alsa-utils",
+    "libjack-jackd2-0",
+    "libsdl2-2.0-0"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libsamplerate.so.0.2.2",
+   "lib_pkg": "libsamplerate0",
+   "lib_bytes": 1500712
+  },
+  "libattr.so.1": {
+   "consumer_files": 5,
+   "consumer_pkgs": [
+    "coreutils",
+    "passwd"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libattr.so.1.1.2502",
+   "lib_pkg": "libattr1",
+   "lib_bytes": 66872
+  },
+  "libnpth.so.0": {
+   "consumer_files": 5,
+   "consumer_pkgs": [
+    "dirmngr",
+    "gpg",
+    "gpg-agent",
+    "gpgsm"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libnpth.so.0.3.0",
+   "lib_pkg": "libnpth0t64",
+   "lib_bytes": 67108
+  },
+  "libmpg123.so.0": {
+   "consumer_files": 5,
+   "consumer_pkgs": [
+    "libsndfile1",
+    "mpg123"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libmpg123.so.0.48.3",
+   "lib_pkg": "libmpg123-0t64",
+   "lib_bytes": 330404
+  },
+  "libXrandr.so.2": {
+   "consumer_files": 5,
+   "consumer_pkgs": [
+    "libgtk-3-0t64",
+    "libsdl2-2.0-0",
+    "x11-xkb-utils"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libXrandr.so.2.2.0",
+   "lib_pkg": "libxrandr2",
+   "lib_bytes": 67032
+  },
+  "libxml2.so.2": {
+   "consumer_files": 5,
+   "consumer_pkgs": [
+    "libllvm19",
+    "librsvg2-2",
+    "shared-mime-info"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libxml2.so.2.9.14",
+   "lib_pkg": "libxml2",
+   "lib_bytes": 1575844
+  },
+  "libXcursor.so.1": {
+   "consumer_files": 5,
+   "consumer_pkgs": [
+    "libgtk-3-0t64",
+    "libsdl2-2.0-0",
+    "x11-apps"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libXcursor.so.1.0.2",
+   "lib_pkg": "libxcursor1",
+   "lib_bytes": 67260
+  },
+  "libxkbcommon.so.0": {
+   "consumer_files": 5,
+   "consumer_pkgs": [
+    "fcitx-modules",
+    "libgtk-3-0t64",
+    "libsdl2-2.0-0"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libxkbcommon.so.0.0.0",
+   "lib_pkg": "libxkbcommon0",
+   "lib_bytes": 329484
+  },
+  "libpixman-1.so.0": {
+   "consumer_files": 5,
+   "consumer_pkgs": [
+    "libcairo2",
+    "xserver-xorg-core"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libpixman-1.so.0.44.0",
+   "lib_pkg": "libpixman-1-0",
+   "lib_bytes": 685472
+  },
+  "libnghttp3.so.9": {
+   "consumer_files": 5,
+   "consumer_pkgs": [
+    "libcurl3t64-gnutls",
+    "libcurl4t64"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libnghttp3.so.9.2.6",
+   "lib_pkg": "libnghttp3-9",
+   "lib_bytes": 201772
+  },
+  "libngtcp2.so.16": {
+   "consumer_files": 5,
+   "consumer_pkgs": [
+    "libcurl3t64-gnutls",
+    "libngtcp2-crypto-gnutls8"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libngtcp2.so.16.2.9",
+   "lib_pkg": "libngtcp2-16",
+   "lib_bytes": 329420
+  },
+  "libnghttp2.so.14": {
+   "consumer_files": 5,
+   "consumer_pkgs": [
+    "libcurl3t64-gnutls",
+    "libcurl4t64"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libnghttp2.so.14.28.3",
+   "lib_pkg": "libnghttp2-14",
+   "lib_bytes": 198288
+  },
+  "librtmp.so.1": {
+   "consumer_files": 5,
+   "consumer_pkgs": [
+    "libcurl3t64-gnutls",
+    "libcurl4t64"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/librtmp.so.1",
+   "lib_pkg": "librtmp1",
+   "lib_bytes": 104584
+  },
+  "libssh2.so.1": {
+   "consumer_files": 5,
+   "consumer_pkgs": [
+    "libcurl3t64-gnutls",
+    "libcurl4t64"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libssh2.so.1.0.1",
+   "lib_pkg": "libssh2-1t64",
+   "lib_bytes": 263796
+  },
+  "libepoxy.so.0": {
+   "consumer_files": 5,
+   "consumer_pkgs": [
+    "libgtk-3-0t64",
+    "xserver-xorg-core"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libepoxy.so.0.0.0",
+   "lib_pkg": "libepoxy0",
+   "lib_bytes": 961660
+  },
+  "libkrb5.so.3": {
+   "consumer_files": 5,
+   "consumer_pkgs": [
+    "libgssapi-krb5-2",
+    "libkrb5-3",
+    "openssh-server"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libkrb5.so.3.3",
+   "lib_pkg": "libkrb5-3",
+   "lib_bytes": 727532
+  },
+  "libk5crypto.so.3": {
+   "consumer_files": 5,
+   "consumer_pkgs": [
+    "libgssapi-krb5-2",
+    "libkrb5-3"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libk5crypto.so.3.1",
+   "lib_pkg": "libk5crypto3",
+   "lib_bytes": 198464
+  },
+  "libKSC.so": {
+   "consumer_files": 5,
+   "consumer_pkgs": [
+    "libc6"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/gconv/libKSC.so",
+   "lib_pkg": "libc6",
+   "lib_bytes": 66868
+  },
+  "libpkgconf.so.3": {
+   "consumer_files": 4,
+   "consumer_pkgs": [
+    "pkgconf",
+    "pkgconf-bin"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libpkgconf.so.3.0.0",
+   "lib_pkg": "libpkgconf3",
+   "lib_bytes": 51060
+  },
+  "libanthy.so.1": {
+   "consumer_files": 4,
+   "consumer_pkgs": [
+    "anthy",
+    "fcitx-anthy",
+    "libanthyinput0t64"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libanthy.so.1.1.2",
+   "lib_pkg": "libanthy1t64",
+   "lib_bytes": 59636
+  },
+  "libcap-ng.so.0": {
+   "consumer_files": 4,
+   "consumer_pkgs": [
+    "dbus-daemon",
+    "libaudit1",
+    "util-linux"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libcap-ng.so.0.0.0",
+   "lib_pkg": "libcap-ng0",
+   "lib_bytes": 66864
+  },
+  "libfcitx-config.so.4": {
+   "consumer_files": 4,
+   "consumer_pkgs": [
+    "fcitx-bin",
+    "libfcitx-core0"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libfcitx-config.so.4.1",
+   "lib_pkg": "libfcitx-config4",
+   "lib_bytes": 81912
+  },
+  "libbpf.so.1": {
+   "consumer_files": 4,
+   "consumer_pkgs": [
+    "iproute2"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libbpf.so.1.5.0",
+   "lib_pkg": "libbpf1",
+   "lib_bytes": 394708
+  },
+  "libFLAC.so.14": {
+   "consumer_files": 4,
+   "consumer_pkgs": [
+    "libsndfile1",
+    "vorbis-tools"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libFLAC.so.14.0.0",
+   "lib_pkg": "libflac14",
+   "lib_bytes": 329076
+  },
+  "libedit.so.2": {
+   "consumer_files": 4,
+   "consumer_pkgs": [
+    "libllvm19",
+    "nftables",
+    "openssh-client"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libedit.so.2.0.75",
+   "lib_pkg": "libedit2",
+   "lib_bytes": 199032
+  },
+  "libhogweed.so.6": {
+   "consumer_files": 4,
+   "consumer_pkgs": [
+    "libgnutls30t64",
+    "librtmp1",
+    "sqv"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libhogweed.so.6.10",
+   "lib_pkg": "libhogweed6t64",
+   "lib_bytes": 263528
+  },
+  "libsystemd-core-257.so": {
+   "consumer_files": 4,
+   "consumer_pkgs": [
+    "systemd",
+    "systemd-sysv"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/systemd/libsystemd-core-257.so",
+   "lib_pkg": "libsystemd-shared",
+   "lib_bytes": 2099748
+  },
+  "libSM.so.6": {
+   "consumer_files": 4,
+   "consumer_pkgs": [
+    "libxt-dev",
+    "libxt6t64",
+    "x11-apps"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libSM.so.6.0.1",
+   "lib_pkg": "libsm6",
+   "lib_bytes": 67072
+  },
+  "libwayland-egl.so.1": {
+   "consumer_files": 4,
+   "consumer_pkgs": [
+    "libgtk-3-0t64",
+    "libsdl2-2.0-0"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libwayland-egl.so.1.23.1",
+   "lib_pkg": "libwayland-egl1",
+   "lib_bytes": 66860
+  },
+  "libwayland-cursor.so.0": {
+   "consumer_files": 4,
+   "consumer_pkgs": [
+    "libgtk-3-0t64",
+    "libsdl2-2.0-0"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libwayland-cursor.so.0.23.1",
+   "lib_pkg": "libwayland-cursor0",
+   "lib_bytes": 79672
+  },
+  "libxxhash.so.0": {
+   "consumer_files": 4,
+   "consumer_pkgs": [
+    "libapt-pkg7.0",
+    "liblz4-1"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libxxhash.so.0.8.3",
+   "lib_pkg": "libxxhash0",
+   "lib_bytes": 66816
+  },
+  "liblcms2.so.2": {
+   "consumer_files": 4,
+   "consumer_pkgs": [
+    "libcolord2"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/liblcms2.so.2.0.16",
+   "lib_pkg": "liblcms2-2",
+   "lib_bytes": 404504
+  },
+  "libmenu-cache.so.3": {
+   "consumer_files": 4,
+   "consumer_pkgs": [
+    "libfm-gtk3-4t64",
+    "libfm4t64"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libmenu-cache.so.3.2.1",
+   "lib_pkg": "libmenu-cache3",
+   "lib_bytes": 66820
+  },
+  "libicui18n.so.76": {
+   "consumer_files": 4,
+   "consumer_pkgs": [
+    "libicu76"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libicui18n.so.76.1",
+   "lib_pkg": "libicu76",
+   "lib_bytes": 3147480
+  },
+  "libdevmapper.so.1.02.1": {
+   "consumer_files": 4,
+   "consumer_pkgs": [
+    "dmsetup",
+    "libparted2t64"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libdevmapper.so.1.02.1",
+   "lib_pkg": "libdevmapper1.02.1",
+   "lib_bytes": 534056
+  },
+  "libpulsecommon-17.0.so": {
+   "consumer_files": 4,
+   "consumer_pkgs": [
+    "libpulse0"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/pulseaudio/libpulsecommon-17.0.so",
+   "lib_pkg": "libpulse0",
+   "lib_bytes": 525896
+  },
+  "libunwind-arm.so.8": {
+   "consumer_files": 4,
+   "consumer_pkgs": [
+    "libunwind8"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libunwind-arm.so.8.1.0",
+   "lib_pkg": "libunwind8",
+   "lib_bytes": 132692
+  },
+  "libXdmcp.so.6": {
+   "consumer_files": 4,
+   "consumer_pkgs": [
+    "libxcb1",
+    "libxcb1-dev",
+    "xserver-xorg-core"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libXdmcp.so.6.0.0",
+   "lib_pkg": "libxdmcp6",
+   "lib_bytes": 17804
+  },
+  "libGB.so": {
+   "consumer_files": 4,
+   "consumer_pkgs": [
+    "libc6"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/gconv/libGB.so",
+   "lib_pkg": "libc6",
+   "lib_bytes": 66868
+  },
+  "libJIS.so": {
+   "consumer_files": 4,
+   "consumer_pkgs": [
+    "libc6"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/gconv/libJIS.so",
+   "lib_pkg": "libc6",
+   "lib_bytes": 132404
+  },
+  "libblas.so.3": {
+   "consumer_files": 4,
+   "consumer_pkgs": [
+    "liblapack3",
+    "python3-numpy"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/blas/libblas.so.3.12.1",
+   "lib_pkg": "libblas3",
+   "lib_bytes": 656640
+  },
+  "libanthydic.so.1": {
+   "consumer_files": 3,
+   "consumer_pkgs": [
+    "anthy",
+    "libanthy1t64"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libanthydic.so.1.1.3",
+   "lib_pkg": "libanthy1t64",
+   "lib_bytes": 240856
+  },
+  "libksba.so.8": {
+   "consumer_files": 3,
+   "consumer_pkgs": [
+    "dirmngr",
+    "gpg",
+    "gpgsm"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libksba.so.8.14.7",
+   "lib_pkg": "libksba8",
+   "lib_bytes": 226680
+  },
+  "libfdt.so.1": {
+   "consumer_files": 3,
+   "consumer_pkgs": [
+    "device-tree-compiler"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libfdt.so.1.7.2",
+   "lib_pkg": "libfdt1",
+   "lib_bytes": 66924
+  },
+  "libXinerama.so.1": {
+   "consumer_files": 3,
+   "consumer_pkgs": [
+    "jwm",
+    "libgtk-3-0t64"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libXinerama.so.1.0.0",
+   "lib_pkg": "libxinerama1",
+   "lib_bytes": 66956
+  },
+  "libxcb-util.so.1": {
+   "consumer_files": 3,
+   "consumer_pkgs": [
+    "libxcb-image0",
+    "netsurf-fb"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libxcb-util.so.1.0.0",
+   "lib_pkg": "libxcb-util1",
+   "lib_bytes": 67020
+  },
+  "libopusfile.so.0": {
+   "consumer_files": 3,
+   "consumer_pkgs": [
+    "libopusfile0",
+    "vorbis-tools"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libopusfile.so.0.4.5",
+   "lib_pkg": "libopusfile0",
+   "lib_bytes": 50668
+  },
+  "libvorbisenc.so.2": {
+   "consumer_files": 3,
+   "consumer_pkgs": [
+    "libsndfile1",
+    "vorbis-tools"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libvorbisenc.so.2.0.12",
+   "lib_pkg": "libvorbisenc2",
+   "lib_bytes": 591184
+  },
+  "libfm.so.4": {
+   "consumer_files": 3,
+   "consumer_pkgs": [
+    "libfm-gtk3-4t64",
+    "pcmanfm"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libfm.so.4.2.0",
+   "lib_pkg": "libfm4t64",
+   "lib_bytes": 329216
+  },
+  "libslang.so.2": {
+   "consumer_files": 3,
+   "consumer_pkgs": [
+    "libnewt0.52",
+    "whiptail"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libslang.so.2.3.3",
+   "lib_pkg": "libslang2",
+   "lib_bytes": 2163952
+  },
+  "libxcb-randr.so.0": {
+   "consumer_files": 3,
+   "consumer_pkgs": [
+    "libegl-mesa0",
+    "mesa-libgallium"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libxcb-randr.so.0.1.0",
+   "lib_pkg": "libxcb-randr0",
+   "lib_bytes": 54764
+  },
+  "libwayland-server.so.0": {
+   "consumer_files": 3,
+   "consumer_pkgs": [
+    "libegl-mesa0",
+    "libgbm1"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libwayland-server.so.0.23.1",
+   "lib_pkg": "libwayland-server0",
+   "lib_bytes": 67776
+  },
+  "libGLX.so.0": {
+   "consumer_files": 3,
+   "consumer_pkgs": [
+    "libgl-dev",
+    "libgl1"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libGLX.so.0.0.0",
+   "lib_pkg": "libglx0",
+   "lib_bytes": 63056
+  },
+  "libxcb-glx.so.0": {
+   "consumer_files": 3,
+   "consumer_pkgs": [
+    "libglx-mesa0"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libxcb-glx.so.0.0.0",
+   "lib_pkg": "libxcb-glx0",
+   "lib_bytes": 87424
+  },
+  "libXxf86vm.so.1": {
+   "consumer_files": 3,
+   "consumer_pkgs": [
+    "libglx-mesa0"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libXxf86vm.so.1.0.0",
+   "lib_pkg": "libxxf86vm1",
+   "lib_bytes": 66976
+  },
+  "libfontenc.so.1": {
+   "consumer_files": 3,
+   "consumer_pkgs": [
+    "libxfont-dev",
+    "libxfont2"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libfontenc.so.1.0.0",
+   "lib_pkg": "libfontenc1",
+   "lib_bytes": 69080
+  },
+  "libngtcp2_crypto_gnutls.so.8": {
+   "consumer_files": 3,
+   "consumer_pkgs": [
+    "libcurl3t64-gnutls"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libngtcp2_crypto_gnutls.so.8.2.0",
+   "lib_pkg": "libngtcp2-crypto-gnutls8",
+   "lib_bytes": 67212
+  },
+  "libxtables.so.12": {
+   "consumer_files": 3,
+   "consumer_pkgs": [
+    "iproute2",
+    "libnftables1"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libxtables.so.12.7.0",
+   "lib_pkg": "libxtables12",
+   "lib_bytes": 54636
+  },
+  "libjack.so.0": {
+   "consumer_files": 3,
+   "consumer_pkgs": [
+    "libportaudio2",
+    "mpg123"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libjack.so.0.1.0",
+   "lib_pkg": "libjack-jackd2-0",
+   "lib_bytes": 329328
+  },
+  "libenchant-2.so.2": {
+   "consumer_files": 3,
+   "consumer_pkgs": [
+    "libenchant-2-2"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libenchant-2.so.2.8.2",
+   "lib_pkg": "libenchant-2-2",
+   "lib_bytes": 66868
+  },
+  "libJISX0213.so": {
+   "consumer_files": 3,
+   "consumer_pkgs": [
+    "libc6"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/gconv/libJISX0213.so",
+   "lib_pkg": "libc6",
+   "lib_bytes": 132404
+  },
+  "libCNS.so": {
+   "consumer_files": 3,
+   "consumer_pkgs": [
+    "libc6"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/gconv/libCNS.so",
+   "lib_pkg": "libc6",
+   "lib_bytes": 525620
+  },
+  "libpciaccess.so.0": {
+   "consumer_files": 3,
+   "consumer_pkgs": [
+    "xserver-xorg-core"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libpciaccess.so.0.11.1",
+   "lib_pkg": "libpciaccess0",
+   "lib_bytes": 67128
+  },
+  "libfdisk.so.1": {
+   "consumer_files": 3,
+   "consumer_pkgs": [
+    "fdisk"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libfdisk.so.1.1.0",
+   "lib_pkg": "libfdisk1",
+   "lib_bytes": 525848
+  },
+  "libsemanage.so.2": {
+   "consumer_files": 3,
+   "consumer_pkgs": [
+    "passwd"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libsemanage.so.2",
+   "lib_pkg": "libsemanage2",
+   "lib_bytes": 263556
+  },
+  "libassuan.so.0": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "?"
+   ],
+   "lib_file": null,
+   "lib_pkg": null,
+   "lib_bytes": null
+  },
+  "libopcodes-2.44-system.so": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "binutils",
+    "binutils-arm-linux-gnueabi"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libopcodes-2.44-system.so",
+   "lib_pkg": "libbinutils",
+   "lib_bytes": 198176
+  },
+  "libctf-nobfd.so.0": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "binutils",
+    "binutils-arm-linux-gnueabi"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libctf-nobfd.so.0.0.0",
+   "lib_pkg": "libctf-nobfd0",
+   "lib_bytes": 198700
+  },
+  "libpanelw.so.6": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "alsa-utils",
+    "libpython3.13-stdlib"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libpanelw.so.6.5",
+   "lib_pkg": "libncursesw6",
+   "lib_bytes": 67004
+  },
+  "librsvg-2.so.2": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "jwm",
+    "netsurf-gtk"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/librsvg-2.so.2.60.0",
+   "lib_pkg": "librsvg2-2",
+   "lib_bytes": 4982436
+  },
+  "libusb-1.0.so.0": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "usbutils"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libusb-1.0.so.0.5.0",
+   "lib_pkg": "libusb-1.0-0",
+   "lib_bytes": 132520
+  },
+  "libout123.so.0": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "mpg123"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libout123.so.0.5.1",
+   "lib_pkg": "libout123-0t64",
+   "lib_bytes": 67352
+  },
+  "libsyn123.so.0": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "mpg123"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libsyn123.so.0.2.3",
+   "lib_pkg": "libsyn123-0t64",
+   "lib_bytes": 198216
+  },
+  "libvorbisfile.so.3": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "vorbis-tools"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libvorbisfile.so.3.3.8",
+   "lib_pkg": "libvorbisfile3",
+   "lib_bytes": 66832
+  },
+  "libpopt.so.0": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "logrotate",
+    "whiptail"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libpopt.so.0.0.2",
+   "lib_pkg": "libpopt0",
+   "lib_bytes": 46752
+  },
+  "libXmuu.so.1": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "x11-apps",
+    "xauth"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libXmuu.so.1.0.0",
+   "lib_pkg": "libxmuu1",
+   "lib_bytes": 66980
+  },
+  "libz3.so.4": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "libllvm19"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libz3.so.4",
+   "lib_pkg": "libz3-4",
+   "lib_bytes": 24996628
+  },
+  "libXss.so.1": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "libsdl2-2.0-0"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libXss.so.1.0.0",
+   "lib_pkg": "libxss1",
+   "lib_bytes": 66972
+  },
+  "libdecor-0.so.0": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "libsdl2-2.0-0"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libdecor-0.so.0.200.2",
+   "lib_pkg": "libdecor-0-0",
+   "lib_bytes": 26104
+  },
+  "libatspi.so.0": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "libatk-bridge2.0-0t64"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libatspi.so.0.0.1",
+   "lib_pkg": "libatspi2.0-0t64",
+   "lib_bytes": 263692
+  },
+  "libxcb-render.so.0": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "libcairo2"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libxcb-render.so.0.0.0",
+   "lib_pkg": "libxcb-render0",
+   "lib_bytes": 42464
+  },
+  "libgomp.so.1": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "libfftw3-single3"
+   ],
+   "lib_file": "/usr/lib/gcc/arm-linux-gnueabi/14/libgomp.so",
+   "lib_pkg": "libgcc-14-dev",
+   "lib_bytes": 330280
+  },
+  "libcbor.so.0.10": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "libfido2-1"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libcbor.so.0.10.2",
+   "lib_pkg": "libcbor0.10",
+   "lib_bytes": 47232
+  },
+  "libdbus-glib-1.so.2": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "libfm4t64"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libdbus-glib-1.so.2.3.6",
+   "lib_pkg": "libdbus-glib-1-2",
+   "lib_bytes": 197952
+  },
+  "libexif.so.12": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "libfm4t64"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libexif.so.12.3.4",
+   "lib_pkg": "libexif12",
+   "lib_bytes": 263476
+  },
+  "libXdamage.so.1": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "libgtk-3-0t64"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libXdamage.so.1.1.0",
+   "lib_pkg": "libxdamage1",
+   "lib_bytes": 9580
+  },
+  "libXcomposite.so.1": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "libgtk-3-0t64"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libXcomposite.so.1.0.0",
+   "lib_pkg": "libxcomposite1",
+   "lib_bytes": 9568
+  },
+  "libp11-kit.so.0": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "libgnutls30t64"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libp11-kit.so.0.4.1",
+   "lib_pkg": "libp11-kit0",
+   "lib_bytes": 1469608
+  },
+  "libtasn1.so.6": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "libgnutls30t64"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libtasn1.so.6.6.4",
+   "lib_pkg": "libtasn1-6",
+   "lib_bytes": 132464
+  },
+  "libatk-bridge-2.0.so.0": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "libgtk-3-0t64"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libatk-bridge-2.0.so.0.0.0",
+   "lib_pkg": "libatk-bridge2.0-0t64",
+   "lib_bytes": 265372
+  },
+  "libcloudproviders.so.0": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "libgtk-3-0t64"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libcloudproviders.so.0.3.6",
+   "lib_pkg": "libcloudproviders0",
+   "lib_bytes": 132404
+  },
+  "libgraphite2.so.3": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "libharfbuzz0b"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libgraphite2.so.3.2.1",
+   "lib_pkg": "libgraphite2-3",
+   "lib_bytes": 132572
+  },
+  "libicutu.so.76": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "libicu76"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libicutu.so.76.1",
+   "lib_pkg": "libicu76",
+   "lib_bytes": 198772
+  },
+  "libicudata.so.76": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "libicu76"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libicudata.so.76.1",
+   "lib_pkg": "libicu76",
+   "lib_bytes": 31917200
+  },
+  "libkeyutils.so.1": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "libkrb5-3"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libkeyutils.so.1.10",
+   "lib_pkg": "libkeyutils1",
+   "lib_bytes": 66872
+  },
+  "libsasl2.so.2": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "libldap2"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libsasl2.so.2.0.25",
+   "lib_pkg": "libsasl2-2",
+   "lib_bytes": 132852
+  },
+  "libnftnl.so.11": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "libnftables1"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libnftnl.so.11.6.0",
+   "lib_pkg": "libnftnl11",
+   "lib_bytes": 201704
+  },
+  "libthai.so.0": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "libpango-1.0-0"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libthai.so.0.3.1",
+   "lib_pkg": "libthai0",
+   "lib_bytes": 32124
+  },
+  "libtinyxml.so.2.6.2": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "libpresage1v5"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libtinyxml.so.2.6.2",
+   "lib_pkg": "libtinyxml2.6.2v5",
+   "lib_bytes": 71736
+  },
+  "libdav1d.so.7": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "librsvg2-2"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libdav1d.so.7.0.0",
+   "lib_pkg": "libdav1d7",
+   "lib_bytes": 787776
+  },
+  "libmp3lame.so.0": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "libsndfile1"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libmp3lame.so.0.0.0",
+   "lib_pkg": "libmp3lame0",
+   "lib_bytes": 292168
+  },
+  "libdatrie.so.1": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "libthai0"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libdatrie.so.1.4.0",
+   "lib_pkg": "libdatrie1",
+   "lib_bytes": 21816
+  },
+  "libLerc.so.4": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "libtiff6"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libLerc.so.4",
+   "lib_pkg": "liblerc4",
+   "lib_bytes": 538012
+  },
+  "libjbig.so.0": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "libtiff6"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libjbig.so.0",
+   "lib_pkg": "libjbig0",
+   "lib_bytes": 53300
+  },
+  "libdeflate.so.0": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "libtiff6"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libdeflate.so.0",
+   "lib_pkg": "libdeflate0",
+   "lib_bytes": 66832
+  },
+  "liblzo2.so.2": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "libvncserver1"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/liblzo2.so.2.0.0",
+   "lib_pkg": "liblzo2-2",
+   "lib_bytes": 111924
+  },
+  "libsharpyuv.so.0": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "libwebp7"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libsharpyuv.so.0.1.1",
+   "lib_pkg": "libsharpyuv0",
+   "lib_bytes": 66944
+  },
+  "libxshmfence.so.1": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "mesa-libgallium",
+    "xserver-xorg-core"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libxshmfence.so.1.0.0",
+   "lib_pkg": "libxshmfence1",
+   "lib_bytes": 66912
+  },
+  "libaudio.so.2": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "libao4",
+    "mpg123"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libaudio.so.2.4",
+   "lib_pkg": "libaudio2",
+   "lib_bytes": 88160
+  },
+  "libpulse-simple.so.0": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "libao4",
+    "mpg123"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libpulse-simple.so.0.1.1",
+   "lib_pkg": "libpulse0",
+   "lib_bytes": 67000
+  },
+  "libgfortran.so.5": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "liblapack3"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libgfortran.so.5.0.0",
+   "lib_pkg": "libgfortran5",
+   "lib_bytes": 1052260
+  },
+  "libgdbm_compat.so.4": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "libperl5.40"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libgdbm_compat.so.4.0.0",
+   "lib_pkg": "libgdbm-compat4t64",
+   "lib_bytes": 9472
+  },
+  "libwtmpdb.so.0": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "openssh-server"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libwtmpdb.so.0.73.0",
+   "lib_pkg": "libwtmpdb0",
+   "lib_bytes": 66976
+  },
+  "liblapack.so.3": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "python3-numpy"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/lapack/liblapack.so.3.12.1",
+   "lib_pkg": "liblapack3",
+   "lib_bytes": 7279872
+  },
+  "libnl-genl-3.so.200": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "iw",
+    "wpasupplicant"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libnl-genl-3.so.200.26.0",
+   "lib_pkg": "libnl-genl-3-200",
+   "lib_bytes": 67268
+  },
+  "libparted.so.2": {
+   "consumer_files": 2,
+   "consumer_pkgs": [
+    "parted"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libparted.so.2.0.5",
+   "lib_pkg": "libparted2t64",
+   "lib_bytes": 330300
+  },
+  "libformw.so.6": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "alsa-utils"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libformw.so.6.5",
+   "lib_pkg": "libncursesw6",
+   "lib_bytes": 67636
+  },
+  "libmenuw.so.6": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "alsa-utils"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libmenuw.so.6.5",
+   "lib_pkg": "libncursesw6",
+   "lib_bytes": 67176
+  },
+  "libatopology.so.2": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "alsa-utils"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libatopology.so.2.0.0",
+   "lib_pkg": "libatopology2t64",
+   "lib_bytes": 133616
+  },
+  "libanthyinput.so.0": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "anthy"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libanthyinput.so.0.0.0",
+   "lib_pkg": "libanthyinput0t64",
+   "lib_bytes": 54864
+  },
+  "libdialog.so.15": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "dialog"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libdialog.so.15.0.0",
+   "lib_pkg": "libdialog15",
+   "lib_bytes": 207260
+  },
+  "libyaml-0.so.2": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "device-tree-compiler"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libyaml-0.so.2.0.9",
+   "lib_pkg": "libyaml-0-2",
+   "lib_bytes": 132400
+  },
+  "libyyjson.so.0": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "fastfetch"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libyyjson.so.0.10.0",
+   "lib_pkg": "libyyjson0",
+   "lib_bytes": 271720
+  },
+  "libutil.so.1": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "fbterm"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libutil.so.1",
+   "lib_pkg": "libc6",
+   "lib_bytes": 66924
+  },
+  "libfcitx-core.so.0": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "fcitx-bin"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libfcitx-core.so.0.3",
+   "lib_pkg": "libfcitx-core0",
+   "lib_bytes": 117360
+  },
+  "libmagic.so.1": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "file"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libmagic.so.1.0.0",
+   "lib_pkg": "libmagic1t64",
+   "lib_bytes": 198112
+  },
+  "libpangoxft-1.0.so.0": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "jwm"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libpangoxft-1.0.so.0.5600.3",
+   "lib_pkg": "libpangoxft-1.0-0",
+   "lib_bytes": 66816
+  },
+  "liblastlog2.so.2": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "util-linux"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/liblastlog2.so.2.0.0",
+   "lib_pkg": "liblastlog2-2",
+   "lib_bytes": 66924
+  },
+  "libvte-2.91.so.0": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "lxterminal"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libvte-2.91.so.0.8000.1",
+   "lib_pkg": "libvte-2.91-0",
+   "lib_bytes": 788032
+  },
+  "libSDL-1.2.so.0": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "netsurf-fb"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libSDL-1.2.so.1.2.68",
+   "lib_pkg": "libsdl1.2debian",
+   "lib_bytes": 198304
+  },
+  "libxcb-icccm.so.4": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "netsurf-fb"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libxcb-icccm.so.4.0.0",
+   "lib_pkg": "libxcb-icccm4",
+   "lib_bytes": 13704
+  },
+  "libxcb-image.so.0": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "netsurf-fb"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libxcb-image.so.0.0.0",
+   "lib_pkg": "libxcb-image0",
+   "lib_bytes": 13744
+  },
+  "libxcb-keysyms.so.1": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "netsurf-fb"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libxcb-keysyms.so.1.0.0",
+   "lib_pkg": "libxcb-keysyms1",
+   "lib_bytes": 66816
+  },
+  "libvncserver.so.1": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "netsurf-fb"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libvncserver.so.0.9.15",
+   "lib_pkg": "libvncserver1",
+   "lib_bytes": 329780
+  },
+  "libao.so.4": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "vorbis-tools"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libao.so.4.1.1",
+   "lib_pkg": "libao4",
+   "lib_bytes": 30680
+  },
+  "libspeex.so.1": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "vorbis-tools"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libspeex.so.1.5.2",
+   "lib_pkg": "libspeex1",
+   "lib_bytes": 103732
+  },
+  "libfm-gtk3.so.4": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "pcmanfm"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libfm-gtk3.so.4.2.0",
+   "lib_pkg": "libfm-gtk3-4t64",
+   "lib_bytes": 396096
+  },
+  "libperl.so.5.40": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "libperl5.40"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libperl.so.5.40.1",
+   "lib_pkg": "libperl5.40",
+   "lib_bytes": 3614700
+  },
+  "libuchardet.so.0": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "groff-base"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libuchardet.so.0.0.8",
+   "lib_pkg": "libuchardet0",
+   "lib_bytes": 177564
+  },
+  "libtirpc.so.3": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "iproute2"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libtirpc.so.3.0.0",
+   "lib_pkg": "libtirpc3t64",
+   "lib_bytes": 198268
+  },
+  "libevent_core-2.1.so.7": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "tmux"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libevent_core-2.1.so.7.0.2",
+   "lib_pkg": "libevent-core-2.1-7t64",
+   "lib_bytes": 198060
+  },
+  "libjemalloc.so.2": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "tmux"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libjemalloc.so.2",
+   "lib_pkg": "libjemalloc2",
+   "lib_bytes": 592428
+  },
+  "libsodium.so.23": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "vim"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libsodium.so.23.3.0",
+   "lib_pkg": "libsodium23",
+   "lib_bytes": 329240
+  },
+  "libgpm.so.2": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "vim"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libgpm.so.2",
+   "lib_pkg": "libgpm2",
+   "lib_bytes": 66936
+  },
+  "libnewt.so.0.52": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "whiptail"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libnewt.so.0.52.25",
+   "lib_pkg": "libnewt0.52",
+   "lib_bytes": 133424
+  },
+  "libxcb-damage.so.0": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "x11-apps"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libxcb-damage.so.0.0.0",
+   "lib_pkg": "libxcb-damage0",
+   "lib_bytes": 9584
+  },
+  "libavahi-client.so.3": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "libcups2t64"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libavahi-client.so.3.2.9",
+   "lib_pkg": "libavahi-client3",
+   "lib_bytes": 66988
+  },
+  "libLLVM.so.19.1": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "mesa-libgallium"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libLLVM.so.19.1",
+   "lib_pkg": "libllvm19",
+   "lib_bytes": 116959732
+  },
+  "libsensors.so.5": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "mesa-libgallium"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libsensors.so.5.0.0",
+   "lib_pkg": "libsensors5",
+   "lib_bytes": 66892
+  },
+  "libxcb-sync.so.1": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "mesa-libgallium"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libxcb-sync.so.1.0.0",
+   "lib_pkg": "libxcb-sync1",
+   "lib_bytes": 21916
+  },
+  "libdrm_amdgpu.so.1": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "mesa-libgallium"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libdrm_amdgpu.so.1.124.0",
+   "lib_pkg": "libdrm-amdgpu1",
+   "lib_bytes": 67188
+  },
+  "libsepol.so.2": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "libsemanage2"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libsepol.so.2",
+   "lib_pkg": "libsepol2",
+   "lib_bytes": 787896
+  },
+  "libsndio.so.7": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "libao4"
+   ],
+   "lib_file": null,
+   "lib_pkg": null,
+   "lib_bytes": null
+  },
+  "libhunspell-1.7.so.0": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "libenchant-2-2"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libhunspell-1.7.so.0.0.1",
+   "lib_pkg": "libhunspell-1.7-0",
+   "lib_bytes": 737280
+  },
+  "libjson-c.so.5": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "fcitx-modules"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libjson-c.so.5.4.0",
+   "lib_pkg": "libjson-c5",
+   "lib_bytes": 63020
+  },
+  "libgettextpo.so.0": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "fcitx-bin"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libgettextpo.so.0.5.12",
+   "lib_pkg": "libgettextpo0",
+   "lib_bytes": 330360
+  },
+  "libISOIR165.so": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "libc6"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/gconv/libISOIR165.so",
+   "lib_pkg": "libc6",
+   "lib_bytes": 66868
+  },
+  "libtiff.so.6": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "libgdk-pixbuf-2.0-0"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libtiff.so.6.1.0",
+   "lib_pkg": "libtiff6",
+   "lib_bytes": 591272
+  },
+  "libcups.so.2": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "libgtk-3-0t64"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libcups.so.2",
+   "lib_pkg": "libcups2t64",
+   "lib_bytes": 591232
+  },
+  "libcolord.so.2": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "libgtk-3-0t64"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libcolord.so.2.0.5",
+   "lib_pkg": "libcolord2",
+   "lib_bytes": 329860
+  },
+  "libopenal.so.1": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "mpg123"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libopenal.so.1.24.2",
+   "lib_pkg": "libopenal1",
+   "lib_bytes": 1510168
+  },
+  "libportaudio.so.2": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "mpg123"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libportaudio.so.2.0.0",
+   "lib_pkg": "libportaudio2",
+   "lib_bytes": 178292
+  },
+  "libsndfile.so.1": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "libpulse0"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libsndfile.so.1.0.37",
+   "lib_pkg": "libsndfile1",
+   "lib_bytes": 527612
+  },
+  "libasyncns.so.0": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "libpulse0"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libasyncns.so.0.3.1",
+   "lib_pkg": "libasyncns0",
+   "lib_bytes": 17664
+  },
+  "libkmod.so.2": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "dracut-install"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libkmod.so.2.5.1",
+   "lib_pkg": "libkmod2",
+   "lib_bytes": 132564
+  },
+  "libfm-extra.so.4": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "libmenu-cache-bin"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libfm-extra.so.4.2.0",
+   "lib_pkg": "libfm-extra4t64",
+   "lib_bytes": 66816
+  },
+  "libfido2.so.1": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "openssh-client"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libfido2.so.1.15.0",
+   "lib_pkg": "libfido2-1",
+   "lib_bytes": 210300
+  },
+  "libwrap.so.0": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "openssh-server"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libwrap.so.0.7.6",
+   "lib_pkg": "libwrap0",
+   "lib_bytes": 67368
+  },
+  "libi2c.so.0": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "python3-smbus"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libi2c.so.0.1.1",
+   "lib_pkg": "libi2c0",
+   "lib_bytes": 66816
+  },
+  "libunwind.so.8": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "xserver-xorg-core"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libunwind.so.8.1.0",
+   "lib_pkg": "libunwind8",
+   "lib_bytes": 67200
+  },
+  "libxcvt.so.0": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "xserver-xorg-core"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libxcvt.so.0.1.3",
+   "lib_pkg": "libxcvt0",
+   "lib_bytes": 66912
+  },
+  "libXfont2.so.2": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "xserver-xorg-core"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libXfont2.so.2.0.0",
+   "lib_pkg": "libxfont2",
+   "lib_bytes": 200072
+  },
+  "libGL.so.1": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "xserver-xorg-core"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libGL.so.1.7.0",
+   "lib_pkg": "libgl1",
+   "lib_bytes": 513420
+  },
+  "libmtdev.so.1": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "xserver-xorg-input-evdev"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libmtdev.so.1.0.0",
+   "lib_pkg": "libmtdev1t64",
+   "lib_bytes": 66816
+  },
+  "libevdev.so.2": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "xserver-xorg-input-evdev"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libevdev.so.2.3.0",
+   "lib_pkg": "libevdev2",
+   "lib_bytes": 132476
+  },
+  "libavahi-core.so.7": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "avahi-daemon"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libavahi-core.so.7.1.0",
+   "lib_pkg": "libavahi-core7",
+   "lib_bytes": 263528
+  },
+  "libdaemon.so.0": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "avahi-daemon"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libdaemon.so.0.5.0",
+   "lib_pkg": "libdaemon0",
+   "lib_bytes": 67176
+  },
+  "libss.so.2": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "e2fsprogs"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libss.so.2.0",
+   "lib_pkg": "libss2",
+   "lib_bytes": 66872
+  },
+  "libnftables.so.1": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "nftables"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libnftables.so.1.1.0",
+   "lib_pkg": "libnftables1",
+   "lib_bytes": 926816
+  },
+  "libdebconfclient.so.0": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "base-passwd"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libdebconfclient.so.0.0.0",
+   "lib_pkg": "libdebconfclient0",
+   "lib_bytes": 66928
+  },
+  "libnl-route-3.so.200": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "wpasupplicant"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libnl-route-3.so.200.26.0",
+   "lib_pkg": "libnl-route-3-200",
+   "lib_bytes": 536348
+  },
+  "libpcsclite.so.1": {
+   "consumer_files": 1,
+   "consumer_pkgs": [
+    "wpasupplicant"
+   ],
+   "lib_file": "/usr/lib/arm-linux-gnueabi/libpcsclite.so.1",
+   "lib_pkg": "libpcsclite1",
+   "lib_bytes": 67068
+  }
+ },
+ "elf_without_arch_tag": 29
+}

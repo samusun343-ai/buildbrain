@@ -1,0 +1,19 @@
+{
+ "seeds_present": [
+  "openssh-server",
+  "ssh"
+ ],
+ "seeds_missing": [],
+ "removed_count": 7,
+ "removed_MiB": 4.0,
+ "violations": [],
+ "removed": [
+  "libwrap0",
+  "libwtmpdb0",
+  "openssh-server",
+  "openssh-sftp-server",
+  "runit-helper",
+  "ssh",
+  "ucf"
+ ]
+}

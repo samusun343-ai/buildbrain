@@ -1,0 +1,70 @@
+(none)	Advanced Micro Devices X86-64	/etc/rmt
+(none)	Advanced Micro Devices X86-64	/etc/alternatives/awk
+(none)	Advanced Micro Devices X86-64	/etc/alternatives/c++
+(none)	Advanced Micro Devices X86-64	/etc/alternatives/cc
+(none)	Advanced Micro Devices X86-64	/etc/alternatives/cpp
+(none)	Advanced Micro Devices X86-64	/etc/alternatives/lzcat
+(none)	Advanced Micro Devices X86-64	/etc/alternatives/lzma
+(none)	Advanced Micro Devices X86-64	/etc/alternatives/nawk
+(none)	Advanced Micro Devices X86-64	/etc/alternatives/pager
+(none)	Advanced Micro Devices X86-64	/etc/alternatives/pinentry
+(none)	Advanced Micro Devices X86-64	/etc/alternatives/rmt
+(none)	Advanced Micro Devices X86-64	/etc/alternatives/unlzma
+(none)	Advanced Micro Devices X86-64	/usr/bin/awk
+(none)	Advanced Micro Devices X86-64	/usr/bin/c++
+(none)	Advanced Micro Devices X86-64	/usr/bin/cc
+(none)	Advanced Micro Devices X86-64	/usr/bin/editor
+(none)	Advanced Micro Devices X86-64	/usr/bin/ex
+(none)	Advanced Micro Devices X86-64	/usr/bin/lzcat
+(none)	Advanced Micro Devices X86-64	/usr/bin/lzma
+(none)	Advanced Micro Devices X86-64	/usr/bin/nawk
+(none)	Advanced Micro Devices X86-64	/usr/bin/pager
+(none)	Advanced Micro Devices X86-64	/usr/bin/pinentry
+(none)	Advanced Micro Devices X86-64	/usr/bin/rview
+(none)	Advanced Micro Devices X86-64	/usr/bin/unlzma
+(none)	Advanced Micro Devices X86-64	/usr/bin/vi
+(none)	Advanced Micro Devices X86-64	/usr/bin/view
+(none)	Advanced Micro Devices X86-64	/usr/bin/qemu-arm-static
+(none)	Advanced Micro Devices X86-64	/usr/lib/cpp
+v7	ARM	/usr/lib/arm-linux-gnueabi/libatomic.so.1
+v7	ARM	/usr/lib/arm-linux-gnueabi/libdav1d.so.7
+v6	ARM	/usr/lib/arm-linux-gnueabi/libnettle.so.8
+v7	ARM	/usr/lib/arm-linux-gnueabi/libatomic.so.1.2.0
+v7	ARM	/usr/lib/arm-linux-gnueabi/libdav1d.so.7.0.0
+v6	ARM	/usr/lib/arm-linux-gnueabi/libnettle.so.8.10
+v7	ARM	/usr/lib/gcc/arm-linux-gnueabi/14/libatomic.so
+v4	ARM	/usr/lib/klibc/bin/cat
+v4	ARM	/usr/lib/klibc/bin/chroot
+v4	ARM	/usr/lib/klibc/bin/cpio
+v4	ARM	/usr/lib/klibc/bin/dd
+v4	ARM	/usr/lib/klibc/bin/dmesg
+v4	ARM	/usr/lib/klibc/bin/false
+v4	ARM	/usr/lib/klibc/bin/fstype
+v4	ARM	/usr/lib/klibc/bin/insmod
+v4	ARM	/usr/lib/klibc/bin/ipconfig
+v4	ARM	/usr/lib/klibc/bin/kill
+v4	ARM	/usr/lib/klibc/bin/kinit
+v4	ARM	/usr/lib/klibc/bin/ln
+v4	ARM	/usr/lib/klibc/bin/losetup
+v4	ARM	/usr/lib/klibc/bin/ls
+v4	ARM	/usr/lib/klibc/bin/minips
+v4	ARM	/usr/lib/klibc/bin/mkdir
+v4	ARM	/usr/lib/klibc/bin/mkfifo
+v4	ARM	/usr/lib/klibc/bin/mknod
+v4	ARM	/usr/lib/klibc/bin/mount
+v4	ARM	/usr/lib/klibc/bin/mv
+v4	ARM	/usr/lib/klibc/bin/nfsmount
+v4	ARM	/usr/lib/klibc/bin/nuke
+v4	ARM	/usr/lib/klibc/bin/pivot_root
+v4	ARM	/usr/lib/klibc/bin/readlink
+v4	ARM	/usr/lib/klibc/bin/reboot
+v4	ARM	/usr/lib/klibc/bin/resume
+v4	ARM	/usr/lib/klibc/bin/run-init
+v4	ARM	/usr/lib/klibc/bin/poweroff
+v4	ARM	/usr/lib/klibc/bin/halt
+v4	ARM	/usr/lib/klibc/bin/sleep
+v4	ARM	/usr/lib/klibc/bin/sync
+v4	ARM	/usr/lib/klibc/bin/true
+v4	ARM	/usr/lib/klibc/bin/umount
+v4	ARM	/usr/lib/klibc/bin/uname
+(none)	Advanced Micro Devices X86-64	/usr/sbin/rmt
