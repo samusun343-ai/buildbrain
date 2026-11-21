@@ -1,0 +1,12 @@
+# rebuild/ — braindesk 作り直し（第1段: 土台）
+
+監査 `audit-2026-11-20.md` §5 の計画に基づく新規作業ツリー。既存 repo には未統合（統合・push は次マイルストーン）。
+
+- `DESIGN-toolkit-v2.md` — ツールキット v2 設計文書（大手との機能差分表つき。M2 の実施記録は §11）
+- `include/textcore.h`, `src/textcore.c` — テキスト編集コア
+- `include/tk.h`, `src/tk_core.c`, `src/tk_draw.c`, `src/tk_widgets.c` — ツールキット v2 コア（M2 で全ウィジェット種＋オーバーレイ/モーダル）
+- `src/tk_font.c` — 実フォント backend（stb_truetype、グリフキャッシュ、禁則折り返し）。`src/tk_image.c` — 画像デコード（stb_image）。単一ヘッダは `third_party/`（借り物、行数不算入）
+- `src/tk_fb.c`, `src/tk_evdev.c` — fbdev / evdev バックエンド（新規実装）
+- `tests/` — 単体テスト（4スイート 279 件）。`make check` で実行。リンクには `-lm` が必要
+
+合格について: 本ツリーのテスト PASS は「土台部品が仕様どおり動く」証拠に限定する。製品合格は SD イメージ＋ゲスト実操作でのみ判定する（監査§6）。

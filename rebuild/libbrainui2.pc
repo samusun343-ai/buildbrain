@@ -1,0 +1,12 @@
+prefix=/usr/local
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: libbrainui2
+Description: Brainux GUI toolkit v2 (widgets, textcore, fbdev)
+Version: 1.0
+Libs: -L${libdir} -lbrainui2
+Libs.private: -lm -lharfbuzz -lfreetype
+Requires.private: harfbuzz freetype2
+Cflags: -I${includedir}

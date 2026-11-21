@@ -1,0 +1,200 @@
+set	name	dir	file	variant
+material	arrow_back			
+material	arrow_forward			
+material	search			
+material	more_vert			
+material	more_horiz			
+material	close			
+material	check			
+material	add			
+material	delete			
+material	content_copy			
+material	content_paste			
+material	content_cut			
+material	drive_file_rename_outline			
+material	create_new_folder			
+material	folder			
+material	folder_open			
+material	refresh			
+material	download			
+material	upload			
+material	play_arrow			
+material	pause			
+material	skip_next			
+material	skip_previous			
+material	shuffle			
+material	repeat			
+material	repeat_one			
+material	queue_music			
+material	music_note			
+material	mic			
+material	stop			
+material	alarm			
+material	timer			
+material	schedule			
+material	checklist			
+material	task_alt			
+material	edit			
+material	attach_file			
+material	push_pin			
+material	star			
+material	star_outline		star	fill0
+material	info			
+material	wifi			
+material	brightness_high			
+material	volume_up			
+material	volume_off			
+material	battery_full			
+material	storage			
+material	person			
+material	keyboard			
+material	image			
+material	devices			
+material	bedtime			
+material	description			
+material	audio_file			
+material	video_file			
+material	folder_zip			
+material	home			
+material	menu			
+material	arrow_upward			
+material	arrow_downward			
+material	history			
+material	backspace			
+material	settings			
+material	apps			
+material	inventory_2			
+material	delete_sweep			
+material	sort			
+material	library_music			
+material	playlist_add			
+material	light_mode			
+material	dark_mode			
+material	sd_card			
+material	view_list			
+material	grid_view			
+material	note_add			
+material	archive			
+material	favorite			
+material	favorite_outline		favorite	fill0
+material	play_circle			
+material	pause_circle			
+material	fiber_manual_record			
+material	monitoring			
+material	memory			
+material	terminal			
+material	article			
+material	radio_button_unchecked			
+material	check_circle			
+material	hourglass_top			
+material	dock_to_bottom			
+material	usb			
+material	notifications			
+material	palette			
+material	visibility			
+material	lock			
+material	language			
+material	text_fields			
+material	download_done			
+fluent	arrow_left	ArrowLeft	arrow_left	regular
+fluent	arrow_right	ArrowRight	arrow_right	regular
+fluent	search	Search	search	regular
+fluent	more_vertical	MoreVertical	more_vertical	regular
+fluent	more_horizontal	MoreHorizontal	more_horizontal	regular
+fluent	dismiss	Dismiss	dismiss	regular
+fluent	checkmark	Checkmark	checkmark	regular
+fluent	add	Add	add	regular
+fluent	delete	Delete	delete	regular
+fluent	copy	Copy	copy	regular
+fluent	clipboard_paste	ClipboardPaste	clipboard_paste	regular
+fluent	cut	Cut	cut	regular
+fluent	rename	Rename	rename	regular
+fluent	folder_add	FolderAdd	folder_add	regular
+fluent	folder	Folder	folder	regular
+fluent	folder_open	FolderOpen	folder_open	regular
+fluent	arrow_clockwise	ArrowClockwise	arrow_clockwise	regular
+fluent	arrow_download	ArrowDownload	arrow_download	regular
+fluent	arrow_upload	ArrowUpload	arrow_upload	regular
+fluent	play	Play	play	filled
+fluent	pause	Pause	pause	filled
+fluent	next	Next	next	filled
+fluent	previous	Previous	previous	filled
+fluent	shuffle	Shuffle	arrow_shuffle	regular
+fluent	repeat_all	RepeatAll	arrow_repeat_all	regular
+fluent	music_note_2	MusicNote2	music_note_2	regular
+fluent	mic	Mic	mic	regular
+fluent	stop	Stop	stop	filled
+fluent	alarm	Alarm	clock_alarm	regular
+fluent	timer	Timer	timer	regular
+fluent	clock	Clock	clock	regular
+fluent	checklist	Checklist	clipboard_task_list	regular
+fluent	edit	Edit	edit	regular
+fluent	attach	Attach	attach	regular
+fluent	pin	Pin	pin	regular
+fluent	star	Star	star	regular
+fluent	info	Info	info	regular
+fluent	wifi_1	Wifi1	wifi_1	regular
+fluent	speaker_2	Speaker2	speaker_2	regular
+fluent	speaker_mute	SpeakerMute	speaker_mute	regular
+fluent	battery_6	Battery6	battery_6	regular
+fluent	storage	Storage	storage	regular
+fluent	person	Person	person	regular
+fluent	keyboard	Keyboard	keyboard	regular
+fluent	image	Image	image	regular
+fluent	desktop	Desktop	desktop	regular
+fluent	weather_moon	WeatherMoon	weather_moon	regular
+fluent	document	Document	document	regular
+fluent	document_text	DocumentText	document_text	regular
+fluent	apps	Apps	apps	regular
+fluent	home	Home	home	regular
+fluent	navigation	Navigation	navigation	regular
+fluent	arrow_up	ArrowUp	arrow_up	regular
+fluent	arrow_down	ArrowDown	arrow_down	regular
+fluent	history	History	history	regular
+fluent	backspace	Backspace	backspace	regular
+fluent	settings	Settings	settings	regular
+fluent	library	Library	library	regular
+fluent	record	Record	record	filled
+fluent	task_list	TaskList	task_list	regular
+fluent	save	Save	save	regular
+fluent	play_circle	PlayCircle	play_circle	regular
+fluent	pause_circle	PauseCircle	pause_circle	regular
+papirus	folder	places		
+papirus	folder-open	places		
+papirus	user-home	places		
+papirus	folder-download	places		
+papirus	folder-documents	places		
+papirus	folder-music	places		
+papirus	folder-pictures	places		
+papirus	folder-videos	places		
+papirus	drive-removable-media	devices		
+papirus	text-x-generic	mimetypes		
+papirus	image-x-generic	mimetypes		
+papirus	audio-x-generic	mimetypes		
+papirus	video-x-generic	mimetypes		
+papirus	application-zip	mimetypes		
+papirus	application-x-executable	mimetypes		
+papirus	text-x-script	mimetypes		
+papirus	application-pdf	mimetypes		
+papirus	application-x-generic	mimetypes		
+papirus	unknown	mimetypes		
+fluent	weather_sunny	WeatherSunny	weather_sunny	regular
+material	restore_from_trash			
+material	delete_forever			
+fluent	arrow_undo	ArrowUndo	arrow_undo	regular
+papirus	user-trash	places		
+fluent	circle	Circle	circle	regular
+fluent	checkmark_circle	CheckmarkCircle	checkmark_circle	regular
+material	album			
+material	category			
+material	group			
+material	playlist_play			
+fluent	album	Album	album	regular
+fluent	people	People	people	regular
+fluent	tag	Tag	tag	regular
+fluent	list	List	list	regular
+fluent	repeat_1	ArrowRepeat1	arrow_repeat_1	regular
+fluent	pulse	Pulse	pulse	regular
+fluent	gauge	Gauge	gauge	regular
+material	swap_horiz			
+fluent	arrow_swap	ArrowSwap	arrow_swap	regular

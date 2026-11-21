@@ -1,0 +1,20 @@
+# Build artifacts (regenerable) — not archived
+*.o
+*.a
+*.so
+*.so.*
+
+# Build environments / scratch — not archived
+/browser-engine/toolchain/
+/browser-engine/.sysroot/
+/browser-engine/.sysroot-arm/
+/browser-engine/.work-*/
+
+# IME experiment work dirs (venv, corpora scratch) — not archived
+/libbrainime/m*work/
+!/libbrainime/m4work/
+!/libbrainime/m4work/ubsan_finding.md
+
+# Extracted upstream NetSurf tree is not archived, except the brain
+# frontend under netsurf-all-3.11/netsurf/frontends/brain/ and the
+# pristine netsurf-all-3.11.tar.gz tarball it is extracted from.

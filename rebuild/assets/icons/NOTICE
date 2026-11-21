@@ -1,0 +1,26 @@
+braindesk unified product icon set — attribution
+================================================
+
+The PNG icons in material/, fluent/ and papirus/ are offline
+rasterisations (384px render + Lanczos downscale to 96px, full
+anti-aliasing) of the SVG sources in src/, fetched 2026-11-21
+by fetch_icons.py (the exact upstream path of every icon is
+recorded in MANIFEST.md).
+
+material/ — Google Material Symbols (Rounded, filled style)
+  https://github.com/google/material-design-icons
+  License: Apache License 2.0
+
+fluent/ — Microsoft Fluent UI System Icons
+  https://github.com/microsoft/fluentui-system-icons
+  (a few icons the upstream repo does not carry under assets/
+  were taken from the Iconify mirror of the same set,
+  https://api.iconify.design/fluent/ - marked in MANIFEST.md)
+  License: MIT License
+
+papirus/ — Papirus Icon Theme
+  https://github.com/PapirusDevelopmentTeam/papirus-icon-theme
+  License: GNU General Public License v3.0
+
+The device never parses SVG: only these pre-rendered PNGs ship,
+and apps tint the monochrome sets at load time (bdicon.h).

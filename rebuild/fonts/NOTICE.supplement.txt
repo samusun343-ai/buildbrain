@@ -1,0 +1,45 @@
+BrainUI JP supplement fonts — attribution
+==========================================
+
+brainui-jp-supplement.ttf
+  Derived from DejaVu Sans (subset: only the codepoints that
+  Noto Sans CJK JP lacks). DejaVu Fonts License:
+
+  Fonts are (c) Bitstream (see below). DejaVu changes are in
+  public domain. Glyphs imported from Arev Fonts are (c)
+  Tavmjong Bah (see below).
+
+  Bitstream Vera Fonts Copyright
+  Copyright (c) 2003 by Bitstream, Inc. All Rights Reserved.
+  Bitstream Vera is a trademark of Bitstream, Inc.
+
+  Permission is hereby granted, free of charge, to any person
+  obtaining a copy of the fonts accompanying this license ("Fonts")
+  and associated documentation files (the "Font Software"), to
+  reproduce and distribute the Font Software, including without
+  limitation the rights to use, copy, merge, publish, distribute,
+  and/or sell copies of the Font Software, and to permit persons
+  to whom the Font Software is furnished to do so, subject to the
+  following conditions:
+
+  The above copyright and trademark notices and this permission
+  notice shall be included in all copies of one or more of the
+  Font Software typefaces.
+
+  The Font Software may be modified, altered, or added to, and in
+  particular the designs of glyphs or characters in the Fonts may
+  be modified and additional glyphs or characters may be added to
+  the Fonts. This license does not grant permission to use the
+  trademark "DejaVu" in the modified fonts, except as required by
+  this license (the subset is renamed "BrainUI JP Supplement").
+
+  (Full license: https://dejavu-fonts.github.io/License.html)
+
+brainui-jp-symbols.ttf
+  Derived from Noto Sans Symbols 2 (subset: media symbols and any
+  other codepoints missing from both fonts above).
+  Copyright (c) Google / the Noto project authors.
+  Licensed under the SIL Open Font License 1.1 - the same license
+  text as LICENSE.brainui-jp.txt in this directory. The OFL
+  Reserved Font Name "Noto" is not used; the subset is renamed
+  "BrainUI JP Symbols".
