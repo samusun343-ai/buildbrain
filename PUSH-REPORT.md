@@ -189,3 +189,68 @@ force push は行っていない。push 後 `git ls-remote` でリモート
   `int3/` / `int4/` は収蔵していない（レポート本文のみ収蔵）。
 - linux-brain と root のサブモジュールポインタには変更なし
   （前回の判断を維持）。
+
+---
+
+# 追記 — 統合フェーズ第4段・クロック是正・PARTUUID・最終統合（sd-v5）の反映（2026-11-21）
+
+第4段（DE 全面棚卸しとイメージ内アセットのパーミッション是正、
+REPORT-integration-5.md）、CPU クロック是正と PARTUUID 化
+（REPORT-clock-fix.md）、最終統合 sd-v5（REPORT-integration-6.md）
+の変更を反映した。認証は従来どおり repo ローカル
+`credential.helper=store`（HTTPS）。force push は行っていない。
+
+## buildbrain / rebuild ブランチ — push 済み
+
+旧 tip `961d600d5` の上に4件＋本レポートのコミットを積んだ:
+
+| コミット | 内容 |
+|---|---|
+| `203d2e5c2` | 第4段シェル修正: アイコン読込み失敗のログ追加（従来は無言でテキスト落ち）、失敗時にキーを固定せず再試行可能に、マスコットのフロア分離（グリッド rect 公開アクセサ＋セッション側フロア設計） |
+| `2fca6acd6` | レポート収蔵: REPORT-clock-fix.md（新規）、REPORT-os-surgery-1.md 付記3（起動経路の前提訂正） |
+| `2faf33d4a` | os-brainux: boot.mount を番号指定から by-label 指定へ（PARTUUID 化と対の番号依存排除。**master には入れず rebuild ブランチに staged**） |
+| `cb028bbb0` | レポート収蔵: REPORT-integration-5.md（第4段）、REPORT-integration-6.md（最終統合 sd-v5）を repo ルートへ |
+| （本レポート） | rebuild: push report update (phase 4, clock fix, PARTUUID, sd-v5 sync) |
+
+反映範囲の確認:
+
+- 作業領域 `rebuild/` とブランチ収蔵ツリーの全量比較で、内容差分は
+  シェル3ファイル（shellui.h / shellui.c / session.c）のみ。
+  作業側のみに存在するファイルは全てビルド生成物（ELF・*.o・*.a・
+  *.so）、libbrainime の m*work 実験ディレクトリ、テスト用
+  フィクスチャであり、前回方針どおり収蔵対象外。
+- `os-surgery/` の差分は REPORT-clock-fix.md（新規）と
+  REPORT-os-surgery-1.md（付記3）のみ。staging/・kbuild/ は対象外。
+- `image-work/` のイメージ本体と証拠ディレクトリ int5/ / int6/ は
+  収蔵していない（レポート本文のみ収蔵）。
+- master は無変更（`dbe6dc494`）。サブモジュールポインタも変更なし。
+
+## u-boot-brain — ローカルコミット済み、push は宛先なしで未完
+
+クロック是正と PARTUUID 化は u-boot-brain の変更であり、監査の結果:
+
+- submodule の origin は上流 `brain-hackers/u-boot-brain` で、
+  buildbrain のポインタ `e8fc0d0cf3` は origin/brain の tip そのもの
+  （linux-brain のような「ポインタ先の背後に未取得履歴」の罠は無し）。
+- しかし `samusun343-ai` に上流 repo への書込み権は無く（push は
+  403 で拒否）、フォーク `samusun343-ai/u-boot-brain` も存在しない。
+  **push の宛先が現状存在しないため、push は未完。**
+- 変更はローカルブランチ **`brain-clock-partuuid`** に2コミットで
+  保全済み（作業ツリーはクリーン、チェックアウトはポインタ位置
+  `e8fc0d0cf3` に復帰済み）:
+
+| コミット | 内容 |
+|---|---|
+| `ae9daf6f08` | sharp: pwsh6: VDDD 1550mV 設定と CPU/EMI クロック初期化を board_early_init_f へ（cpu_clkdiv.c/.h、pwsh6.c） |
+| `3b41783add` | brain_mx28: root を起動時 PARTUUID 解決に変更（brain_mx28_common.h の setroot、9機種 defconfig に CONFIG_CMD_PART=y） |
+
+- 宛先が決まれば `git -C u-boot-brain push <remote> brain-clock-partuuid`
+  でそのまま送れる。想定する宛先は `samusun343-ai/u-boot-brain`
+  フォークの新規作成（ユーザー判断待ち）。
+
+## 検証
+
+- buildbrain: push 後 `git ls-remote origin` で `rebuild` 先端と
+  ローカルの一致、`master = dbe6dc494`（無変更）を確認。
+- u-boot-brain: 上記のとおり push 未完（宛先なし）。ローカル
+  ブランチとコミットの存在は本書が記録。
