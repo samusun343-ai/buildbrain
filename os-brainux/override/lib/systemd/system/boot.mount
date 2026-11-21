@@ -2,7 +2,12 @@
 Description=Mount boot partition
 
 [Mount]
-What=/dev/mmcblk1p1
+# The kernel assigns mmcblk numbers in MMC host registration order,
+# which can flip between boots; never reference the boot partition by
+# device number. The vfat label "boot" is set by mkfs.fat -n boot in
+# the image build and is stable across image builds (unlike the FAT
+# UUID or the MBR disk signature).
+What=/dev/disk/by-label/boot
 Where=/boot
 Options=ro
 
