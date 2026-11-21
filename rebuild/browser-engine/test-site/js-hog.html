@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html><head><title>JS heap hog</title>
+<style>body { background: #ffffff; color: #000; font-family: sans-serif; }</style></head>
+<body>
+<h1>JS heap hog</h1>
+<p id="out">allocating...</p>
+<script>
+var keep = [];
+try {
+  for (var i = 0; i < 100000; i++) {
+    /* unique string per iteration (defeats string interning) */
+    keep.push(new Array(4096).join("y") + i);
+  }
+  document.getElementById("out").firstChild.nodeValue = "HOG COMPLETED (cap failed)";
+} catch (e) {
+  document.getElementById("out").firstChild.nodeValue = "HOG STOPPED: " + e.name;
+}
+</script>
+<p>After script.</p>
+</body></html>

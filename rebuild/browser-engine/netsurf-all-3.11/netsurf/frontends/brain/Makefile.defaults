@@ -1,0 +1,67 @@
+# -*- mode: makefile -*-
+#
+# NetSurf default build setup for the brain frontend.
+#
+# Mirrors the framebuffer frontend: the brain frontend renders
+# through libnsfb (the "brain" surface) and uses FreeType for page
+# text, so it needs the same feature switches.
+
+# Force using glib based cairo renderer for the pdf export
+NETSURF_USE_CAIRO := NO
+
+# Brainux: enable the filesystem backing store so the disc cache
+# (disc_cache_size, capacity-driven LRU) actually exists; upstream
+# leaves this off for the framebuffer target (M0 change, kept).
+NETSURF_FS_BACKING_STORE := YES
+
+# Enable NetSurf's use of libcurl.  Note: NetSurf 3.11's
+# content/fetch.c includes the curl header unconditionally, so
+# the curl development files are effectively mandatory; the
+# rebuild supplies them from the workspace sysroot when the host
+# lacks them (see frontends/brain/Makefile).
+NETSURF_USE_CURL := YES
+
+# Enable NetSurf's use of openssl
+NETSURF_USE_OPENSSL := AUTO
+
+# Enable NetSurf's use of libpng for displaying PNGs
+NETSURF_USE_PNG := YES
+
+# Enable NetSurf's use of libjpeg for displaying JPEGs
+NETSURF_USE_JPEG := YES
+
+# Enable NetSurf's use of libwebp for displaying WebPs
+NETSURF_USE_WEBP := YES
+
+# Enable NetSurf's use of libsvgtiny for displaying SVGs
+NETSURF_USE_NSSVG := AUTO
+
+# Enable NetSurf's use of librosprite for displaying Sprites
+NETSURF_USE_ROSPRITE := AUTO
+
+# Remaining feature switches the buildsystem requires a value for
+NETSURF_USE_JPEGXL := AUTO
+NETSURF_USE_NSLOG := YES
+NETSURF_USE_NSPSL := YES
+NETSURF_USE_UTF := YES
+
+# Enable NetSurf's use of libgif for displaying GIFs
+NETSURF_USE_GIF := YES
+
+# Enable NetSurf's use of libnsbmp for displaying BMPs
+NETSURF_USE_BMP := YES
+
+# Enable NetSurf's use of libnsico for displaying ICOs
+NETSURF_USE_ICO := YES
+
+# Enable NetSurf's use of libnsfb for rendering
+NETSURF_USE_NSFB := YES
+
+# Enable NetSurf's use of libnsgif for displaying GIFs
+NETSURF_USE_NSGIF := NO
+
+# Enable NetSurf's use of the video element
+NETSURF_USE_VIDEO := NO
+
+# Enable building the browser for a framebuffer based environment
+NETSURF_USE_FB := YES

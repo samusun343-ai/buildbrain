@@ -1,0 +1,24 @@
+# -*- mode: makefile-gmake -*-
+##
+## tool setup for the brain target
+##
+## Same compiler/pkg-config selection as the framebuffer target;
+## the brain frontend additionally needs the rebuild workspace
+## root so the toolkit headers and libbrainui2.a can be found.
+
+ifeq ($(origin GCCSDK_INSTALL_ENV),undefined)
+  PKG_CONFIG := pkg-config
+else
+  PKG_CONFIG := PKG_CONFIG_LIBDIR="$(GCCSDK_INSTALL_ENV)/lib/pkgconfig" pkg-config
+endif
+
+ifneq ($(origin GCCSDK_INSTALL_CROSSBIN),undefined)
+  CC := $(wildcard $(GCCSDK_INSTALL_CROSSBIN)/*gcc)
+  CXX := $(wildcard $(GCCSDK_INSTALL_CROSSBIN)/*g++)
+endif
+
+ifeq ($(origin REBUILD_ROOT),undefined)
+  # CURDIR is the netsurf tree root: netsurf -> netsurf-all-3.11
+  # -> browser-engine -> rebuild
+  REBUILD_ROOT := $(realpath $(CURDIR)/../../..)
+endif

@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html><head><title>Image cap test</title>
+<style>body { background: #ffffff; color: #000; font-family: sans-serif; }</style></head>
+<body>
+<h1>Images</h1>
+<p>Big JPEG (2400x1800, scaled decode expected):</p>
+<img src="big.jpg" width="400" height="300">
+<p>Big PNG (2000x2000, refusal expected under cap):</p>
+<img src="big.png" width="200" height="200">
+<p>Small PNG (should always show):</p>
+<img src="small.png" width="100" height="60">
+</body></html>
