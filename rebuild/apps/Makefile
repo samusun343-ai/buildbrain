@@ -258,6 +258,21 @@ check: tests $(APPS)
 	./test_admin
 	./test_admin_ui
 	./test_alarmd
+	# main() wiring smoke: every app binary must build its UI and
+	# take the headless path cleanly when /dev/fb0 is absent.
+	# (recorder/pkg/admin/settings once shipped a main that built
+	# the UI and exited without ever entering the event loop -
+	# integration phase 2. The loop itself is guest-verified.)
+	@mkdir -p $(CURDIR)/.smoke-home
+	@for a in $(APPS); do \
+	    if [ "$$a" = "bd-alarmd" ]; then continue; fi; \
+	    out=$$(HOME=$(CURDIR)/.smoke-home timeout 10 ./$$a 2>&1); \
+	    case "$$out" in \
+	        *"UI built (headless"*) echo "$$a main smoke: OK" ;; \
+	        *) echo "$$a main smoke: UNEXPECTED: $$out"; exit 1 ;; \
+	    esac; \
+	done
+	@rm -rf $(CURDIR)/.smoke-home
 
 clean:
 	rm -f $(APPS) $(TESTS)

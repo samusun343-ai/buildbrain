@@ -519,14 +519,49 @@ tk_widget *pkg_app_log_label(pkg_app *app) { return app->log; }
 tk_widget *pkg_app_search_field(pkg_app *app) { return app->search; }
 
 #ifdef BD_PKG_MAIN
+#include <time.h>
 int main(int argc, char **argv)
 {
     bd_app_theme(); /* display mode from brainreg ui/mode */
     const char *catalog = argc > 1 ? argv[1] : "packages";
+    tk_font *font = tk_font_load_default();
+    if (font) tk_font_install(font);
+    /* fb first, real panel size (see bd_calc.c main note) */
+    tk_fb *fb = tk_fb_open("/dev/fb0");
+    int vw = fb ? tk_fb_width(fb) : 800;
+    int vh = fb ? tk_fb_height(fb) : 600;
     pkg_app *app = pkg_app_new(catalog, NULL, NULL, NULL, NULL,
-                               800, 600);
-    if (!app) return 1;
+                               vw, vh);
+    if (!app) { fprintf(stderr, "bd-pkg: cannot build UI\n"); return 1; }
+
+    tk_canvas *canvas = tk_canvas_new(vw, vh);
+    const tk_theme *theme = tk_theme_default();
+    if (fb && canvas) {
+        tk_evdev *ev = tk_evdev_open("/dev/input/event0");
+        for (;;) {
+            tk_event e;
+            if (ev) {
+                while (tk_evdev_poll(ev, &e)) {
+                    if (e.type == TK_EV_ACTION && e.action == TK_ACTION_HOME)
+                        goto done;
+                    tk_root_event(app->root, &e);
+                }
+            }
+            tk_root_paint_damage(app->root, canvas, theme);
+            tk_fb_flush_damage(fb, canvas);
+            struct timespec ts = { 0, 20 * 1000 * 1000 };
+            nanosleep(&ts, NULL);
+        }
+    done:
+        if (ev) tk_evdev_close(ev);
+        tk_fb_close(fb);
+    } else {
+        tk_root_paint(app->root, canvas, theme);
+        printf("bd-pkg: UI built (headless, no /dev/fb0)\n");
+    }
+    if (canvas) tk_canvas_free(canvas);
     pkg_app_free(app);
+    if (font) tk_font_free(font);
     return 0;
 }
 #endif

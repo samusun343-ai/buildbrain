@@ -444,14 +444,57 @@ tk_widget *admin_app_log_load_button(admin_app *app)
 }
 
 #ifdef BD_ADMIN_MAIN
+#include <time.h>
+static uint64_t admin_mono_ms(void)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
+}
+
 int main(void)
 {
     bd_app_theme(); /* display mode from brainreg ui/mode */
     sy_sys *sys = sy_open("/proc", "/var/log");
-    admin_app *app = admin_app_new(sys, 800, 600);
-    if (!app) return 1;
+    tk_font *font = tk_font_load_default();
+    if (font) tk_font_install(font);
+    /* fb first, real panel size (see bd_calc.c main note) */
+    tk_fb *fb = tk_fb_open("/dev/fb0");
+    int vw = fb ? tk_fb_width(fb) : 800;
+    int vh = fb ? tk_fb_height(fb) : 600;
+    admin_app *app = admin_app_new(sys, vw, vh);
+    if (!app) { fprintf(stderr, "bd-admin: cannot build UI\n"); return 1; }
+
+    tk_canvas *canvas = tk_canvas_new(vw, vh);
+    const tk_theme *theme = tk_theme_default();
+    if (fb && canvas) {
+        tk_evdev *ev = tk_evdev_open("/dev/input/event0");
+        for (;;) {
+            tk_event e;
+            if (ev) {
+                while (tk_evdev_poll(ev, &e)) {
+                    if (e.type == TK_EV_ACTION && e.action == TK_ACTION_HOME)
+                        goto done;
+                    tk_root_event(app->root, &e);
+                }
+            }
+            admin_app_tick(app, admin_mono_ms());
+            tk_root_paint_damage(app->root, canvas, theme);
+            tk_fb_flush_damage(fb, canvas);
+            struct timespec ts = { 0, 20 * 1000 * 1000 };
+            nanosleep(&ts, NULL);
+        }
+    done:
+        if (ev) tk_evdev_close(ev);
+        tk_fb_close(fb);
+    } else {
+        tk_root_paint(app->root, canvas, theme);
+        printf("bd-admin: UI built (headless, no /dev/fb0)\n");
+    }
+    if (canvas) tk_canvas_free(canvas);
     admin_app_free(app);
     sy_close(sys);
+    if (font) tk_font_free(font);
     return 0;
 }
 #endif

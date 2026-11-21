@@ -805,6 +805,13 @@ tk_widget *rec_app_status_label(rec_app *app) { return app->status; }
 tk_widget *rec_app_detail_label(rec_app *app) { return app->detail_name; }
 
 #ifdef BD_RECORDER_MAIN
+static uint64_t rec_mono_ms(void)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
+}
+
 int main(void)
 {
     bd_app_theme(); /* display mode from brainreg ui/mode */
@@ -812,9 +819,46 @@ int main(void)
     const char *home = getenv("HOME");
     snprintf(dir, sizeof(dir), "%s/.local/share/bd-recorder",
              home ? home : ".");
-    rec_app *app = rec_app_new(dir, NULL, NULL, NULL, 800, 600);
-    if (!app) return 1;
+    tk_font *font = tk_font_load_default();
+    if (font) tk_font_install(font);
+    /* fb first, real panel size (see bd_calc.c main note). The
+     * factories stay NULL: the model falls back to ALSA "default"
+     * for capture and playback. */
+    tk_fb *fb = tk_fb_open("/dev/fb0");
+    int vw = fb ? tk_fb_width(fb) : 800;
+    int vh = fb ? tk_fb_height(fb) : 600;
+    rec_app *app = rec_app_new(dir, NULL, NULL, NULL, vw, vh);
+    if (!app) { fprintf(stderr, "bd-recorder: cannot build UI\n"); return 1; }
+
+    tk_canvas *canvas = tk_canvas_new(vw, vh);
+    const tk_theme *theme = tk_theme_default();
+    if (fb && canvas) {
+        tk_evdev *ev = tk_evdev_open("/dev/input/event0");
+        for (;;) {
+            tk_event e;
+            if (ev) {
+                while (tk_evdev_poll(ev, &e)) {
+                    if (e.type == TK_EV_ACTION && e.action == TK_ACTION_HOME)
+                        goto done;
+                    tk_root_event(app->root, &e);
+                }
+            }
+            rec_app_tick(app, rec_mono_ms());
+            tk_root_paint_damage(app->root, canvas, theme);
+            tk_fb_flush_damage(fb, canvas);
+            struct timespec ts = { 0, 20 * 1000 * 1000 };
+            nanosleep(&ts, NULL);
+        }
+    done:
+        if (ev) tk_evdev_close(ev);
+        tk_fb_close(fb);
+    } else {
+        tk_root_paint(app->root, canvas, theme);
+        printf("bd-recorder: UI built (headless, no /dev/fb0)\n");
+    }
+    if (canvas) tk_canvas_free(canvas);
     rec_app_free(app);
+    if (font) tk_font_free(font);
     return 0;
 }
 #endif
