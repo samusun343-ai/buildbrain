@@ -54,12 +54,33 @@ echo "login: $USER_NAME"
 USER_HOME="$(getent passwd "$USER_NAME" | cut -d: -f6)"
 [ -n "$USER_HOME" ] || USER_HOME="/home/$USER_NAME"
 
+# The per-user runtime directory is this script's responsibility:
+# this launch path (service running as root, runuser to drop
+# privileges) has no logind session, so nothing else creates
+# /run/user/<uid> - and without it the shell's WM socket bind
+# fails and the session cannot start at all (integration phase-2
+# defect). Create it here, owned by the user, mode 0700, before
+# anything runs as the user. /run is a tmpfs, so this runs on
+# every boot; stale sockets inside are unlinked by the WM itself
+# before bind.
+USER_UID="$(id -u "$USER_NAME")"
+RUNTIME_DIR="/run/user/$USER_UID"
+if [ ! -d "$RUNTIME_DIR" ]; then
+    mkdir -p "$RUNTIME_DIR" || {
+        echo "cannot create runtime dir $RUNTIME_DIR; aborting"
+        exit 1
+    }
+fi
+chown "$USER_NAME" "$RUNTIME_DIR" 2>/dev/null || \
+    chown "$USER_UID" "$RUNTIME_DIR"
+chmod 700 "$RUNTIME_DIR"
+
 # 2. Shell v2 session as the user. BRAINREG_* default to the
-#    user's home (SD); XDG_RUNTIME_DIR is systemd-provided.
+#    user's home (SD); XDG_RUNTIME_DIR is the directory above.
 if [ -x /usr/local/bin/braindesk2 ]; then
     runuser -u "$USER_NAME" -- env \
         HOME="$USER_HOME" \
-        XDG_RUNTIME_DIR="/run/user/$(id -u "$USER_NAME")" \
+        XDG_RUNTIME_DIR="$RUNTIME_DIR" \
         /usr/local/bin/braindesk2
     rc=$?
     echo "braindesk2 exited $rc"
@@ -70,4 +91,5 @@ fi
 # 3. Fallback: classic X session (startx runs the user's
 #    .xinitrc / the system xsession with jwm). Kept while the
 #    X-compatibility measurement is pending.
-exec runuser -u "$USER_NAME" -- env HOME="$USER_HOME" startx
+exec runuser -u "$USER_NAME" -- env HOME="$USER_HOME" \
+    XDG_RUNTIME_DIR="$RUNTIME_DIR" startx
