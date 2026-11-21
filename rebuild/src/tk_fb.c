@@ -8,6 +8,7 @@
 
 #include <fcntl.h>
 #include <linux/fb.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
@@ -23,6 +24,7 @@ struct tk_fb {
     int line_len;
     struct fb_var_screeninfo var;
     bool is_mem;      /* M3: memory-backed (tk_fb_open_mem) */
+    bool dim_warned;  /* canvas/fb size mismatch already logged */
 };
 
 tk_fb *tk_fb_open(const char *dev)
@@ -163,10 +165,33 @@ static void fb_shift_region(tk_fb *fb, tk_rect r, int dy)
     }
 }
 
+/* The flush entry points require the canvas to match the
+ * framebuffer exactly. A mismatch used to fail silently, which
+ * hid an integration defect for a long time (apps built at a
+ * hardcoded size never drew anything on the real panel). Log the
+ * first mismatch per fb instance so the failure is discoverable,
+ * but keep the no-transfer behaviour: shipping a wrong-sized
+ * canvas would corrupt the frame. */
+static bool fb_dims_match(tk_fb *fb, tk_canvas *c, const char *fn)
+{
+    if (tk_canvas_width(c) == fb->w && tk_canvas_height(c) == fb->h)
+        return true;
+    if (!fb->dim_warned) {
+        fb->dim_warned = true;
+        fprintf(stderr,
+                "tk_fb: %s: canvas %dx%d does not match framebuffer "
+                "%dx%d; nothing transferred (further mismatches "
+                "suppressed)\n",
+                fn, tk_canvas_width(c), tk_canvas_height(c),
+                fb->w, fb->h);
+    }
+    return false;
+}
+
 bool tk_fb_flush(tk_fb *fb, tk_canvas *c)
 {
     if (!fb || !c) return false;
-    if (tk_canvas_width(c) != fb->w || tk_canvas_height(c) != fb->h)
+    if (!fb_dims_match(fb, c, "tk_fb_flush"))
         return false;
     (void)flush_region(fb, c, (tk_rect){0, 0, fb->w, fb->h});
     tk_canvas_damage_clear(c);
@@ -177,7 +202,7 @@ bool tk_fb_flush(tk_fb *fb, tk_canvas *c)
 size_t tk_fb_flush_damage(tk_fb *fb, tk_canvas *c)
 {
     if (!fb || !c) return 0;
-    if (tk_canvas_width(c) != fb->w || tk_canvas_height(c) != fb->h)
+    if (!fb_dims_match(fb, c, "tk_fb_flush_damage"))
         return 0;
     /* M5: replay recorded shifts in device memory first, so the
      * retained area needs no conversion traffic at all; only the

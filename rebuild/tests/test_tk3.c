@@ -190,6 +190,49 @@ int main(void)
         tk_canvas_free(c);
     }
 
+    /* ===== fb flush at the real panel size, 854x480 =====
+     * Regression for the integration phase-2 defect: the fb-direct
+     * apps built their canvas at a hardcoded 480x272 while the
+     * panel fb is 854x480, so every flush was rejected on size and
+     * nothing ever reached the screen. Pin both directions: a
+     * canvas at the real size ships in full (32bpp and 16bpp),
+     * and the old 480x272 canvas against the 854x480 fb ships
+     * nothing. */
+    {
+        tk_color red = {255, 0, 0, 255};
+        tk_canvas *c = tk_canvas_new(854, 480);
+        tk_fb *fb = tk_fb_open_mem(854, 480, 32);
+        CHECK(fb != NULL);
+        CHECK(tk_fb_width(fb) == 854 && tk_fb_height(fb) == 480);
+        tk_canvas_clear(c, red);
+        CHECK(tk_fb_flush_damage(fb, c) == (size_t)854 * 480 * 4);
+        const uint32_t *px = (const uint32_t *)tk_fb_pixels(fb);
+        CHECK(px[240 * 854 + 427] == 0x00FF0000u);
+        CHECK(tk_fb_flush(fb, c));
+        tk_fb_close(fb);
+        tk_canvas_free(c);
+
+        c = tk_canvas_new(854, 480);
+        fb = tk_fb_open_mem(854, 480, 16);
+        CHECK(fb != NULL);
+        tk_canvas_clear(c, red);
+        CHECK(tk_fb_flush_damage(fb, c) == (size_t)854 * 480 * 2);
+        const uint16_t *px16 = (const uint16_t *)tk_fb_pixels(fb);
+        CHECK(px16[240 * 854 + 427] == rgb565(255, 0, 0));
+        tk_fb_close(fb);
+        tk_canvas_free(c);
+
+        /* the phase-2 failure mode itself: undersized canvas */
+        c = tk_canvas_new(480, 272);
+        fb = tk_fb_open_mem(854, 480, 32);
+        CHECK(fb != NULL);
+        tk_canvas_clear(c, red);
+        CHECK(tk_fb_flush_damage(fb, c) == 0);
+        CHECK(!tk_fb_flush(fb, c));
+        tk_fb_close(fb);
+        tk_canvas_free(c);
+    }
+
     /* ===== root damage flow + paint_damage ===== */
     {
         tk_widget *box = tk_box_new(TK_DIR_VERTICAL, 6, 8);
