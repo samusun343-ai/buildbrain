@@ -1,0 +1,6 @@
+[Something Else]
+Name=Not A Desktop Entry
+[Desktop Entry]
+Type=Application
+Name=Broken Entry
+Exec=broken

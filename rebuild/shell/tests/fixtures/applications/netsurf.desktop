@@ -1,0 +1,11 @@
+# NetSurf (existing X app, must be launchable unchanged)
+[Desktop Entry]
+Type=Application
+Name=NetSurf Web Browser
+GenericName=Web Browser
+Comment=Browse the World Wide Web
+Keywords=web;browser;internet;
+Icon=netsurf
+Exec=netsurf-gtk %u
+Terminal=false
+Categories=Network;WebBrowser;

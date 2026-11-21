@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=PCManFM
+GenericName=File Manager
+Comment=Manage files and folders
+Icon=pcmanfm
+Exec=pcmanfm %U
+Categories=System;FileManager;

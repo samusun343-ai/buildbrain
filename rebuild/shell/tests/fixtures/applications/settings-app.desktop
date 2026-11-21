@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=System Settings
+Exec=system-settings
+Icon=preferences
+Categories=Settings;DesktopSettings;

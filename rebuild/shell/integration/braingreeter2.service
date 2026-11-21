@@ -1,0 +1,30 @@
+# braingreeter2.service - greeter + shell v2 session on tty1.
+#
+# NOT enabled by default. setup_brainux.sh installs this unit but
+# leaves ly enabled: the v2 session becomes the default only after
+# (a) the toolkit TextField gains a password-mask mode and
+# (b) the X-compatibility PSS measurement in the integration phase
+# decides how the X session coexists. Enable manually with:
+#   systemctl disable ly getty@tty1
+#   systemctl enable braingreeter2
+[Unit]
+Description=Brainux greeter and shell v2 session
+After=systemd-user-sessions.service
+Conflicts=getty@tty1.service ly.service
+Before=getty@tty1.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/brainux-session
+StandardInput=tty
+StandardOutput=journal
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+# The greeter verifies passwords against /etc/shadow and the
+# session drops privileges with runuser before starting the shell.
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

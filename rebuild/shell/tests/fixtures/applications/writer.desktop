@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Writer
+Name[ja]=ライター
+GenericName=Word Processor
+Exec=writer --start %F
+Icon=writer
+Categories=Office;WordProcessor;

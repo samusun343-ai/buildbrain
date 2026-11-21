@@ -1,0 +1,25 @@
+--- a/os-brainux/setup_brainux.sh
++++ b/os-brainux/setup_brainux.sh
+@@ -128,6 +128,22 @@
+ # verified on the image. Enable with:
+ #   systemctl disable ly && systemctl enable braindesk-session
+ 
++# braindesk v2 / shell v2 (rebuild: toolkit v2 + shell v2 + greeter2)
++# Built from the rebuild tree staged at /opt/brainux-rebuild.
++# Installed but NOT enabled: ly stays the default greeter until
++# (a) the toolkit TextField gains a password-mask mode and
++# (b) the X-compatibility PSS measurement (integration phase)
++# decides the session layout. See DESIGN-shell-v2.md sections
++# 14-15 in the rebuild tree.
++make -C /opt/brainux-rebuild -j$(nproc) libbrainui2.a
++make -C /opt/brainux-rebuild/shell -j$(nproc) braingreeter2 wm_sample_raw wm_sample_tk
++install -m 0755 /opt/brainux-rebuild/shell/braingreeter2 /usr/local/bin/braingreeter2
++install -m 0755 /opt/brainux-rebuild/shell/integration/brainux-session.sh /usr/local/bin/brainux-session
++install -m 0644 /opt/brainux-rebuild/shell/integration/braingreeter2.service /etc/systemd/system/braingreeter2.service
++# Enable (manual, after the two gates above):
++#   systemctl disable ly && systemctl enable braingreeter2
++
++
+ # Create editable xorg.conf.d
+ install -m 0777 -d /etc/X11/xorg.conf.d
+ 

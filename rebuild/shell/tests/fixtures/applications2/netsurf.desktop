@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=NetSurf DUPLICATE (lower priority dir)
+Exec=netsurf-dup
+Categories=Network;

@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=My\sEditor
+GenericName=Text\sTool
+Exec="my editor" --title %c %i %%
+Icon=myeditor
+Categories=Utility;TextEditor;

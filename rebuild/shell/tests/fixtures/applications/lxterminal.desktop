@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=LXTerminal
+GenericName=Terminal Emulator
+Exec=lxterminal
+Icon=lxterminal
+Terminal=false
+Categories=System;TerminalEmulator;
