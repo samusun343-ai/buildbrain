@@ -55,6 +55,8 @@ struct bd_shell {
     tk_widget *panel;
     tk_widget *main_area;      /* Fixed: holds views + floating panels */
     tk_rect main_rect;         /* main area in screen coords (layout) */
+    tk_rect desk_grid_rect;    /* desktop icon grid, screen coords */
+    bool desk_grid_valid;
     tk_widget *desktop_view;   /* Fixed: wallpaper + icon grid */
     tk_widget *wallpaper_w;
     tk_widget *desk_grid;
@@ -270,6 +272,31 @@ static bool icon_path(const char *set, const char *name,
     return false;
 }
 
+/* Icon load failures used to be completely silent: in the
+ * shipped sd-v3 image the asset tree was unreadable by the
+ * desktop user (0660 root:root under 0770 directories) and
+ * every status icon quietly degraded to a text label, with
+ * nothing in any log (integration phase 4). Report the first
+ * failure per (set, name) on stderr - the session script folds
+ * it into the session log - so a broken asset install is
+ * diagnosable instead of invisible. Bounded at 32 distinct
+ * icons per process. */
+static void icon_load_failed(const char *set, const char *name,
+                             const char *why)
+{
+    static char seen[32][128];
+    static int n_seen;
+    char key[128];
+    snprintf(key, sizeof(key), "%s/%s", set, name);
+    for (int i = 0; i < n_seen; i++)
+        if (strcmp(seen[i], key) == 0) return;
+    if (n_seen < 32) {
+        snprintf(seen[n_seen], sizeof(seen[0]), "%s", key);
+        n_seen++;
+    }
+    fprintf(stderr, "braindesk2: icon %s unavailable (%s)\n", key, why);
+}
+
 /* Load icon <set>/<name> for a box x box slot, tinted to
  * `tint` (the source renders are white shapes; only their
  * alpha is kept). Returns a malloc'd box*box canvas-packed
@@ -281,11 +308,16 @@ bool bd_icon_pixels(const char *set, const char *name, int box,
 {
     if (!set || !name || box <= 0 || !out_px) return false;
     char path[512];
-    if (!icon_path(set, name, path, sizeof(path))) return false;
+    if (!icon_path(set, name, path, sizeof(path))) {
+        icon_load_failed(set, name, "no readable asset path");
+        return false;
+    }
     uint32_t *px = NULL;
     int w = 0, h = 0;
-    if (!tk_image_load_thumbnail(path, box, box, &px, &w, &h))
+    if (!tk_image_load_thumbnail(path, box, box, &px, &w, &h)) {
+        icon_load_failed(set, name, "asset decode failed");
         return false;
+    }
     uint32_t *out = calloc((size_t)box * (size_t)box, sizeof(uint32_t));
     if (!out) { free(px); return false; }
     int ox = (box - w) / 2, oy = (box - h) / 2;
@@ -333,8 +365,12 @@ static void shell_set_icon(tk_widget *w, char *slot, size_t slot_cap,
         else
             tk_imageview_set_pixels(w, px, box, box);
         free(px);
+        /* Pin the key only on success: pinning a failed load
+         * (the old behaviour) suppressed every later retry, so
+         * a transiently unreadable asset set degraded the icon
+         * for the whole session. */
+        if (slot) snprintf(slot, slot_cap, "%s", key);
     }
-    if (slot) snprintf(slot, slot_cap, "%s", key);
 }
 
 /* Placeholder app icon: the mode set's "image" symbol,
@@ -1627,6 +1663,13 @@ void bd_shell_osk_suppress(bd_shell *sh)
 
 tk_rect bd_shell_main_rect(const bd_shell *sh) { return sh->main_rect; }
 
+bool bd_shell_desktop_grid_rect(const bd_shell *sh, tk_rect *out)
+{
+    if (!sh || !out || !sh->desk_grid_valid) return false;
+    *out = sh->desk_grid_rect;
+    return true;
+}
+
 /* Position the launcher's inner sections for panel rect w x h
  * (launcher-local coordinates). The middle area (home sections or
  * the results grid) sits between the search field and the chip
@@ -1803,6 +1846,11 @@ void bd_shell_layout(bd_shell *sh, int w, int h)
         if (gw < 0) gw = 0;
         if (gh < 0) gh = 0;
         tk_set_fixed_rect(sh->desk_grid, (tk_rect){16, 16, gw, gh});
+        /* Screen-coordinate copy for embedders (the mascot
+         * floor): the grid sits at (16,16) inside desktop_view,
+         * which itself sits at the main area's origin. */
+        sh->desk_grid_rect = (tk_rect){ mr.x + 16, mr.y + 16, gw, gh };
+        sh->desk_grid_valid = gw > 0 && gh > 0;
     }
     /* launcher: floating panel 600x408 above the panel (bottom
      * panel) or below it (top panel); a full sheet when the main

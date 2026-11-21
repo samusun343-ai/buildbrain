@@ -222,6 +222,33 @@ static void session_stop_alarmd(bd_session *s)
     while (waitpid(pid, &st, 0) < 0 && errno == EINTR) { }
 }
 
+/* The mascot's floor: the simulation clamps the character's
+ * anchor to this area, so the floor IS the region the sprite
+ * may occupy. On the desktop view the icon grid owns the left
+ * of the screen - start the floor to the right of the grid,
+ * with room for half the sprite plus a margin, so the
+ * character can never cover an icon or its label whatever
+ * pack is loaded. (Integration phase 4: the shipped pack has
+ * no Walk clip and the mascot stays at its spawn point, which
+ * used to be the middle of the grid, hiding labels.) Falls
+ * back to the full main rect when the grid leaves no usable
+ * strip, and in every non-desktop view. */
+static tk_rect session_mascot_floor(bd_session *s)
+{
+    tk_rect mr = bd_shell_main_rect(s->shell);
+    if (bd_shell_view(s->shell) == BD_VIEW_DESKTOP) {
+        tk_rect gr;
+        if (bd_shell_desktop_grid_rect(s->shell, &gr)) {
+            tk_rect sr = bd_mascot_rect(s->mascot);
+            int half = sr.w > 0 ? sr.w / 2 : 104;
+            int fx = gr.x + gr.w + 12 + half + 24;
+            if (mr.x + mr.w - fx >= 110)
+                return (tk_rect){ fx, mr.y, mr.x + mr.w - fx, mr.h };
+        }
+    }
+    return mr;
+}
+
 bd_session *bd_session_new(const bd_session_config *cfg)
 {
     bd_session *s = calloc(1, sizeof(*s));
@@ -293,7 +320,9 @@ bd_session *bd_session_new(const bd_session_config *cfg)
             bd_mascot_config mc = { 0 };
             mc.pack_path = pack;
             mc.size_px = reg_get_int("mascot", "size", 208);
-            mc.floor_area = mr;
+            /* Same floor the per-frame tick applies, so the
+             * spawn point is already clear of the icon grid. */
+            mc.floor_area = session_mascot_floor(s);
             mc.seed = (uint32_t)(uintptr_t)s;
             s->mascot = bd_mascot_new(&mc);
             free(pack);
@@ -691,7 +720,7 @@ size_t bd_session_step(bd_session *s, int timeout_ms)
                 info.state == BD_WIN_FULLSCREEN)
                 vis = false;
         }
-        bd_mascot_set_floor(s->mascot, bd_shell_main_rect(s->shell));
+        bd_mascot_set_floor(s->mascot, session_mascot_floor(s));
         bd_mascot_set_visible(s->mascot, vis);
         s->mascot_ndmg = bd_mascot_tick(s->mascot, now,
                                         s->mascot_dmg, 8);

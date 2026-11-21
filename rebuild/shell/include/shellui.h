@@ -58,6 +58,11 @@ void bd_shell_layout(bd_shell *sh, int w, int h);
  * bd_shell_layout() (the region below/above the panel). The
  * session uses it as the WM workarea. Zero rect before layout. */
 tk_rect bd_shell_main_rect(const bd_shell *sh);
+/* The desktop icon grid's rect in screen coordinates as of the
+ * last bd_shell_layout(). Returns false before the first layout
+ * or when the grid has no area. The session uses it to keep the
+ * desktop mascot's floor clear of the icons and their labels. */
+bool bd_shell_desktop_grid_rect(const bd_shell *sh, tk_rect *out);
 
 /* --- views --- */
 bd_view bd_shell_view(const bd_shell *sh);
