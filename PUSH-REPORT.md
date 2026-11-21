@@ -151,3 +151,41 @@ master から分岐、tip は本レポートのコミットが最新（push 後 
    GitHub Releases 等、git 外の置き場を別途検討）。
 3. 保全ブランチ `detached-11c11c922-kbd-fix` は当面残す。
    フォークライン取り込み完了後に削除を判断する。
+
+---
+
+# 追記 — 統合フェーズ第3段の反映（2026-11-21）
+
+第2段（ゲスト実起動・合格判定）で検出したイメージ側欠陥の修正（第3段、
+REPORT-integration-4.md）のソース変更を `rebuild` ブランチへ反映し、
+レポート2点を repo ルートへ追加収蔵した。認証は前回と同じ
+repo ローカル `credential.helper=store`（HTTPS）を使用。
+force push は行っていない。push 後 `git ls-remote` でリモート
+`rebuild` 先端とローカルの一致を確認済み。
+
+## 反映コミット（buildbrain / rebuild ブランチ）
+
+旧 tip `61d38367e` の上に6件＋本レポートのコミットを積んだ:
+
+| コミット | 内容 |
+|---|---|
+| `81299bbf3` | セッションスクリプト: 起動前に /run/user/<uid>（0700）を作成し X フォールバックへ XDG_RUNTIME_DIR を渡す（第2段・項目1のセッション起動不能の修正） |
+| `6d2c34598` | tk_fb.c: 寸法不一致を stderr へ記録する `fb_dims_match()` 追加。test_tk3.c に回帰テスト追加（202 passed） |
+| `c68ded04a` | fb 直描き6アプリ（calc / files / notes / tasks / clock / player）: main で fb を先に開き実寸法で構築（無描画の修正） |
+| `c7fcb3244` | 4アプリ（recorder / pkg / admin / settings）の main を実働化＋ apps/Makefile の check に main スモーク追加（即終了の修正） |
+| `659a5b2f6` | ブラウザ前端: gui.c のフォント候補と Makefile の BRAIN_RESPATH を /usr/local/share/fonts/libbrainui2/ に是正 |
+| `4319a1461` | レポート収蔵: REPORT-integration-3.md（第2段）、REPORT-integration-4.md（第3段）を repo ルートへ |
+| （本レポート） | rebuild: push report update (integration phase 3 sync) |
+
+## 反映範囲の確認
+
+- 作業領域 `rebuild/` とブランチ収蔵ツリーの全量比較で、差分は
+  上記の第3段変更16ファイルのみであることを確認した。
+  第3段と無関係な変更の混入は無し。
+- 作業側にのみ存在した88ファイルは全て x86-64 ELF 実行ファイル
+  （ホストビルド生成物）であり、前回方針どおり収蔵対象外。
+- `os-surgery/` と `RESEARCH-brain-modding.md` に差分は無かった。
+- `image-work/` のイメージ本体（*.img）と証拠ディレクトリ
+  `int3/` / `int4/` は収蔵していない（レポート本文のみ収蔵）。
+- linux-brain と root のサブモジュールポインタには変更なし
+  （前回の判断を維持）。
