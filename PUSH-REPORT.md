@@ -306,3 +306,12 @@ push した。これで u-boot-brain の push 未完は解消。
   - 申し送り: sd-v10 の盲検第3ラウンドでは両評価者とも不合格が残っている（REPORT-integration-10.md §3・§8）。本 push は是正版の収蔵であり、盲検合格の主張ではない。
   - （本レポート） rebuild: push report update (integration phases 9-10, sd-v9/sd-v10 sync)
 - buildbrain `master` は無変更。サブモジュールポインタも不変更。linux-brain / u-boot-brain は今回の push 対象外。
+
+## 2026-11-23 第5弾 push（統合フェーズ第11段・sd-v11）
+
+- buildbrain `rebuild` ブランチ: `b4ab76f34` → コミットを追加して push。
+  - `cb053fb27` 第11段: 盲検第3ラウンド残件7項目の是正（マスコットの内容境界クランプ＝シェル session.c/mascot.c、ブラウザ開始ページの内容側収まり是正、録音サイドバー型の重なり＝スクロールビューの実幅再測定 tk_core.c、軸別余白 pad_x/pad_y と共通定義 BD_PAGE_PAD_X=18 によるページ余白統一、間隔 C2 の段階付け明文化に伴う間隔是正、証拠の機械照合 verify_shots、ブラウザ GIF のゲスト撮影）＋ REPORT-integration-11.md を repo ルートへ収蔵。発行イメージ sd-v11.img（md5 `806724b60eec68d6b9a9608725714016`）。
+  - 同期方法: 作業ツリー（buildbrain-work/rebuild/）から repo の rebuild/ へ rsync（--delete なし、ビルド生成物 *.o/*.a/*.so と browser-engine の作業領域＝toolchain/.sysroot*/.work-* と展開済み上流 NetSurf ツリーは除外し前端 frontends/brain のみ別途同期、repo 側の rebuild/.gitignore は保持）。変更は追跡済み33ファイルのみで、新規ソースは無し（作業側のみに存在するファイルは全て ELF 実行ファイル等のビルド生成物と libbrainime/m*work の実験ファイルで、従来方針どおり収蔵対象外）。上流 NetSurf ツリーの混入は無し。os-surgery/ に差分は無かった。image-work/ のイメージ本体と証拠ディレクトリ int12/ は収蔵していない（レポート本文のみ収蔵）。
+  - 申し送り: sd-v11 の盲検第4ラウンドでは評価者間の結論が割れた（評価者G: 不合格2件＝写真23・25 のコマンドピル列の間隔 C2-A 4px で「盲検合格とは言えない」、評価者H: 不合格0で「盲検合格と言える（条件付き）」）。継続ラインの再測でもピル間隔 4px は再現したため、REPORT-integration-11.md §4.4 のとおり**盲検合格とはしない**。本 push は是正版の収蔵であり、盲検合格の主張ではない。残件は同レポート §7（コマンドピル列の 9px 化と CHECKLIST 次期版での C2 区分明文化、C1 推奨寸法未満の広範な要改善ほか）。
+  - （本レポート） rebuild: push report update (integration phase 11, sd-v11 sync)
+- buildbrain `master` は無変更。サブモジュールポインタも不変更。linux-brain / u-boot-brain は今回の push 対象外。
