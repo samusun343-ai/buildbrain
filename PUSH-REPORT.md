@@ -297,3 +297,12 @@ push した。これで u-boot-brain の push 未完は解消。
   - 同期方法: 作業ツリー（buildbrain-work/rebuild/）から repo の rebuild/ へ rsync（ビルド生成物と browser-engine の作業領域は除外）。変更36ファイル＋新規ソースのみを収蔵し、実行バイナリは含めていない。
 - u-boot-brain フォーク `samusun343-ai/u-boot-brain` の `brain-clock-partuuid`: `3b41783add` の上に `a06d136746`（bootargs_custom へ `vt.global_cursor_default=0` を追加、1行差分）を push し、ls-remote で一致を確認。buildbrain 側のサブモジュールポインタは従来どおり不変更（チェックアウトは `e8fc0d0cf3` に復帰済み）。
 - buildbrain `master` は無変更。
+
+## 2026-11-22 第4弾 push（統合フェーズ第9段・第10段）
+
+- buildbrain `rebuild` ブランチ: `d6caefd2c` → コミットを追加して push。
+  - `c4ca5c5c6` 第9・10段: 独立評価（EVAL-v8-independent.md、sd-v8 は不合格）の全指摘是正（要素の大きさの釣り合い、電卓の表示部に数字が出ない機能欠陥、ブラウザ開始ページ、録音・タスクのレイアウト、タイトルバー3ボタン、バーの帯）＋盲検第2ラウンド残件の是正。発行イメージ sd-v9.img（md5 `d0f95ab7e442ecd60b9b1f91eef51cb3`）、sd-v10.img（md5 `785e4bbf5dfc9e8e12d15162e3de71f7`）。レポート REPORT-integration-9.md / REPORT-integration-10.md / EVAL-v8-independent.md を repo ルートへ収蔵。
+  - 同期方法: 作業ツリー（buildbrain-work/rebuild/）から repo の rebuild/ へ rsync（--delete なし、ビルド生成物と browser-engine の作業領域は除外、repo 側の rebuild/.gitignore は保持）。変更41ファイル＋新規ソース1点（apps/tests/probe.c）のみを収蔵し、実行バイナリは含めていない。rsync で repo 側コピーへ混入した展開済み上流 NetSurf ツリー（未追跡 10,787 ファイル）は除去した（収蔵範囲は従来どおり frontends/brain のみ）。libbrainime/m4work の実験ファイルは従来方針どおり収蔵対象外。
+  - 申し送り: sd-v10 の盲検第3ラウンドでは両評価者とも不合格が残っている（REPORT-integration-10.md §3・§8）。本 push は是正版の収蔵であり、盲検合格の主張ではない。
+  - （本レポート） rebuild: push report update (integration phases 9-10, sd-v9/sd-v10 sync)
+- buildbrain `master` は無変更。サブモジュールポインタも不変更。linux-brain / u-boot-brain は今回の push 対象外。
