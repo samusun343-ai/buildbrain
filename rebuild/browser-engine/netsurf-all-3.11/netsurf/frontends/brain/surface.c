@@ -197,6 +197,7 @@ brain_plot_bitmap(const struct redraw_context *ctx,
 	unsigned char *bmptr;
 	nsfb_t *bm = (nsfb_t *)bitmap;
 
+
 	if (!(repeat_x || repeat_y)) {
 		/* Not repeating at all, so just plot it */
 		loc.x0 = x;

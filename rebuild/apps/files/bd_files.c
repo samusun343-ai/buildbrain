@@ -43,6 +43,8 @@ struct files_app {
     tk_widget *path_row;         /* toggled from the menu */
     tk_widget *path_field;
     tk_widget *list;
+    tk_widget *empty_label;      /* empty-folder guidance
+                                  * (eval F-14) */
     tk_widget *content_box;
     tk_widget *grid;             /* current grid widget or NULL */
     tk_widget *context_bar;      /* tk_bottombar, selection actions */
@@ -280,6 +282,8 @@ static const uint32_t *icon_for(files_app *app, const char *path,
 static void refresh_list_widget(files_app *app)
 {
     build_rows(app);
+    if (app->empty_label)
+        tk_set_visible(app->empty_label, app->n_rows == 0);
     const char **items = malloc((app->n_rows ? app->n_rows : 1) *
                                 sizeof(char *));
     char **owned = malloc((app->n_rows ? app->n_rows : 1) * sizeof(char *));
@@ -1467,6 +1471,11 @@ files_app *files_app_new(const char *start_dir, const char *data_root,
     tk_listview_set_on_activate(app->list, on_list_activate, app);
     tk_set_flex(app->list, 1);
     tk_add_child(app->content_box, app->list);
+    app->empty_label = tk_label_new(
+        "このフォルダは空です");
+    tk_widget_set_text_style(app->empty_label, TK_TEXT_CAPTION);
+    tk_set_visible(app->empty_label, false);
+    tk_add_child(app->content_box, app->empty_label);
 
     /* context bar: the selection's actions. Bottom bar in the
      * Android form; a command row under the command bar in the

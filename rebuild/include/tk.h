@@ -1479,6 +1479,17 @@ tk_widget *tk_grid_new(int cols, int h_spacing, int v_spacing, int padding);
  * before adding the child to the grid. */
 void tk_grid_set_span(tk_widget *child, int col_span, int row_span);
 void tk_grid_span(const tk_widget *child, int *col_span, int *row_span);
+/* Uniform tracks (proportion pass): every column gets an equal
+ * share of the arranged width and every row an equal share of
+ * the arranged height, ignoring per-track desired sizes - the
+ * XAML Grid "1*" star-sizing behaviour the reference keypads
+ * use (microsoft/calculator: all rows Height="1*", all columns
+ * Width="1*"). For keypads and other cell-uniform grids where
+ * content-sized tracks would make the cells visibly unequal.
+ * The grid's desired size still derives from the largest
+ * child's desired size times the track count. */
+void tk_grid_set_uniform(tk_widget *grid, bool uniform);
+bool tk_grid_uniform(const tk_widget *grid);
 /* Box wrap: horizontal boxes may wrap children onto multiple rows.
  * (Vertical wrap is not implemented; documented in DESIGN.) */
 void tk_box_set_wrap(tk_widget *box, bool wrap);

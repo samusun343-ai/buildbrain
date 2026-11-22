@@ -6253,6 +6253,20 @@ void tk_w2_paint(tk_widget *w, tk_canvas *c, const tk_theme *t)
         break;
     }
     case TK_W_PROGRESS: {
+        /* int10 (independent review B): paint the bar at its
+         * spec height (the measure contract: 5px M3 / 4px
+         * WinUI / 20px classic), centred in the arranged
+         * rect. Filling a taller row rect painted a solid
+         * slab - the recorder level meter in a 54px WinUI
+         * row read as a 330px dark block (C5). */
+        {
+            int spec_h = t->style == 1 ? 5
+                         : t->style == 2 ? 4 : 20;
+            if (r.h > spec_h) {
+                r.y += (r.h - spec_h) / 2;
+                r.h = spec_h;
+            }
+        }
         int rad = r.h / 2 > 6 ? 6 : r.h / 2;
         /* M10 track roles: M3 = surfaceContainerHighest;
          * WinUI = ControlStrongStrokeColorDefault (the

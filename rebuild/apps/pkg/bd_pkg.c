@@ -32,6 +32,13 @@ struct pkg_app {
     tk_widget *updates_label;
     tk_widget *search;
     tk_widget *list;
+    tk_widget *empty_label;      /* per-view empty guidance
+                                  * (eval F-14/F-22) */
+    /* Android page swap (proportion pass): the detail block
+     * and the action row are a separate page - see
+     * pkg_set_detail(). NULL in WinUI mode. */
+    tk_widget *list_page, *detail_page;
+    bool detail_open;
     tk_widget *d_name, *d_ver, *d_meta, *d_desc, *d_status;
     tk_widget *btn_install, *btn_remove, *btn_update_all, *dryrun;
     tk_widget *log;
@@ -121,6 +128,30 @@ static void rebuild_rows(pkg_app *app)
     tk_listview_set_items(app->list,
                           (const char *const *)app->row_labels,
                           app->n_rows);
+    if (app->empty_label) {
+        /* guidance names the view's own next step (eval
+         * F-14/F-22: the installed list read as a blank,
+         * broken area with no explanation) */
+        /* int10 (review B follow-up): the sentence must fit
+         * the narrowest forms too - at 480px wide and in the
+         * WinUI pane it measured 507/624px and clipped
+         * (C10, caught by the matrix labelclip check). */
+        tk_label_set_text(app->empty_label,
+            app->view == V_INST
+                ? "未インストールです。"
+                  "「カタログ」から追加できます"
+            : app->view == V_CAT
+                ? "カタログにパッケージがありません"
+                : "更新できるパッケージはありません");
+        tk_set_visible(app->empty_label, app->n_rows == 0);
+    }
+    /* a rebuilt list is a fresh selection state: set_items
+     * keeps a still-in-range index, which would leave a row
+     * looking selected while the detail page is closed - and
+     * re-tapping that row would not fire on_select (the
+     * toolkit notifies on change only), stranding the user
+     * on the list page (proportion pass) */
+    tk_listview_select(app->list, -1);
     tk_widget_invalidate(app->list);
     char ub[64];
     size_t nu = pkg_updates_count(app->sys);
@@ -176,16 +207,46 @@ static void refresh_detail(pkg_app *app)
     set_text(app->d_status, buf);
 }
 
+/* Android page swap (proportion pass): tabs + search + list
+ * + a 5-line detail block + an action row + a log line summed
+ * past the window height and the list - the screen's main
+ * surface - was crushed to 40px at 850x368 (less than one
+ * row) and 0 at 480x272. Selecting a package now opens its
+ * detail as its own page (the Play Store app-info form); the
+ * log line stays under the page slot in both pages. */
+static void pkg_set_detail(pkg_app *app, bool detail)
+{
+    if (!app->list_page || !app->detail_page) return;
+    if (app->detail_open == detail) return;
+    app->detail_open = detail;
+    tk_set_visible(app->list_page, !detail);
+    tk_set_visible(app->detail_page, detail);
+    tk_widget_invalidate(app->list_page);
+    tk_widget_invalidate(app->detail_page);
+    tk_rect tr = tk_widget_rect(app->top);
+    if (tr.w > 0 && tr.h > 0) tk_root_layout(app->root, tr.w, tr.h);
+}
+
+static void on_detail_back(tk_widget *w, void *ud)
+{
+    (void)w;
+    pkg_set_detail(ud, false);
+}
+
 static void on_select(tk_widget *w, void *ud)
 {
     (void)w;
-    refresh_detail(ud);
+    pkg_app *app = ud;
+    refresh_detail(app);
+    if (!app->winui && tk_listview_selected(app->list) >= 0)
+        pkg_set_detail(app, true);
 }
 static void on_view(tk_widget *w, void *ud)
 {
     pkg_app *app = ud;
     for (int i = 0; i < 3; i++)
         if (w == app->view_btns[i]) app->view = i;
+    pkg_set_detail(app, false);
     rebuild_rows(app);
     refresh_detail(app);
 }
@@ -221,6 +282,7 @@ static void on_install(tk_widget *w, void *ud)
         pkg_refresh_installed(app->sys);
         rebuild_rows(app);
         refresh_detail(app);
+        pkg_set_detail(app, false); /* back to the list, log visible */
     }
 }
 
@@ -278,6 +340,7 @@ static void on_update_all(tk_widget *w, void *ud)
         pkg_refresh_installed(app->sys);
         rebuild_rows(app);
         refresh_detail(app);
+        pkg_set_detail(app, false);
     }
 }
 
@@ -300,6 +363,7 @@ static void on_remove(tk_widget *w, void *ud)
         pkg_refresh_installed(app->sys);
         rebuild_rows(app);
         refresh_detail(app);
+        pkg_set_detail(app, false); /* back to the list, log visible */
     }
 }
 
@@ -419,15 +483,24 @@ pkg_app *pkg_app_new(const char *catalog_dir,
         app->view_btns[2] = ibtn(app, vrow, "更新",
                                  "download_done", "arrow_download",
                                  on_view, TK_BTN_TONAL);
-        app->updates_label = lbl(vrow, "更新: 0 件");
-        ibtn(app, vrow, "再読込", "refresh", "arrow_clockwise",
-             on_refresh, TK_BTN_TONAL);
         tk_widget *srow = hbox(top);
         app->search = tk_textfield_new("");
         tk_textfield_set_placeholder(app->search, "パッケージ検索");
         tk_textfield_set_on_change(app->search, on_search, app);
         tk_add_child(srow, app->search);
         tk_set_flex(app->search, 1);
+        /* reload rides the search row: in the view row it was
+         * the element arranged to 0px at a 480px window (the
+         * three view buttons + the updates label already fill
+         * the row) - matrix floor check */
+        ibtn(app, srow, "再読込", "refresh", "arrow_clockwise",
+             on_refresh, TK_BTN_TONAL);
+        /* int10 (review B follow-up): the updates label joins
+         * the search row too - with icons loaded the three
+         * view buttons alone measure 416px, and the label
+         * was squeezed to 44px of its 80px text at 480px
+         * wide (C10, matrix labelclip). */
+        app->updates_label = lbl(srow, "更新: 0 件");
     }
 
     tk_widget *mid;
@@ -436,13 +509,34 @@ pkg_app *pkg_app_new(const char *catalog_dir,
         tk_set_flex(mid, 1);
     } else {
         mid = NULL;
+        /* Android pages: list page and detail page swap in
+         * the slot under the search row */
+        app->list_page = tk_box_new(TK_DIR_VERTICAL, 4, 0);
+        tk_set_flex(app->list_page, 1);
+        tk_add_child(main_col, app->list_page);
+        app->detail_page = tk_box_new(TK_DIR_VERTICAL, 4, 0);
+        tk_set_flex(app->detail_page, 1);
+        tk_set_visible(app->detail_page, false);
+        tk_add_child(main_col, app->detail_page);
+        tk_widget *brow = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+        ibtn(app, brow, "戻る", "arrow_back", "arrow_left",
+             on_detail_back, TK_BTN_TONAL);
+        tk_add_child(app->detail_page, brow);
     }
     app->list = tk_listview_new();
     tk_listview_set_on_select(app->list, on_select, app);
-    tk_add_child(app->winui ? mid : main_col, app->list);
+    tk_add_child(app->winui ? mid : app->list_page, app->list);
     tk_set_flex(app->list, 1);
+    app->empty_label = tk_label_new("");
+    tk_widget_set_text_style(app->empty_label, TK_TEXT_CAPTION);
+    tk_set_visible(app->empty_label, false);
+    /* WinUI's mid is a horizontal split (list | detail), so
+     * the guidance goes under it in the main column; the
+     * Android list page is vertical and takes it directly */
+    tk_add_child(app->winui ? main_col : app->list_page,
+                 app->empty_label);
     tk_widget *det = tk_box_new(TK_DIR_VERTICAL, 3, 0);
-    tk_add_child(app->winui ? mid : main_col, det);
+    tk_add_child(app->winui ? mid : app->detail_page, det);
     if (app->winui) tk_set_flex(det, 1);
     app->d_name = lbl(det, "（未選択）");
     app->d_ver = lbl(det, "");
@@ -450,7 +544,7 @@ pkg_app *pkg_app_new(const char *catalog_dir,
     app->d_desc = lbl(det, "");
     app->d_status = lbl(det, "");
 
-    tk_widget *arow = hbox(main_col);
+    tk_widget *arow = hbox(app->winui ? main_col : app->detail_page);
     app->btn_install = ibtn(app, arow, "インストール", "download",
                             "arrow_download", on_install,
                             TK_BTN_FILLED);
@@ -459,8 +553,14 @@ pkg_app *pkg_app_new(const char *catalog_dir,
                                TK_BTN_TONAL);
     app->btn_remove = ibtn(app, arow, "削除", "delete", "delete",
                            on_remove, TK_BTN_TONAL);
+    /* the dry-run checkbox gets its own row: with the three
+     * action buttons the row needs ~600px, and in a 480px
+     * window (WinUI main column ~252px, Android detail page
+     * ~472px) 削除 and the checkbox were arranged to 0px -
+     * matrix floor check */
+    tk_widget *arow2 = hbox(app->winui ? main_col : app->detail_page);
     app->dryrun = tk_checkbox_new("ドライラン（実行しない）", false);
-    tk_add_child(arow, app->dryrun);
+    tk_add_child(arow2, app->dryrun);
     app->log = lbl(main_col, "");
 
     app->root = tk_root_new(top);
@@ -529,7 +629,18 @@ int main(int argc, char **argv)
     if (font) tk_font_install(font);
     /* Display first, real size (see bd_calc.c main note) */
     int vw, vh;
-    bd_app_display *disp = bd_app_display_open_ex("ソフトウェア", 0, 0, 480, 272, 800, 600, &vw, &vh);
+    /* Per-form minimum (proportion pass): the WinUI form's
+     * nav (208px) + main column must hold the three action
+     * buttons (~390px); at 480 wide the main column is
+     * ~252px and 削除 was arranged to 0px (matrix floor
+     * check), so the WinUI form declares 640x360. The
+     * Android single-column form keeps 480x272. */
+    bool winui = tk_theme_default() &&
+                 tk_theme_default()->style == 2;
+    bd_app_display *disp = bd_app_display_open_ex(
+        "ソフトウェア", 0, 0,
+        winui ? 640 : 480, winui ? 360 : 272, 800, 600,
+        &vw, &vh);
     pkg_app *app = pkg_app_new(catalog, NULL, NULL, NULL, NULL,
                                vw, vh);
     if (!app) { fprintf(stderr, "bd-pkg: cannot build UI\n"); return 1; }

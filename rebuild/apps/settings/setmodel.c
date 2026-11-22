@@ -394,7 +394,11 @@ size_t set_model_rows(set_model *m, int page, set_row *out, size_t max)
         bd_battery_info bi;
         bool ok = m->be && bd_backend_battery(m->be, &bi) && bi.present;
         r = row_new(out, max, &n, "battery", "電池残量", SR_INFO);
-        row_val(r, "%s", ok ? "" : "不明");
+        /* say WHICH truth it is (eval F-13): a machine with
+         * no battery device (the QEMU guest, a desktop) reads
+         * 電池なし - not the failure-flavoured 不明; only a
+         * missing backend is 利用不可 */
+        row_val(r, "%s", ok ? "" : m->be ? "電池なし" : "利用不可");
         if (r && ok) {
             snprintf(r->value, sizeof(r->value), "%d %%（%s）",
                      bi.capacity, bi.status);

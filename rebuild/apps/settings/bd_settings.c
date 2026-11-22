@@ -1216,8 +1216,15 @@ settings_app *settings_app_new(bd_backend *backend, bd_wifi *wifi,
                                28, 28);
         }
         tk_drawer_set_on_select(app->nav, on_nav_select, app);
-        tk_drawer_attach(pane, app->nav);
-        tk_set_flex(app->nav, 1);
+        /* int10 (independent review B): the drawer holds 11
+         * destinations (712px desired) and cannot fit a
+         * 368px window - the last rows were clipped at the
+         * window edge (C5/C10). Wrap it in a scrollview
+         * (wheel + drag) like every other long pane. */
+        tk_widget *nav_scroll = tk_scrollview_new();
+        tk_add_child(pane, nav_scroll);
+        tk_set_flex(nav_scroll, 1);
+        tk_drawer_attach(nav_scroll, app->nav);
 
         tk_widget *main_ = tk_box_new(TK_DIR_VERTICAL, 8, 16);
         tk_add_child(outer, main_);

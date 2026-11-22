@@ -192,8 +192,12 @@ static void avatar_update(void)
 {
     tk_canvas *cv = tk_canvas_new(64, 64);
     const tk_theme *t = tk_theme_default();
+    /* the disc is the theme ACCENT with the initial in
+     * on_accent (the Material / Windows avatar treatment):
+     * surface_alt on the card's surface measured as no
+     * visible circle at all (eval F-11) */
     tk_canvas_fill_round_rect(cv, (tk_rect){ 0, 0, 64, 64 }, 32,
-                              t->surface_alt);
+                              t->accent);
     char init[8];
     const char *nm = display_name(selected_user);
     /* first UTF-8 character */
@@ -208,7 +212,7 @@ static void avatar_update(void)
     int tw = tk_text_width_px(t, 28, init);
     tk_canvas_draw_text_px(cv, t, 28, false, (64 - tw) / 2,
                            (64 - tk_line_height_px(t, 28)) / 2,
-                           init, t->text_dim);
+                           init, t->on_accent);
     tk_imageview_set_pixels(avatar_view, tk_canvas_pixels(cv), 64, 64);
     tk_canvas_free(cv);
 }
@@ -305,7 +309,11 @@ static int gui_main(void)
     tk_add_child(top, date_label);
 
     card = tk_fixed_new();
-    tk_widget_set_backdrop(card, false, 8);
+    /* radius in the same family as the pill-shaped field
+     * and button it holds (eval F-11: a tight 8px card
+     * around full pills read as mixed shapes; the ChromeOS
+     * / M3 sign-in card pairs a large radius with pills) */
+    tk_widget_set_backdrop(card, false, 20);
     avatar_view = tk_imageview_new();
     tk_add_child(card, avatar_view);
     name_label = tk_label_new(display_name(0));

@@ -257,6 +257,14 @@ typedef struct {
 } bd_shell_win_ops;
 void bd_shell_set_win_ops(bd_shell *sh, const bd_shell_win_ops *ops,
                           void *userdata);
+/* Band cover (proportion pass): while a window is up, the
+ * strip around the floating shelf is painted as shell surface
+ * instead of showing the (near-black) wallpaper under a bright
+ * window. bd_shell_poll_windows() syncs the cover's visibility
+ * from the win_ops window list; the session polls it with the
+ * backend sync. */
+int bd_shell_poll_windows(bd_shell *sh);
+bool bd_shell_band_cover_visible(const bd_shell *sh);
 
 /* --- on-screen keyboard (system-wide, OSK phase) ---
  * The OSK lives in its OWN root, separate from the shell UI

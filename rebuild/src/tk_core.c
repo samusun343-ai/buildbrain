@@ -830,6 +830,18 @@ void tk_set_visible(tk_widget *w, bool v)
     tk_widget_invalidate(w);
     w->visible = v;
     tk_widget_invalidate(w);
+    /* Arrangement depends on visibility (boxes skip hidden
+     * children), so a toggle invalidates the tree's rects: a
+     * widget shown after the last layout otherwise keeps its
+     * stale (often 0x0 at the origin) rect and paints there -
+     * the phase-9 guest shots caught exactly that (an
+     * empty-state label drawn over the title bar area). Mark
+     * the tree's top stale; the root re-lays out at the last
+     * size before the next paint (the requestLayout pattern
+     * of mature toolkits). */
+    tk_widget *top = w;
+    while (top->parent) top = top->parent;
+    top->layout_stale = true;
 }
 bool tk_is_visible(const tk_widget *w) { return w->visible; }
 void tk_set_enabled(tk_widget *w, bool e)
@@ -888,6 +900,18 @@ tk_widget *tk_grid_new(int cols, int h_spacing, int v_spacing, int padding)
         w->padding = padding;
     }
     return w;
+}
+
+void tk_grid_set_uniform(tk_widget *grid, bool uniform)
+{
+    if (!grid || grid->kind != TK_W_GRID) return;
+    grid->grid_uniform = uniform;
+    tk_widget_invalidate(grid);
+}
+
+bool tk_grid_uniform(const tk_widget *grid)
+{
+    return grid && grid->kind == TK_W_GRID && grid->grid_uniform;
 }
 
 /* ---------------------------------------------------------------- */
@@ -1005,7 +1029,26 @@ tk_size tk_measure(tk_widget *w, tk_constraints c)
             (void)tk_measure(w->children[i],
                              (tk_constraints){0, TK_UNLIMITED, 0, TK_UNLIMITED});
         int rows = grid_place(w, cols);
-        for (int cx = 0; cx < cols; cx++) {
+        if (w->grid_uniform) {
+            /* desired = largest cell (spans share their size
+             * across the tracks they cover) times the track
+             * count, so a parent allocating by desire gives
+             * every cell the same room */
+            int mw = 0, mh = 0;
+            for (size_t i = 0; i < w->n_children; i++) {
+                tk_widget *ch = w->children[i];
+                if (!ch->visible) continue;
+                int cs = grid_span_cols(ch, cols);
+                int rs = grid_span_rows(ch);
+                int pw = (ch->desired.w + cs - 1) / cs;
+                int ph = (ch->desired.h + rs - 1) / rs;
+                if (pw > mw) mw = pw;
+                if (ph > mh) mh = ph;
+            }
+            tw = mw * cols;
+            th = mh * rows;
+        }
+        for (int cx = 0; cx < cols && !w->grid_uniform; cx++) {
             int cw = 0;
             for (size_t i = 0; i < w->n_children; i++) {
                 tk_widget *ch = w->children[i];
@@ -1016,7 +1059,7 @@ tk_size tk_measure(tk_widget *w, tk_constraints c)
             }
             tw += cw;
         }
-        for (int ry = 0; ry < rows; ry++) {
+        for (int ry = 0; ry < rows && !w->grid_uniform; ry++) {
             int rh = 0;
             for (size_t i = 0; i < w->n_children; i++) {
                 tk_widget *ch = w->children[i];
@@ -1240,6 +1283,21 @@ static void grid_tracks(tk_widget *w, tk_rect r, int *colw, int *rowh,
      * overflow (foundation audit: calc keypad at 480x272) */
     if (avail_w < 0) avail_w = 0;
     if (avail_h < 0) avail_h = 0;
+    if (w->grid_uniform) {
+        /* star sizing: equal shares; the remainder is spread
+         * one pixel at a time over the first tracks, so no
+         * track deviates from its neighbour by more than 1px
+         * (the XAML 1* convention; dumping the whole
+         * remainder on the last track made the last key row
+         * up to 4px taller than the rest - proportion pass) */
+        for (int cx = 0; cx < cols; cx++)
+            colw[cx] = avail_w / cols +
+                       (cx < avail_w % cols ? 1 : 0);
+        for (int ry = 0; ry < rows; ry++)
+            rowh[ry] = avail_h / rows +
+                       (ry < avail_h % rows ? 1 : 0);
+        return;
+    }
     if (total_w > 0 && avail_w != total_w) {
         if (avail_w > total_w) {
             int extra = avail_w - total_w, per = extra / cols, rem = extra % cols;
@@ -1985,10 +2043,13 @@ void tk_root_layout(tk_root *r, int w, int h)
     if (w < 0) w = 0;
     if (h < 0) h = 0;
     r->w = w; r->h = h;
+    r->top->layout_stale = false;
     (void)tk_measure(r->top, (tk_constraints){0, w, 0, h});
     tk_arrange(r->top, (tk_rect){0, 0, w, h});
-    for (size_t i = 0; i < r->n_overlays; i++)
+    for (size_t i = 0; i < r->n_overlays; i++) {
+        r->overlays[i]->layout_stale = false;
         layout_overlay(r, r->overlays[i]);
+    }
     r->dmg.full = true; /* M3: geometry changed, repaint everything */
 }
 
@@ -2899,8 +2960,18 @@ static void overlay_paint(tk_root *r, tk_widget *ov, tk_canvas *c,
         tk_paint(ov, c, t);
 }
 
+static void root_settle_layout(tk_root *r)
+{
+    if (r->w <= 0 || r->h <= 0) return;
+    bool stale = r->top->layout_stale;
+    for (size_t i = 0; i < r->n_overlays && !stale; i++)
+        stale = r->overlays[i]->layout_stale;
+    if (stale) tk_root_layout(r, r->w, r->h);
+}
+
 void tk_root_paint(tk_root *r, tk_canvas *c, const tk_theme *t)
 {
+    root_settle_layout(r);
     tk_canvas_clear(c, t->bg);
     tk_paint(r->top, c, t);
     for (size_t i = 0; i < r->n_overlays; i++)
@@ -3008,6 +3079,7 @@ static void fill_except(tk_canvas *c, tk_rect d, const tk_rect *holes,
 int tk_root_paint_damage(tk_root *r, tk_canvas *c, const tk_theme *t)
 {
     if (!r || !c) return 0;
+    root_settle_layout(r);
     if (r->dmg.full) {
         tk_root_paint(r, c, t);
         tk_damage_clear(&r->dmg);

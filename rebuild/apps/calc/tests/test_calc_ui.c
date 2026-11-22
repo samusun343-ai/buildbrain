@@ -81,7 +81,8 @@ int main(void)
     press(app, "AC/C");
     expr_is(app, "5");
     press(app, "AC/C");
-    expr_is(app, "");
+    expr_is(app, "0");   /* the display floors at the idle "0",
+                          * never blank (F-16) */
     /* division by zero shows the Japanese error, no history */
     size_t h_before = calc_app_history_rows(app);
     press(app, "1"); press(app, "÷"); press(app, "0"); press(app, "=");
@@ -202,6 +203,35 @@ int main(void)
     calc_app_conv_set_units(app, 1, 0);
     calc_app_conv_set_value(app, "1");
     check_true("rate persisted", calc_app_convert_now(app) == KC_OK);
+    calc_app_free(app);
+
+    /* hardware keyboard drives the engine (F-16: the v8
+     * display booted blank - no idle "0" - and typed digits
+     * went nowhere because nothing held focus). Fresh app:
+     * the display reads "0", keys 7/8 land, Enter evaluates,
+     * Escape returns to the idle "0". */
+    app = calc_app_new(tmpl, 850, 368);
+    check_true("kbd app", app != NULL);
+    expr_is(app, "0");
+    {
+        tk_root *rt = calc_app_root(app);
+        tk_event ev;
+        memset(&ev, 0, sizeof(ev));
+        ev.type = TK_EV_KEY_DOWN;
+        ev.text = "7";
+        tk_root_event(rt, &ev);
+        ev.text = "8";
+        tk_root_event(rt, &ev);
+        expr_is(app, "78");
+        ev.text = NULL;
+        ev.key = TK_KEY_ENTER;
+        tk_root_event(rt, &ev);
+        result_is(app, "= 78");
+        ev.key = TK_KEY_ESCAPE;
+        tk_root_event(rt, &ev);
+        expr_is(app, "0");
+        result_is(app, "");
+    }
     calc_app_free(app);
 
     printf("test_calc_ui: %d passed, %d failed\n", passes, fails);

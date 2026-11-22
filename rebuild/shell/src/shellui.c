@@ -18,6 +18,7 @@
 #include "shellui.h"
 #include "kbdsettings.h"
 #include "reg.h"
+#include "wm.h" /* bd_win_state values for the band-cover poll */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -53,6 +54,9 @@ struct bd_shell {
     tk_root *root;
     tk_widget *top;
     tk_widget *panel;
+    tk_widget *band_cover;     /* shell surface under the floating
+                                * shelf, shown while a window is up
+                                * (proportion pass) */
     tk_widget *main_area;      /* Fixed: holds views + floating panels */
     tk_rect main_rect;         /* main area in screen coords (layout) */
     tk_rect desk_grid_rect;    /* desktop icon grid, screen coords */
@@ -61,6 +65,14 @@ struct bd_shell {
     tk_widget *wallpaper_w;
     tk_widget *desk_grid;
     tk_widget *task_box;       /* panel: pins + running tasks */
+    tk_widget *launcher_btn;   /* panel: Start / apps button */
+    bool layout_settled;       /* one extra layout after
+                                * start (see poll_windows) */
+    tk_widget *win_sp1;        /* WinUI: fixed-width left spacer
+                                * sized at layout so the Start +
+                                * task cluster centres on the
+                                * SCREEN (eval F-12), not on the
+                                * space left of the tray */
     tk_widget *clock_btn;
     tk_widget *tray_wifi_btn, *tray_vol_btn, *tray_batt_btn;
 
@@ -148,7 +160,12 @@ struct bd_shell {
     char wallpaper_path[512]; /* set when shell/wallpaper is a path */
     ic_cache *icons;
 
-    struct { char *id; char *name; } tasks[BD_TASK_MAX];
+    struct { char *id; char *name; bool from_win; } tasks[BD_TASK_MAX];
+    /* from_win: the task exists because bd_shell_poll_windows
+     * saw a matching open window (not because the shell
+     * launched it); such tasks are removed again when their
+     * window closes. Launch-added tasks keep the existing
+     * launch-record lifecycle. */
     size_t n_tasks;
     int active_task; /* index or -1 */
 
@@ -1034,6 +1051,12 @@ static void panel_tasks_rebuild(bd_shell *sh)
         tk_button_set_on_click(b, on_ptask, &ptask_ctxs[slot]);
         tk_add_child(sh->task_box, b);
     }
+    /* a rebuild must reach the screen: re-run the layout so
+     * the new buttons get rects, and damage the panel so the
+     * compositor repaints them (a tree-only change paints
+     * nothing in the damage-driven guest path) */
+    shell_relayout(sh);
+    if (sh->panel) tk_widget_invalidate(sh->panel);
 }
 
 /* ---------------- construction ---------------- */
@@ -1062,9 +1085,15 @@ static tk_widget *nav_button(bd_shell *sh, const char *name,
                              const char *icon, int act)
 {
     tk_widget *b = tk_button_new(name);
-    shell_set_icon(b, NULL, 0, "aosp", icon, icon_ink(), 24);
+    shell_set_icon(b, NULL, 0, "aosp", icon, icon_ink(), 28);
     tk_button_set_icon_only(b, true);
     tk_button_set_flat(b, true);
+    /* one full touch target per key (eval F-18): the trio
+     * measured ~36px centre-to-centre with ~20px glyphs,
+     * too tight for the 48dp (54px) target the panel's
+     * other controls use; 64px-wide targets put the
+     * centres 68px apart */
+    tk_widget_set_min_size(b, 64, 48);
     nav_ctxs[act].sh = sh;
     nav_ctxs[act].act = act;
     tk_button_set_on_click(b, on_nav_btn, &nav_ctxs[act]);
@@ -1109,6 +1138,22 @@ bd_shell *bd_shell_new(int w, int h, de_catalog *catalog, ln_store *store,
     tk_widget *top = tk_fixed_new();
     sh->top = top;
 
+    /* Band cover (proportion pass): in v2 the shelf floats over
+     * the desktop, so the strip around the pill shows the
+     * wallpaper. That is the desktop's own look - but with an
+     * app window up, the same near-black strip (the default
+     * wallpaper is #102030) reads as a black band under a bright
+     * window. While any window is non-minimized, this plain
+     * widget covers the strip with the theme surface - the same
+     * face the shelf's backdrop paints - so the panel zone reads
+     * as one shell surface. bd_shell_poll_windows() drives the
+     * visibility; bd_shell_layout() positions it. On the bare
+     * desktop it stays hidden and the floating-shelf look is
+     * unchanged. */
+    sh->band_cover = tk_fixed_new();
+    tk_widget_set_backdrop(sh->band_cover, true, 0);
+    tk_set_visible(sh->band_cover, false);
+
     /* --- panel (UI-REDESIGN 2.3): icon chrome only.
      * UI-STYLE-v2: the shelf is a floating pill (backdrop with
      * shadow, full radius) over the desktop. --- */
@@ -1119,6 +1164,7 @@ bd_shell *bd_shell_new(int w, int h, de_catalog *catalog, ln_store *store,
     else
         tk_widget_set_backdrop(panel, false, 0);
     tk_widget *launcher_btn = tk_button_new("アプリ");
+    sh->launcher_btn = launcher_btn;
     /* the launcher button is the mode's own symbol: the
      * Windows logo (accent) in WinUI mode, Material's "apps"
      * grid in Android mode */
@@ -1136,9 +1182,15 @@ bd_shell *bd_shell_new(int w, int h, de_catalog *catalog, ln_store *store,
      * the group balances the tray at the right edge. Android /
      * classic keep the group at the left, tasks flexing. */
     if (style_winui()) {
-        tk_widget *sp = tk_fixed_new();
-        tk_set_flex(sp, 1);
-        tk_add_child(panel, sp);
+        /* the left spacer is FIXED-width, sized in
+         * bd_shell_layout so the Start + task cluster sits
+         * centred on the screen (Windows 11 centres the
+         * group on the taskbar itself; two flex spacers
+         * would centre it in the space left of the tray,
+         * which measured x=285 for the Start glyph - eval
+         * F-12). The right spacer stays flex. */
+        sh->win_sp1 = tk_fixed_new();
+        tk_add_child(panel, sh->win_sp1);
     }
     tk_add_child(panel, launcher_btn);
     sh->task_box = tk_box_new(TK_DIR_HORIZONTAL, 2, 0);
@@ -1223,6 +1275,11 @@ bd_shell *bd_shell_new(int w, int h, de_catalog *catalog, ln_store *store,
         tk_imageview_set_pixels(sh->wallpaper_w, &px, 1, 1);
     tk_add_child(desk, sh->wallpaper_w);
     sh->desk_grid = tk_grid_new(4, 8, 8, 8);
+    /* uniform tracks: desktop icon grids (Windows, macOS,
+     * Android launchers) use one pitch for every column and
+     * row; content-sized columns measured 115px vs 89px
+     * between neighbours (eval F-07) */
+    tk_grid_set_uniform(sh->desk_grid, true);
     tk_add_child(desk, sh->desk_grid);
     tk_add_child(main_area, desk);
 
@@ -1480,12 +1537,16 @@ bd_shell *bd_shell_new(int w, int h, de_catalog *catalog, ln_store *store,
     sh->assist = bd_assist_new(on_assist, sh);
     tk_add_child(main_area, bd_assist_layer(sh->assist));
 
-    /* assemble top in panel-position order */
+    /* assemble top in panel-position order; the band cover
+     * sits under the panel and over the main area in both
+     * arrangements (its rect never overlaps the main area) */
     if (sh->panel_top) {
+        tk_add_child(top, sh->band_cover);
         tk_add_child(top, panel);
         tk_add_child(top, main_area);
     } else {
         tk_add_child(top, main_area);
+        tk_add_child(top, sh->band_cover);
         tk_add_child(top, panel);
     }
 
@@ -1834,10 +1895,41 @@ void bd_shell_layout(bd_shell *sh, int w, int h)
         tk_set_fixed_rect(sh->panel, (tk_rect){ mgn, mgn, w - 2 * mgn, ph });
         tk_set_fixed_rect(sh->main_area,
                           (tk_rect){ 0, ph + mgn, w, h - ph - mgn });
+        /* band strip: the panel's whole row, edge to edge */
+        tk_set_fixed_rect(sh->band_cover, (tk_rect){ 0, 0, w, ph + mgn });
     } else {
         tk_set_fixed_rect(sh->panel,
                           (tk_rect){ mgn, h - mgn - ph, w - 2 * mgn, ph });
         tk_set_fixed_rect(sh->main_area, (tk_rect){ 0, 0, w, h - ph - mgn });
+        tk_set_fixed_rect(sh->band_cover,
+                          (tk_rect){ 0, h - ph - mgn, w, ph + mgn });
+    }
+
+    /* WinUI: size the fixed left spacer so the Start + task
+     * cluster centres on the SCREEN (eval F-12). The sizing
+     * is a feedback correction on the PREVIOUS layout's
+     * arranged rects (the session lays out every step, so
+     * it settles exactly, with no dependence on measured
+     * desired widths); the tray's arranged left edge caps
+     * the spacer so the cluster can never push into it. */
+    if (style_winui() && sh->win_sp1 && sh->launcher_btn &&
+        sh->task_box) {
+        tk_rect lr = tk_widget_rect(sh->launcher_btn);
+        if (lr.w > 0) {
+            tk_rect tr = tk_widget_rect(sh->task_box);
+            int left = lr.x;
+            int right = tr.w > 0 ? tr.x + tr.w : lr.x + lr.w;
+            int delta = w / 2 - (left + right) / 2;
+            tk_rect sr = tk_widget_rect(sh->win_sp1);
+            int nw = (sr.w > 0 ? sr.w : 0) + delta;
+            tk_rect wr = tk_widget_rect(sh->tray_wifi_btn);
+            if (wr.w > 0) {
+                int max_sp1 = (sr.w > 0 ? sr.w : 0) + (wr.x - right);
+                if (nw > max_sp1) nw = max_sp1;
+            }
+            if (nw < 0) nw = 0;
+            tk_widget_set_min_size(sh->win_sp1, nw, 0);
+        }
     }
 
     tk_root_layout(sh->root, w, h);
@@ -2189,6 +2281,8 @@ void bd_shell_set_battery(bd_shell *sh, int pct, bool charging)
 {
     sh->battery = pct;
     sh->charging = charging;
+    if (!tk_is_visible(sh->tray_batt_btn))
+        tk_set_visible(sh->tray_batt_btn, true);
     /* one composite element: the percentage is the battery
      * button's own label; the level step and the charging bolt
      * are the icon file's shape - no "+" suffix anywhere
@@ -2468,6 +2562,98 @@ bool bd_shell_panel_on_top(const bd_shell *sh) { return sh->panel_top; }
 tk_color bd_shell_wallpaper(const bd_shell *sh) { return sh->wallpaper; }
 ic_cache *bd_shell_icon_cache(bd_shell *sh) { return sh->icons; }
 
+/* Band cover driver (proportion pass): show the shell-surface
+ * strip under the floating shelf while at least one window is
+ * non-minimized, hide it on the bare desktop. Polled through
+ * the same win_ops bridge the app switcher uses; returns 1
+ * when the visibility changed. Without win_ops (headless shell
+ * tests) the cover simply stays hidden. */
+int bd_shell_poll_windows(bd_shell *sh)
+{
+    if (!sh || !sh->band_cover) return 0;
+    if (!sh->layout_settled) {
+        sh->layout_settled = true;
+        shell_relayout(sh);
+    }
+    bool want = false;
+    int changed = 0;
+    if (sh->win_ops_set && sh->win_ops.list) {
+        bd_shell_win_entry ents[16];
+        size_t n = sh->win_ops.list(sh->win_ud, ents, 16);
+        for (size_t i = 0; i < n; i++)
+            if (ents[i].state != BD_WIN_MINIMIZED) { want = true; break; }
+        /* Reconcile the panel task list with the windows
+         * that actually exist (eval F-17): tasks were only
+         * recorded for launches through THIS shell instance,
+         * so an app started any other way - or still open
+         * across a shell restart / mode switch - never got
+         * a taskbar button. A window whose title names a
+         * catalog entry joins the task list; task_add
+         * dedups, and nothing is removed here (the existing
+         * launch-driven lifecycle is unchanged). */
+        const de_entry *all[256];
+        size_t na = de_catalog_query(sh->catalog, DE_CAT_ALL,
+                                     NULL, all, 256);
+        for (size_t i = 0; i < n; i++) {
+            if (!ents[i].title[0]) continue;
+            for (size_t j = 0; j < na; j++) {
+                if (strcmp(all[j]->name, ents[i].title) == 0) {
+                    size_t before = sh->n_tasks;
+                    task_add(sh, all[j]);
+                    if (sh->n_tasks != before) {
+                        sh->tasks[sh->n_tasks - 1].from_win = true;
+                        changed = 1;
+                    }
+                    break;
+                }
+            }
+        }
+        /* window-synced tasks whose window has closed leave
+         * the list again (a taskbar button must not outlive
+         * its window); iterate backwards for removal */
+        for (size_t t = sh->n_tasks; t-- > 0;) {
+            if (!sh->tasks[t].from_win) continue;
+            const de_entry *e =
+                de_catalog_find_id(sh->catalog, sh->tasks[t].id);
+            bool alive = false;
+            if (e) {
+                for (size_t i = 0; i < n; i++)
+                    if (strcmp(ents[i].title, e->name) == 0) {
+                        alive = true;
+                        break;
+                    }
+            }
+            if (!alive && bd_shell_close_task(sh, t)) changed = 1;
+        }
+        /* the focused window owns the active marker (a
+         * reconcile add must not steal it) */
+        for (size_t i = 0; i < n; i++) {
+            if (!ents[i].focused) continue;
+            for (size_t t = 0; t < sh->n_tasks; t++) {
+                const de_entry *e =
+                    de_catalog_find_id(sh->catalog, sh->tasks[t].id);
+                if (e && strcmp(e->name, ents[i].title) == 0 &&
+                    sh->active_task != (int)t) {
+                    sh->active_task = (int)t;
+                    panel_tasks_rebuild(sh);
+                    changed = 1;
+                }
+            }
+        }
+    }
+    if (tk_is_visible(sh->band_cover) != want) {
+        tk_set_visible(sh->band_cover, want);
+        tk_widget_invalidate(sh->band_cover);
+        changed = 1;
+    }
+    return changed;
+}
+
+bool bd_shell_band_cover_visible(const bd_shell *sh)
+{
+    return sh && sh->band_cover && tk_is_visible(sh->band_cover);
+}
+
 /* ---------------- hardware backend + assist (M2) ---------------- */
 
 void bd_shell_attach_backend(bd_shell *sh, bd_backend *be)
@@ -2482,6 +2668,15 @@ int bd_shell_poll_backend(bd_shell *sh)
     bd_battery_info bi;
     if (bd_backend_battery(sh->backend, &bi) && bi.present) {
         bd_shell_set_battery(sh, bi.capacity, bi.charging);
+        updated++;
+    } else if (tk_is_visible(sh->tray_batt_btn)) {
+        /* no battery device on this machine: the tray
+         * element hides instead of showing a permanent
+         * "--%" (eval F-08; a desktop with no battery shows
+         * no battery icon). bd_shell_set_battery() un-hides
+         * it if a battery ever reports in. */
+        tk_set_visible(sh->tray_batt_btn, false);
+        tk_widget_invalidate(sh->tray_batt_btn);
         updated++;
     }
     /* While muted the shell drives the hardware to 0 itself;

@@ -46,6 +46,11 @@ struct tk_widget {
     tk_widget **children;
     size_t n_children, cap_children;
     bool visible, enabled, can_focus;
+    bool layout_stale;       /* a visibility change below this
+                              * tree's top invalidated the
+                              * arranged rects; the root
+                              * re-lays out before the next
+                              * paint (see tk_set_visible) */
     int flex;
     int min_w, min_h; /* tk_widget_set_min_size floor (0 = none) */
     int label_align;  /* TK_LABEL_ALIGN_* (labels only) */
@@ -60,6 +65,7 @@ struct tk_widget {
     bool wrap;               /* box: wrap children (horizontal only) */
     int avail_w;             /* last measure constraint width (wrap) */
     int cols;                /* grid: column count */
+    bool grid_uniform;       /* grid: equal tracks (star sizing) */
     /* generic text payload (label/button/checkbox/radio/switch/...).
      * ComboBox (editable) and SpinButton (while editing) reuse it as
      * their text-entry buffer; it is NULL for them otherwise. */

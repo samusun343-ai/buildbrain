@@ -540,7 +540,24 @@ void bd_mascot_stats(const bd_mascot *m, size_t *map_bytes,
 
 void bd_mascot_set_floor(bd_mascot *m, tk_rect floor_area)
 {
-    if (m) m->floor_area = floor_area;
+    if (!m) return;
+    m->floor_area = floor_area;
+    /* Keep the anchor inside the new floor's walk range.  The
+     * step40 clamps only run while a clip is playing, so a
+     * mascot idling at its spawn point otherwise never follows
+     * a floor change: at session creation the floor is computed
+     * before the mascot exists (default half-width) and can be
+     * the full main rect, spawning the character in the middle
+     * of the desktop icon grid; the corrected floor arrived on
+     * the next step but the mascot stayed on the grid
+     * (integration phase 10, WinUI desktop).  While the user is
+     * dragging, the pointer owns the anchor - leave it alone. */
+    if (m->state != BD_MASCOT_DRAG && floor_area.w > 16) {
+        int lo = (floor_area.x + 8) * 256;
+        int hi = (floor_area.x + floor_area.w - 8) * 256;
+        if (m->ax_q8 < lo) m->ax_q8 = lo;
+        if (m->ax_q8 > hi) m->ax_q8 = hi;
+    }
 }
 
 void bd_mascot_set_visible(bd_mascot *m, bool visible)

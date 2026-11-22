@@ -3188,8 +3188,25 @@ tk_size tk_m7_measure(tk_widget *w, tk_constraints c)
                           t->style == 1 ? 47 : 48 };
     case TK_W_CAROUSEL:
         return (tk_size){ 360, 112 };
-    case TK_W_NAVRAIL:
-        return (tk_size){ RAIL_W, (int)w->n_items * RAIL_CELL + 16 };
+    case TK_W_NAVRAIL: {
+        /* int10 (independent review C): rail labels are
+         * centred and clipped to the cell, so a label wider
+         * than the 80dp rail (the clock's ストップウォッチ,
+         * ~110px at caption size) lost its first glyph at
+         * the window edge (C10). The WinUI form sizes the
+         * rail to its widest label, as NavigationView's
+         * open pane does; the M3 form keeps the spec rail. */
+        int rw = RAIL_W;
+        if (t->style == 2) {
+            for (size_t i = 0; i < w->n_items; i++)
+                if (w->items[i]) {
+                    int tw = tk_text_width_st(t, TK_TEXT_CAPTION,
+                                              w->items[i]) + 16;
+                    if (tw > rw) rw = tw;
+                }
+        }
+        return (tk_size){ rw, (int)w->n_items * RAIL_CELL + 16 };
+    }
     case TK_W_RING: {
         /* M20: an explicit size (tk_ring_set_size) is honoured
          * as-is. The unset default is the theme's: the M3

@@ -143,15 +143,23 @@ test_alarmd: alarmd/tests/test_alarmd.c $(ALARMDCORE) $(CKMODEL) $(COMMON)
 # user-facing apps x size axis x theme axis, validate +
 # sentinel paint + golden hashes (tests/golden/).
 test_matrix: tests/test_matrix.c calc/bd_calc.c settings/bd_settings.c \
-             notes/bd_notes.c files/bd_files.c \
-             $(KCMODEL) $(STMODEL) $(NMODEL) $(FMODEL) $(COMMON) \
+             notes/bd_notes.c files/bd_files.c tasks/bd_tasks.c \
+             clock/bd_clock.c player/bd_player.c recorder/bd_recorder.c \
+             pkg/bd_pkg.c admin/bd_admin.c \
+             $(KCMODEL) $(STMODEL) $(NMODEL) $(FMODEL) $(TMODEL) \
+             $(CKMODEL) $(PLMODEL) $(RCMODEL) $(PKMODEL) \
+             $(COMMON) \
              $(SHELLIB) $(TKLIB) $(IMELIB)
 	$(CC) $(CPPFLAGS) $(CFLAGS) tests/test_matrix.c \
 	    calc/bd_calc.c settings/bd_settings.c \
-	    notes/bd_notes.c files/bd_files.c \
-	    $(KCMODEL) $(STMODEL) $(NMODEL) $(FMODEL) $(COMMON) \
+	    notes/bd_notes.c files/bd_files.c tasks/bd_tasks.c \
+	    clock/bd_clock.c player/bd_player.c recorder/bd_recorder.c \
+	    pkg/bd_pkg.c admin/bd_admin.c \
+	    $(KCMODEL) $(STMODEL) $(NMODEL) $(FMODEL) $(TMODEL) \
+	    $(CKMODEL) $(PLMODEL) $(RCMODEL) $(PKMODEL) \
+	    $(COMMON) \
 	    $(ROOT)/osk/osk_brainime.c \
-	    -o $@ $(SHELLIB) $(TKLIB) $(TEXT_LIBS) $(IMELIB) -lm
+	    -o $@ $(SHELLIB) $(TKLIB) $(TEXT_LIBS) $(IMELIB) -lasound -lm
 
 # ---------------- bd-calc ----------------
 bd-calc: calc/bd_calc.c $(KCMODEL) $(COMMON) $(APPHOST) $(SHELLIB) $(TKLIB)

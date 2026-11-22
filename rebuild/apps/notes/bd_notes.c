@@ -56,6 +56,8 @@ struct notes_app {
     tk_widget *list_menu;        /* list-screen overflow menu */
     /* list screen */
     tk_widget *note_list;
+    tk_widget *empty_label;      /* empty-state guidance
+                                  * (eval F-14) */
     tk_widget *list_count;        /* header count caption */
     tk_widget *list_search_row;
     tk_widget *list_search_field;
@@ -391,6 +393,8 @@ static void refresh_note_list(notes_app *app)
         /* pinned notes carry the real pin icon on their card */
         icons[i] = app->notes[i].pinned ? pin : NULL;
     }
+    if (app->empty_label)
+        tk_set_visible(app->empty_label, app->n_notes == 0);
     tk_listview_set_items(app->note_list, items, app->n_notes);
     tk_listview_set_subitems(app->note_list, subs, app->n_notes);
     tk_listview_set_item_icons(app->note_list, icons, 24, 24,
@@ -939,6 +943,22 @@ notes_app *notes_app_new(nm_store *store, int w, int h, bool with_osk)
             tk_widget_set_text_style(app->list_count,
                                      TK_TEXT_CAPTION);
             tk_add_child(trow, app->list_count);
+            /* the new-note action lives in the pane header as
+             * an icon button (the WinUI pane-header form -
+             * Notepad/OneNote): as a full row under the list
+             * it cost the list 56px of height, leaving it
+             * 28px - less than one row - at the minimum
+             * window height (proportion pass) */
+            tk_widget *create = btn("", on_new_note, app);
+            tk_button_set_variant(create, TK_BTN_FILLED);
+            const uint32_t *plus = mode_icon(app, "add", "add",
+                                             theme->on_accent);
+            if (plus) {
+                tk_button_set_icon(create, plus, 24, 24);
+                tk_button_set_icon_layout(create, TK_BTN_ICON_ROW);
+            }
+            tk_widget_set_min_size(create, 48, 48);
+            tk_add_child(trow, create);
             tk_add_child(left, trow);
 
             app->folder_combo = tk_combobox_new();
@@ -970,17 +990,12 @@ notes_app *notes_app_new(nm_store *store, int w, int h, bool with_osk)
                                       on_note_select, app);
             tk_set_flex(app->note_list, 1);
             tk_add_child(left, app->note_list);
-
-            tk_widget *create = btn("新規ノート", on_new_note, app);
-            tk_button_set_variant(create, TK_BTN_FILLED);
-            const uint32_t *plus = mode_icon(app, "add", "add",
-                                             theme->on_accent);
-            if (plus) {
-                tk_button_set_icon(create, plus, 24, 24);
-                tk_button_set_icon_layout(create, TK_BTN_ICON_ROW);
-            }
-            tk_widget_set_min_size(create, 0, 56);
-            tk_add_child(left, create);
+            app->empty_label = tk_label_new(
+                "ノートがありません");
+            tk_widget_set_text_style(app->empty_label,
+                                     TK_TEXT_CAPTION);
+            tk_set_visible(app->empty_label, false);
+            tk_add_child(left, app->empty_label);
         }
         tk_add_child(app->scr_panes, left);
         /* the editor pane is built by the shared editor block
@@ -1033,8 +1048,17 @@ notes_app *notes_app_new(nm_store *store, int w, int h, bool with_osk)
         tk_listview_set_on_select(app->note_list, on_note_select, app);
         tk_set_flex(app->note_list, 1);
         tk_add_child(app->scr_list, app->note_list);
+        app->empty_label = tk_label_new(
+            "ノートがありません。「新規ノート」から作成できます");
+        tk_widget_set_text_style(app->empty_label,
+                                 TK_TEXT_CAPTION);
+        tk_set_visible(app->empty_label, false);
+        tk_add_child(app->scr_list, app->empty_label);
 
-        /* the one primary action on this screen (SS7.2) */
+        /* the one primary action on this screen (SS7.2), in
+         * the extended-FAB form: natural width, right edge
+         * (proportion pass - it used to stretch the full
+         * 838px width of the list screen) */
         tk_widget *create = btn("新規ノート", on_new_note, app);
         tk_button_set_variant(create, TK_BTN_FILLED);
         const uint32_t *plus = mode_icon(app, "add", "add",
@@ -1044,7 +1068,12 @@ notes_app *notes_app_new(nm_store *store, int w, int h, bool with_osk)
             tk_button_set_icon_layout(create, TK_BTN_ICON_ROW);
         }
         tk_widget_set_min_size(create, 0, 56);
-        tk_add_child(app->scr_list, create);
+        tk_widget *crow = tk_box_new(TK_DIR_HORIZONTAL, 0, 0);
+        tk_widget *csp = tk_fixed_new();
+        tk_set_flex(csp, 1);
+        tk_add_child(crow, csp);
+        tk_add_child(crow, create);
+        tk_add_child(app->scr_list, crow);
     }
     tk_add_child(top, app->scr_list);
     tk_set_flex(app->scr_list, 1);

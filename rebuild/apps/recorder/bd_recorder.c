@@ -46,6 +46,11 @@ struct rec_app {
     tk_widget *btn_record, *btn_rec_pause, *btn_rec_stop;
     tk_widget *level_bar, *rec_label;
     tk_widget *status;
+    /* Android page swap (proportion pass): list page and
+     * detail page replace each other - see rec_set_detail().
+     * NULL in WinUI mode (split pane form). */
+    tk_widget *list_page, *detail_page;
+    bool detail_open;
 
     bool winui;
     bool deleted_view;
@@ -154,7 +159,7 @@ static void refresh_detail(rec_app *app)
         tk_slider_set_value(app->speed_slider,
                             (float)((e->speed - 0.5) / 1.5));
         char sl[32];
-        snprintf(sl, sizeof(sl), "速度 %.2gx", e->speed);
+        snprintf(sl, sizeof(sl), "%.2gx", e->speed);
         set_text(app->speed_label, sl);
     }
     draw_waveform(app);
@@ -240,11 +245,39 @@ static void rebuild_list(rec_app *app)
     tk_widget_invalidate(app->list);
 }
 
+/* Android page swap (proportion pass): the takes list and
+ * the detail block used to stack in one column - the detail's
+ * ~390px of fixed rows plus the record area summed past every
+ * window height and the box crushed the LIST to 0px at every
+ * size, so takes could not even be seen, let alone picked.
+ * The detail is now its own page (the Google Recorder form:
+ * list first, tap a take for its player page), and its rows
+ * live in a scrollview so they keep their full height. */
+static void rec_set_detail(rec_app *app, bool detail)
+{
+    if (!app->list_page || !app->detail_page) return;
+    if (app->detail_open == detail) return;
+    app->detail_open = detail;
+    tk_set_visible(app->list_page, !detail);
+    tk_set_visible(app->detail_page, detail);
+    tk_widget_invalidate(app->list_page);
+    tk_widget_invalidate(app->detail_page);
+    tk_rect tr = tk_widget_rect(app->top);
+    if (tr.w > 0 && tr.h > 0) tk_root_layout(app->root, tr.w, tr.h);
+}
+
+static void on_detail_back(tk_widget *w, void *ud)
+{
+    (void)w;
+    rec_set_detail(ud, false);
+}
+
 static void select_name(rec_app *app, const char *name)
 {
     if (strcmp(app->sel, name) != 0) stop_playback(app);
     snprintf(app->sel, sizeof(app->sel), "%s", name);
     refresh_detail(app);
+    if (!app->winui) rec_set_detail(app, true);
 }
 
 /* ---------- callbacks ---------- */
@@ -277,6 +310,7 @@ static void on_tab(tk_widget *w, void *ud)
     app->deleted_view = (w == app->w_tabs[1]);
     app->sel[0] = 0;
     stop_playback(app);
+    rec_set_detail(app, false);
     rebuild_list(app);
     refresh_detail(app);
 }
@@ -338,7 +372,7 @@ static void on_speed(tk_widget *w, void *ud)
         rc_lib_set_speed(app->lib, app->sel, speed);
         if (app->player) rc_player_set_speed(app->player, speed);
         char sl[32];
-        snprintf(sl, sizeof(sl), "速度 %.2gx", speed);
+        snprintf(sl, sizeof(sl), "%.2gx", speed);
         set_text(app->speed_label, sl);
     }
 }
@@ -378,6 +412,7 @@ static void on_delete(tk_widget *w, void *ud)
     stop_playback(app);
     if (rc_lib_delete(app->lib, app->sel) == 0) {
         app->sel[0] = 0;
+        rec_set_detail(app, false);
         rebuild_list(app);
         refresh_detail(app);
         set_text(app->status, "最近削除へ移動しました");
@@ -391,6 +426,7 @@ static void on_restore(tk_widget *w, void *ud)
     if (!app->sel[0]) return;
     if (rc_lib_restore(app->lib, app->sel) == 0) {
         app->sel[0] = 0;
+        rec_set_detail(app, false);
         rebuild_list(app);
         refresh_detail(app);
         set_text(app->status, "復元しました");
@@ -404,6 +440,7 @@ static void on_purge(tk_widget *w, void *ud)
     if (!app->sel[0]) return;
     if (rc_lib_purge_one(app->lib, app->sel) == 0) {
         app->sel[0] = 0;
+        rec_set_detail(app, false);
         rebuild_list(app);
         refresh_detail(app);
         set_text(app->status, "完全に削除しました");
@@ -492,6 +529,7 @@ static void on_rec_stop(tk_widget *w, void *ud)
     snprintf(app->sel, sizeof(app->sel), "%s", app->rec_name);
     rebuild_list(app);
     refresh_detail(app);
+    if (!app->winui) rec_set_detail(app, true); /* open the new take */
     set_text(app->status, "録音を保存しました");
 }
 
@@ -575,10 +613,24 @@ rec_app *rec_app_new(const char *data_root,
     app->top = top;
 
     /* Structure branch:
-     *  WinUI  - left pane (tabs + search + list), detail right.
-     *  Android - single column: tabs/search, list, detail. */
+     *  WinUI  - full-width tab/search row on top, then left
+     *           pane (list) + detail right.
+     *  Android - single column: tabs/search, list, detail.
+     * The WinUI tab row used to live inside the left pane,
+     * where the two labeled tabs (~140px each with icons)
+     * cannot fit a pane that is 156px wide at a 480px
+     * window: the second tab measured 12px (proportion
+     * pass). Spanning the window like the Android form
+     * also returns the tabs' height to the list. */
     tk_widget *mid = NULL, *left = NULL;
-    tk_widget *tab_parent = top;
+    tk_widget *tabs = hbox(top);
+    app->w_tabs[0] = ibtn(app, tabs, "録音一覧", "mic", "mic",
+                          on_tab);
+    app->w_tabs[1] = ibtn(app, tabs, "最近削除", "delete", "delete",
+                          on_tab);
+    app->search = field(tabs, "検索");
+    tk_textfield_set_on_change(app->search, on_search, app);
+    tk_set_flex(app->search, 1);
     if (app->winui) {
         mid = hbox(top);
         /* mid must flex: at its desired height the detail column
@@ -588,33 +640,45 @@ rec_app *rec_app_new(const char *data_root,
         left = tk_box_new(TK_DIR_VERTICAL, 4, 0);
         tk_add_child(mid, left);
         tk_set_flex(left, 1);
-        tab_parent = left;
-    }
-    tk_widget *tabs = hbox(tab_parent);
-    app->w_tabs[0] = ibtn(app, tabs, "録音一覧", "mic", "mic",
-                          on_tab);
-    app->w_tabs[1] = ibtn(app, tabs, "最近削除", "delete", "delete",
-                          on_tab);
-    if (app->winui) {
-        app->search = field(left, "検索");
-        tk_textfield_set_on_change(app->search, on_search, app);
-    } else {
-        app->search = field(tabs, "検索");
-        tk_textfield_set_on_change(app->search, on_search, app);
-        tk_set_flex(app->search, 1);
     }
 
     app->list = tk_listview_new();
     tk_listview_set_on_select(app->list, on_list, app);
-    tk_add_child(app->winui ? left : top, app->list);
     tk_set_flex(app->list, 1);
+    if (app->winui) {
+        tk_add_child(left, app->list);
+    } else {
+        /* Android pages: the list (with the record area under
+         * it) and the detail swap in the same slot of the
+         * column; the header row and the status line are
+         * common to both pages */
+        app->list_page = tk_box_new(TK_DIR_VERTICAL, 4, 0);
+        tk_set_flex(app->list_page, 1);
+        tk_add_child(top, app->list_page);
+        tk_add_child(app->list_page, app->list);
+        app->detail_page = tk_box_new(TK_DIR_VERTICAL, 4, 0);
+        tk_set_flex(app->detail_page, 1);
+        tk_set_visible(app->detail_page, false);
+        tk_add_child(top, app->detail_page);
+        tk_widget *brow = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+        ibtn(app, brow, "戻る", "arrow_back", "arrow_left",
+             on_detail_back);
+        tk_add_child(app->detail_page, brow);
+    }
 
     tk_widget *det = tk_box_new(TK_DIR_VERTICAL, 3, 0);
+    /* the detail rows keep their full height inside a
+     * scrollview instead of being crushed by the column
+     * (both modes; in WinUI the pane was short of its own
+     * rows at 368px too) */
+    tk_widget *det_scroll = tk_scrollview_new();
+    tk_scrollview_set_child(det_scroll, det);
     if (app->winui) {
-        tk_add_child(mid, det);
-        tk_set_flex(det, 2);
+        tk_add_child(mid, det_scroll);
+        tk_set_flex(det_scroll, 2);
     } else {
-        tk_add_child(top, det);
+        tk_add_child(app->detail_page, det_scroll);
+        tk_set_flex(det_scroll, 1);
     }
     app->detail_name = lbl(det, "（未選択）");
     app->detail_info = lbl(det, "");
@@ -626,22 +690,57 @@ rec_app *rec_app_new(const char *data_root,
                          "play", on_play);
     app->btn_back = btn(prow, "-15秒", on_seek, app);
     app->btn_fwd = btn(prow, "+15秒", on_seek, app);
-    app->pos_label = lbl(prow, "0:00 / 0:00");
 
     tk_widget *srow = hbox(det);
     app->speed_slider = tk_slider_new(1.0f / 3.0f);
     tk_slider_set_on_change(app->speed_slider, on_speed, app);
     tk_add_child(srow, app->speed_slider);
     tk_set_flex(app->speed_slider, 1);
-    app->speed_label = lbl(srow, "速度 1.00x");
+    /* int10 (review round 2): the label drops the 速度
+     * prefix - in the guest the row measured a few px
+     * wider than on the host (font metrics) and the
+     * position label clipped at the window's right edge
+     * (C10). The slider makes the meaning plain. */
+    app->speed_label = lbl(srow, "1.00x");
+    /* the position label rides the speed row: on the play
+     * row it was the element squeezed to 0px in a narrow
+     * detail pane (proportion pass) */
+    app->pos_label = lbl(srow, "0:00 / 0:00");
+    /* int11: a fixed 16px trailing spacer after the position
+     * label. Without it the label's rect ended exactly at
+     * the pane's right edge (host probe: rect 751..850 of an
+     * 850px content edge), and the guest renders this text
+     * ~9px wider than the host measures it, so the last
+     * glyphs ran off the window (sd-v9 guest shot, C10).
+     * The spacer makes the flex slider absorb the slack
+     * instead: whatever the local font metrics, the label
+     * always stops 16px short of the edge. (Padding the
+     * whole detail column instead broke the 480x272 touch
+     * floor in test_matrix, so the margin lives on this
+     * row only.) */
+    {
+        tk_widget *sp = tk_box_new(TK_DIR_HORIZONTAL, 0, 0);
+        tk_widget_set_min_size(sp, 16, 1);
+        tk_add_child(srow, sp);
+    }
 
+    /* detail rows are sized for the narrowest detail pane
+     * (312px in the WinUI split at a 480px window): the
+     * rename row carried field + rename + favourite
+     * (~460px with icons), which left the field 5px wide,
+     * and the trim row packed label + 2 fields + 2 buttons
+     * (~690px), which zeroed the fields (proportion pass).
+     * Rows now hold at most one field + one action, or two
+     * actions. */
     tk_widget *rrow = hbox(det);
     app->rename_field = field(rrow, "名前");
     tk_set_flex(app->rename_field, 1);
     app->btn_rename = ibtn(app, rrow, "名前変更",
                            "drive_file_rename_outline", "rename",
                            on_rename);
-    app->btn_fav = btn(rrow, "お気に入り", on_fav, app);
+
+    tk_widget *drow = hbox(det);
+    app->btn_fav = btn(drow, "お気に入り", on_fav, app);
     {
         const uint32_t *px = bd_icon_mode(app->winui, "star",
                                           "star", 24, 0xF0A020u);
@@ -652,13 +751,12 @@ rec_app *rec_app_new(const char *data_root,
             tk_button_set_variant(app->btn_fav, TK_BTN_TONAL);
         }
     }
-
-    tk_widget *drow = hbox(det);
     app->btn_delete = ibtn(app, drow, "削除", "delete", "delete",
                            on_delete);
-    app->btn_restore = ibtn(app, drow, "復元", "restore_from_trash",
+    tk_widget *drow2 = hbox(det);
+    app->btn_restore = ibtn(app, drow2, "復元", "restore_from_trash",
                             "arrow_undo", on_restore);
-    app->btn_purge = ibtn(app, drow, "完全削除", "delete_forever",
+    app->btn_purge = ibtn(app, drow2, "完全削除", "delete_forever",
                           "delete", on_purge);
 
     tk_widget *trow = hbox(det);
@@ -667,9 +765,10 @@ rec_app *rec_app_new(const char *data_root,
     tk_set_flex(app->trim_start, 1);
     app->trim_end = field(trow, "終了");
     tk_set_flex(app->trim_end, 1);
-    app->btn_trim_keep = ibtn(app, trow, "範囲を保持", "content_cut",
+    tk_widget *trow2 = hbox(det);
+    app->btn_trim_keep = ibtn(app, trow2, "範囲を保持", "content_cut",
                               "cut", on_trim_keep);
-    app->btn_trim_del = ibtn(app, trow, "範囲を削除", "content_cut",
+    app->btn_trim_del = ibtn(app, trow2, "範囲を削除", "content_cut",
                              "cut", on_trim_del);
 
     /* Record area. Android: level/status line, then the big
@@ -683,10 +782,16 @@ rec_app *rec_app_new(const char *data_root,
                                   "pause", on_rec_pause);
         app->btn_rec_stop = ibtn(app, recrow, "停止", "stop",
                                  "stop", on_rec_stop);
+        /* int10 (review B follow-up): the level bar and the
+         * state label get their own row under the buttons.
+         * In one 480px row the squeeze shrank the label
+         * under its text width (C10, matrix labelclip) -
+         * the same two-row split the Android form uses. */
+        tk_widget *lvlrow2 = hbox(top);
         app->level_bar = tk_progress_new(0);
-        tk_add_child(recrow, app->level_bar);
+        tk_add_child(lvlrow2, app->level_bar);
         tk_set_flex(app->level_bar, 1);
-        app->rec_label = lbl(recrow, "録音していません");
+        app->rec_label = lbl(lvlrow2, "録音していません");
         const tk_theme *t = tk_theme_default();
         const uint32_t *px = bd_icon_mode(
             app->winui, "fiber_manual_record", "record", 24,
@@ -698,12 +803,12 @@ rec_app *rec_app_new(const char *data_root,
         }
         tk_button_set_variant(app->btn_record, TK_BTN_FILLED);
     } else {
-        tk_widget *lvlrow = hbox(top);
+        tk_widget *lvlrow = hbox(app->list_page);
         app->rec_label = lbl(lvlrow, "録音していません");
         app->level_bar = tk_progress_new(0);
         tk_add_child(lvlrow, app->level_bar);
         tk_set_flex(app->level_bar, 1);
-        tk_widget *recrow = hbox(top);
+        tk_widget *recrow = hbox(app->list_page);
         tk_widget *sp1 = tk_box_new(TK_DIR_HORIZONTAL, 0, 0);
         tk_add_child(recrow, sp1);
         tk_set_flex(sp1, 1);

@@ -48,6 +48,7 @@ struct clock_app {
     tk_widget *now_label;
     tk_widget *banner;
     tk_widget *snooze_btn;
+    tk_widget *dismiss_btn;
     /* world */
     tk_widget *city_list;
     tk_widget *city_combo;
@@ -260,6 +261,10 @@ static void refresh_banner(clock_app *app)
     tk_set_visible(app->snooze_btn,
                    aid != 0 && ck_alarm_find(app->store, aid) &&
                    ck_alarm_find(app->store, aid)->snooze_min > 0);
+    /* the dismiss button exists only while something is
+     * ringing (eval F-22: it sat on the clock tab at all
+     * times with nothing to stop) */
+    tk_set_visible(app->dismiss_btn, ring);
     tk_set_visible(app->banner, ring);
     tk_root_invalidate(app->root, app->top);
 }
@@ -752,10 +757,12 @@ clock_app *clock_app_new(ck_store *store, int local_offset_min,
     app->snooze_btn = btn("スヌーズ", on_snooze, app);
     tk_add_child(brow, app->banner);
     tk_add_child(brow, app->snooze_btn);
-    tk_add_child(brow, btn("止める", on_dismiss, app));
+    app->dismiss_btn = btn("止める", on_dismiss, app);
+    tk_add_child(brow, app->dismiss_btn);
     tk_add_child(content, brow);
     tk_set_visible(app->banner, false);
     tk_set_visible(app->snooze_btn, false);
+    tk_set_visible(app->dismiss_btn, false);
 
     app->tabs = tk_box_new(TK_DIR_VERTICAL, 4, 0);
     tk_set_flex(app->tabs, 1);

@@ -1023,6 +1023,19 @@ int main(int argc, char **argv)
 	/* no frontend popup for form <select>: the core draws it */
 	nsoption_set_bool(core_select_menu, true);
 
+	/* the page font system must be up before anything that
+	 * measures text through the core layout table: hotlist_init
+	 * (below) creates a treeview, and treeview_create measures
+	 * its field labels with fb_font_width -> fb_getglyph, which
+	 * dereferences the faces fb_font_init loads.  With the RAM
+	 * surface linked in, bitmap creation succeeds and the
+	 * treeview now reaches that measurement, so the previous
+	 * order crashed at startup (integration phase 10). */
+	resolve_page_font();
+	if (fb_font_init() == false) {
+		die("Unable to initialise the font system");
+	}
+
 	/* persistent data: history + bookmarks + cookies */
 	if (nsoption_charp(url_file) != NULL) {
 		urldb_load(nsoption_charp(url_file));
@@ -1054,10 +1067,7 @@ int main(int argc, char **argv)
 			tk_font_install(font);
 		}
 	}
-	resolve_page_font();
-	if (fb_font_init() == false) {
-		die("Unable to initialise the font system");
-	}
+	/* fb_font_init already ran above, before hotlist_init */
 
 	/* display backend + page surface */
 	if (brain_fe.mode == BRAIN_MODE_WM) {

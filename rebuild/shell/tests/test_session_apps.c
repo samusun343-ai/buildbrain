@@ -246,8 +246,16 @@ int main(int argc, char **argv)
     }
     tk_rect rr = tk_widget_rect(recents_btn);
     tk_rect hr = tk_widget_rect(home_btn);
-    tk_color ref_recents = px(s, rr.x + rr.w / 2, rr.y + rr.h / 2);
-    tk_color ref_home = px(s, hr.x + hr.w / 2, hr.y + hr.h / 2);
+    /* int10: the nav glyphs are outlines (hollow centres),
+     * so a centre sample reads whatever is BEHIND the bar:
+     * the wallpaper on the desktop, but the shell's band
+     * cover (theme surface) while a window is open - the
+     * cover is the user-confirmed design (no near-black
+     * band under a bright window). The bar invariant is
+     * therefore sampled app-front vs app-front below;
+     * ref_recents/ref_home are captured once calc is up. */
+    tk_color ref_recents = { 0, 0, 0, 0 };
+    tk_color ref_home = { 0, 0, 0, 0 };
     tk_color ref_edge = px(s, 10, rr.y + rr.h / 2);
     tk_rect mr = bd_shell_main_rect(sh);
     CHECK(mr.w == 854 && mr.y + mr.h < 480); /* work area < panel */
@@ -276,9 +284,11 @@ int main(int argc, char **argv)
         }
         CHECK(distinct >= 4);
     }
-    /* bar unchanged with an app in front */
-    CHECK(same_px(px(s, rr.x + rr.w / 2, rr.y + rr.h / 2), ref_recents));
-    CHECK(same_px(px(s, hr.x + hr.w / 2, hr.y + hr.h / 2), ref_home));
+    /* bar unchanged with an app in front: capture the
+     * app-front reference here, compare the next app
+     * against it */
+    ref_recents = px(s, rr.x + rr.w / 2, rr.y + rr.h / 2);
+    ref_home = px(s, hr.x + hr.w / 2, hr.y + hr.h / 2);
     CHECK(same_px(px(s, 10, rr.y + rr.h / 2), ref_edge));
 
     /* --- app 2: notes; calc must survive, unfocused, not

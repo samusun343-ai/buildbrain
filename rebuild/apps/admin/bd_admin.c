@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 enum { TAB_PROC, TAB_STORAGE, TAB_MEM, TAB_LOGS };
 
@@ -69,13 +70,23 @@ static void refresh_procs(admin_app *app)
                                  sizeof(char *));
     char **owned = malloc((app->n_procs ? app->n_procs : 1) *
                           sizeof(char *));
+    /* CPU is shown as accumulated CPU TIME, not the raw
+     * jiffies counter (eval §7: "CPU 2492" reads as a
+     * percentage-like number but is neither - it is the
+     * kernel tick count since process start) */
+    long hz = sysconf(_SC_CLK_TCK);
+    if (hz <= 0) hz = 100;
     for (size_t i = 0; i < app->n_procs; i++) {
         char buf[192];
-        snprintf(buf, sizeof(buf), "%d  %s  %c  %llu MB  CPU %llu",
+        uint64_t secs = app->procs[i].cpu_ticks / (uint64_t)hz;
+        snprintf(buf, sizeof(buf),
+                 "%d  %s  %c  %llu MB  CPU時間 %llu:%02llu:%02llu",
                  app->procs[i].pid, app->procs[i].name,
                  app->procs[i].state,
                  (unsigned long long)(app->procs[i].rss_kb / 1024),
-                 (unsigned long long)app->procs[i].cpu_ticks);
+                 (unsigned long long)(secs / 3600),
+                 (unsigned long long)((secs / 60) % 60),
+                 (unsigned long long)(secs % 60));
         owned[i] = strdup(buf);
         labels[i] = owned[i];
     }
@@ -322,9 +333,16 @@ admin_app *admin_app_new(sy_sys *sys, int w, int h)
     }
 
     /* processes page: the sort row is the column header
-     * (PID / 名前 / RSS / CPU) directly above the table */
+     * (PID / 名前 / RSS / CPU) directly above the table.
+     * The terminate actions have their own row under the
+     * table (proportion pass): sharing the sort row made
+     * the row ~660px wide, so at any content width below
+     * that the KILL button was compressed - to 0px at the
+     * old 480px minimum - and a destructive action must
+     * never be the element that silently vanishes. */
     tk_widget *pp = tk_box_new(TK_DIR_VERTICAL, 3, 0);
     tk_add_child(content, pp);
+    tk_set_flex(pp, 1);
     app->pages[0] = pp;
     tk_widget *srow = hbox(pp);
     lbl(srow, "並び替え:");
@@ -332,30 +350,35 @@ admin_app *admin_app_new(sy_sys *sys, int w, int h)
     app->sort_btns[1] = btn(srow, "名前", on_sort, app);
     app->sort_btns[2] = btn(srow, "RSS", on_sort, app);
     app->sort_btns[3] = btn(srow, "CPU", on_sort, app);
-    app->btn_term = ibtn(app, srow, "終了 (TERM)", "close",
-                         "dismiss", on_term);
-    app->btn_kill = ibtn(app, srow, "強制終了 (KILL)", "close",
-                         "dismiss", on_kill);
     app->proc_list = tk_listview_new();
     tk_add_child(pp, app->proc_list);
     tk_set_flex(app->proc_list, 1);
+    tk_widget *trow2 = hbox(pp);
+    app->btn_term = ibtn(app, trow2, "終了 (TERM)", "close",
+                         "dismiss", on_term);
+    app->btn_kill = ibtn(app, trow2, "強制終了 (KILL)", "close",
+                         "dismiss", on_kill);
 
     /* storage page */
     tk_widget *sp = tk_box_new(TK_DIR_VERTICAL, 3, 0);
     tk_add_child(content, sp);
+    tk_set_flex(sp, 1);
     app->pages[1] = sp;
     app->storage_list = tk_listview_new();
     tk_add_child(sp, app->storage_list);
+    tk_set_flex(app->storage_list, 1);
 
     /* memory page */
     tk_widget *mp = tk_box_new(TK_DIR_VERTICAL, 3, 0);
     tk_add_child(content, mp);
+    tk_set_flex(mp, 1);
     app->pages[2] = mp;
     app->mem_label = lbl(mp, "");
 
     /* logs page */
     tk_widget *lp = tk_box_new(TK_DIR_VERTICAL, 3, 0);
     tk_add_child(content, lp);
+    tk_set_flex(lp, 1);
     app->pages[3] = lp;
     tk_widget *lrow = hbox(lp);
     app->log_list = tk_listview_new();
@@ -459,7 +482,12 @@ int main(void)
     if (font) tk_font_install(font);
     /* Display first, real size (see bd_calc.c main note) */
     int vw, vh;
-    bd_app_display *disp = bd_app_display_open_ex("システムモニタ", 0, 0, 480, 272, 800, 600, &vw, &vh);
+    /* minimum 640x360 (proportion pass): below that the
+     * navigation column (5 x 54px) and the sort header row
+     * cannot both hold their targets - the old 480x272
+     * minimum crushed the last nav button to 32px and the
+     * sort row's tail buttons to 0px */
+    bd_app_display *disp = bd_app_display_open_ex("システムモニタ", 0, 0, 640, 360, 800, 600, &vw, &vh);
     admin_app *app = admin_app_new(sys, vw, vh);
     if (!app) { fprintf(stderr, "bd-admin: cannot build UI\n"); return 1; }
 

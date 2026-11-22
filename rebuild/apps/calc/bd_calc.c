@@ -48,6 +48,10 @@ struct calc_app {
                                  * read once in the constructor
                                  * (bdappmode contract: constructors
                                  * never read the registry) */
+    bool split;                 /* landscape form (w >= h at
+                                 * construction): display column
+                                 * beside the keypad instead of the
+                                 * stacked column (proportion pass) */
     int tab_idx;                /* 0 std, 1 sci, 2 prog, 3 conv */
     tk_widget *pages[4];
     tk_widget *mode_tabbar;     /* Android: mode selector strip */
@@ -143,6 +147,12 @@ static tk_widget *icon_btn(calc_app *app, const char *label,
         tk_button_set_icon(b, px, 24, 24);
         tk_button_set_icon_only(b, true);
     }
+    /* an icon-only button's natural size is just icon+unit
+     * (32px); the touch floor for a primary icon action is
+     * the standard icon-button target, so pin the minimum
+     * (proportion pass; also keeps the measure identical
+     * whether or not the icon pixmap resolved) */
+    tk_widget_set_min_size(b, 48, 48);
     tk_button_set_on_click(b, cb, ud);
     return b;
 }
@@ -165,6 +175,17 @@ static void expr_append(calc_app *app, const char *token)
             (c >= 'a' && c <= 'z'))
             buf[0] = 0;
         app->just_evaluated = false;
+    } else if (strcmp(buf, "0") == 0) {
+        /* the idle display reads "0", as the reference
+         * calculators do (F-16: the v8 display booted blank
+         * and stayed blank until a key was pressed). A
+         * digit, '(' or a function/constant letter starts
+         * the entry fresh; '.' and operators continue from
+         * the 0 ("0.5", "0+1") */
+        char c = token[0];
+        if ((c >= '0' && c <= '9') || c == '(' ||
+            (c >= 'a' && c <= 'z'))
+            buf[0] = 0;
     }
     strncat(buf, token, sizeof(buf) - strlen(buf) - 1);
     field_set(app->expr_field, buf);
@@ -197,7 +218,9 @@ static void expr_delete_token(calc_app *app)
         i--;   /* single-char operator / paren / symbol */
     }
     buf[i] = 0;
-    field_set(app->expr_field, buf);
+    /* the display never reads blank: deleting the last
+     * token returns it to the idle "0" (F-16) */
+    field_set(app->expr_field, i == 0 ? "0" : buf);
 }
 
 /* Backspace key (both modes): a real icon key, not a text
@@ -283,14 +306,16 @@ static void on_key(tk_widget *w, void *ud)
     case KEY_ACT_EVAL: do_eval(app); return;
     case KEY_ACT_ACC:
         if (app->just_evaluated) {
-            field_set(app->expr_field, "");
+            field_set(app->expr_field, "0");
             set_label(app->result_label, "");
             app->result[0] = 0;
             app->just_evaluated = false;
         } else {
             char buf[64];
             field_get(app->expr_field, buf, sizeof(buf));
-            if (buf[0] == 0) {
+            if (buf[0] == 0 || strcmp(buf, "0") == 0) {
+                /* already at the idle "0": this press clears
+                 * the result line instead */
                 set_label(app->result_label, "");
                 app->result[0] = 0;
             } else expr_delete_token(app);
@@ -437,7 +462,15 @@ static ckey *add_key(calc_app *app, tk_widget *parent, const char *label,
 static tk_widget *key_grid(calc_app *app, int cols)
 {
     (void)app;
-    return tk_grid_new(cols, 4, 4, 4);
+    tk_widget *g = tk_grid_new(cols, 4, 4, 4);
+    /* Star sizing (proportion pass): the reference keypads
+     * divide their area into equal cells (microsoft/calculator
+     * XAML: every row Height="1*", every column Width="1*";
+     * Google Calculator's keys are one size). Content-sized
+     * tracks made the columns visibly unequal (193..217px) and
+     * let the rows take whatever the fixed chrome left over. */
+    tk_grid_set_uniform(g, true);
+    return g;
 }
 
 /* Key faces (UI-REDESIGN 2.4): digits keep the plain surface,
@@ -475,18 +508,26 @@ static void build_std_pad(calc_app *app, tk_widget *page)
     add_key(app, g, ".", ".", KEY_ACT_NONE, 0, false);
     add_key(app, g, "(", "(", KEY_ACT_NONE, 0, false);
     add_key(app, g, ")", ")", KEY_ACT_NONE, 0, false);
+    /* The last row is the memory trio + "=" as four single
+     * cells (proportion pass, tightened after the first guest
+     * shots): the references give "=" NO special size at all -
+     * Windows Calculator's EqualButton is one cell of the
+     * same 1* grid, Google Calculator's "=" is the same
+     * circle as the digits, differing only in colour (eval
+     * C6). An earlier cut let "=" span the row (same height,
+     * 4x width); that still breaks the same-size rule, so the
+     * row is filled with the model's real memory keys (the
+     * scientific face's mc/m+/mr, same actions) and "=" takes
+     * one cell, accent-coloured. */
+    add_key(app, g, "mc", "", KEY_ACT_MC, 0, false);
+    add_key(app, g, "m+", "", KEY_ACT_MPLUS, 0, false);
+    add_key(app, g, "mr", "", KEY_ACT_MR, 0, false);
+    ckey *eq = add_key(app, g, "=", "", KEY_ACT_EVAL, 0, false);
+    if (eq) tk_button_set_accent(eq->btn, true);
     /* the grid fills the page (M4): keys stretch with the window
      * instead of leaving the lower half blank */
     tk_set_flex(g, 1);
     tk_add_child(page, g);
-    /* "=" is a full-width accent key under the grid (M4 + P3) */
-    tk_widget *row = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
-    ckey *eq = add_key(app, row, "=", "", KEY_ACT_EVAL, 0, false);
-    if (eq) {
-        tk_set_flex(eq->btn, 1);
-        tk_button_set_accent(eq->btn, true);
-    }
-    tk_add_child(page, row);
 }
 
 /* One face of the scientific function grid. `second` selects
@@ -546,22 +587,39 @@ static void build_sci_face(calc_app *app, tk_widget *g, bool second)
 
 static void build_sci_pad(calc_app *app, tk_widget *page)
 {
+    /* The two faces live in their own box so the page can put
+     * the function pad beside the digit pad in the landscape
+     * form (proportion pass; the Windows scientific form):
+     * stacked, the visible face and the digit grid share the
+     * height as before. */
+    tk_widget *face_box = tk_box_new(TK_DIR_VERTICAL, 0, 0);
     app->sci_grid_normal = key_grid(app, 5);
     build_sci_face(app, app->sci_grid_normal, false);
     tk_set_flex(app->sci_grid_normal, 1);
-    tk_add_child(page, app->sci_grid_normal);
+    tk_add_child(face_box, app->sci_grid_normal);
     app->sci_grid_second = key_grid(app, 5);
     build_sci_face(app, app->sci_grid_second, true);
     tk_set_flex(app->sci_grid_second, 1);
     tk_set_visible(app->sci_grid_second, false);
-    tk_add_child(page, app->sci_grid_second);
+    tk_add_child(face_box, app->sci_grid_second);
     tk_widget *mrow = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
     tk_add_child(mrow, tk_label_new("角度:"));
     app->rad_check = tk_checkbox_new("ラジアン (Rad)", false);
     tk_checkbox_set_on_change(app->rad_check, on_rad_toggle, app);
     tk_add_child(mrow, app->rad_check);
     tk_add_child(mrow, tk_label_new("（未チェック = 度 Deg）"));
-    tk_add_child(page, mrow);
+    tk_widget *digit_host = page;
+    if (app->split) {
+        tk_set_flex(face_box, 3);
+        tk_add_child(page, face_box);
+        digit_host = tk_box_new(TK_DIR_VERTICAL, 4, 0);
+        tk_set_flex(digit_host, 2);
+        tk_add_child(page, digit_host);
+    } else {
+        tk_set_flex(face_box, 1);
+        tk_add_child(page, face_box);
+    }
+    tk_add_child(digit_host, mrow);
     /* digits/operators shared with the standard pad, same faces */
     tk_widget *g2 = key_grid(app, 4);
     face_clear(add_key(app, g2, "AC/C", "", KEY_ACT_ACC, 1, false));
@@ -586,17 +644,26 @@ static void build_sci_pad(calc_app *app, tk_widget *page)
     ckey *eq2 = add_key(app, g2, "=", "", KEY_ACT_EVAL, 1, false);
     if (eq2) tk_button_set_accent(eq2->btn, true);
     tk_set_flex(g2, 1);
-    tk_add_child(page, g2);
+    tk_add_child(digit_host, g2);
 }
 
 static void build_prog_pad(calc_app *app, tk_widget *page)
 {
+    /* Landscape form: the readouts + base row + entry field
+     * form a column beside the (tall, 9-row) key grid instead
+     * of stacking over it (proportion pass). */
+    tk_widget *host = page;
+    if (app->split) {
+        host = tk_box_new(TK_DIR_VERTICAL, 4, 0);
+        tk_set_flex(host, 2);
+        tk_add_child(page, host);
+    }
     app->prog_display = tk_label_new("0");
-    tk_add_child(page, app->prog_display);
+    tk_add_child(host, app->prog_display);
     app->prog_bits = tk_label_new("");
-    tk_add_child(page, app->prog_bits);
+    tk_add_child(host, app->prog_bits);
     app->prog_info = tk_label_new("");
-    tk_add_child(page, app->prog_info);
+    tk_add_child(host, app->prog_info);
     tk_widget *row = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
     tk_add_child(row, tk_label_new("基数"));
     app->prog_base_combo = tk_combobox_new();
@@ -604,13 +671,29 @@ static void build_prog_pad(calc_app *app, tk_widget *page)
     tk_combobox_set_items(app->prog_base_combo, bases, 4);
     tk_combobox_select(app->prog_base_combo, 0);
     tk_add_child(row, app->prog_base_combo);
+    if (app->split) {
+        /* the landscape info column is ~335px wide: the
+         * one-line base row (label + combo + label + spin +
+         * flip key, ~446px natural) overflows it and the box
+         * crushes the spin button to 0 - split it in two */
+        tk_add_child(host, row);
+        row = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+    }
     tk_add_child(row, tk_label_new("ビット位置"));
     app->prog_bitpos = tk_spinbutton_new(0, 0, 63, 1);
     tk_add_child(row, app->prog_bitpos);
+    if (app->split) {
+        /* same overflow in the bit-position row (label +
+         * spin + flip key ~264px in a ~199px column): the
+         * flip key was arranged to 0px wide (matrix floor
+         * check) - it gets its own row in the split form */
+        tk_add_child(host, row);
+        row = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+    }
     add_key(app, row, "反転", "FLIP", KEY_ACT_NONE, 2, true);
-    tk_add_child(page, row);
+    tk_add_child(host, row);
     app->prog_field = tk_textfield_new("");
-    tk_add_child(page, app->prog_field);
+    tk_add_child(host, app->prog_field);
     tk_widget *g = key_grid(app, 4);
     const char *hexd = "ABCDEF";
     for (int i = 0; i < 6; i++) {
@@ -642,7 +725,7 @@ static void build_prog_pad(calc_app *app, tk_widget *page)
     add_key(app, g, ")", ")", KEY_ACT_NONE, 2, true);
     add_key(app, g, "+", "+", KEY_ACT_NONE, 2, true);
     add_key(app, g, "=", "=", KEY_ACT_NONE, 2, true);
-    tk_set_flex(g, 1);
+    tk_set_flex(g, app->split ? 3 : 1);
     tk_add_child(page, g);
 }
 
@@ -878,6 +961,87 @@ static void on_mode_menu_open(tk_widget *w, void *ud)
     tk_menu_popup(app->root, app->mode_menu, r.x, r.y + r.h);
 }
 
+/* Physical-keyboard input (F-16 follow-up: the independent
+ * evaluation typed "7" "8" at the guest and the display
+ * never moved - key events only reach the widget that holds
+ * focus, and nothing in the calculator holds it by default,
+ * so hardware keys went nowhere). The reference calculators
+ * drive the engine from the keyboard wherever focus sits in
+ * the window, so a hook on the top widget (and on the
+ * expression field itself, whose own editor would otherwise
+ * swallow the characters first) routes the calculator keys
+ * through the very same handlers as the on-screen keys.
+ * The converter page is exempt: its fields are plain text
+ * entries and keep their normal editing. */
+static bool calc_key_hook(void *ud, tk_event *ev)
+{
+    calc_app *app = ud;
+    if (!ev || ev->type != TK_EV_KEY_DOWN) return false;
+    if (ev->modifiers & (TK_MOD_CTRL | TK_MOD_ALT)) return false;
+    if (app->tab_idx == 3) return false;
+    if (app->hist_dlg &&
+        tk_dialog_is_shown(app->root, app->hist_dlg))
+        return false;
+    if (ev->key == TK_KEY_ENTER) {
+        if (app->tab_idx == 2) {
+            for (size_t i = 0; i < app->nkeys; i++)
+                if (app->keys[i].page == 2 &&
+                    strcmp(app->keys[i].token, "=") == 0) {
+                    on_prog_key(NULL, &app->keys[i]);
+                    break;
+                }
+        } else {
+            do_eval(app);
+        }
+        return true;
+    }
+    if (ev->key == TK_KEY_BACKSPACE) {
+        on_backspace(NULL, app);
+        return true;
+    }
+    if (ev->key == TK_KEY_ESCAPE) {
+        if (app->tab_idx == 2) {
+            field_set(app->prog_field, "");
+            set_label(app->prog_display, "0");
+            app->prog_valid = false;
+        } else {
+            field_set(app->expr_field, "0");
+            set_label(app->result_label, "");
+            app->result[0] = 0;
+            app->just_evaluated = false;
+        }
+        return true;
+    }
+    if (!ev->text || !ev->text[0]) return false;
+    char c = ev->text[0];
+    if (app->tab_idx == 2) {
+        /* programmer face: single-character keys (hex digits,
+         * operators) go through their on-screen ckey */
+        for (size_t i = 0; i < app->nkeys; i++) {
+            ckey *k = &app->keys[i];
+            if (k->page != 2 || k->token[0] == 0 ||
+                k->token[1] != 0)
+                continue;
+            char tc = k->token[0];
+            if (tc == c ||
+                (tc >= 'A' && tc <= 'F' && c >= 'a' && c <= 'f' &&
+                 tc == (char)(c - 'a' + 'A'))) {
+                on_prog_key(NULL, k);
+                return true;
+            }
+        }
+        return false;
+    }
+    if (c == '=') { do_eval(app); return true; }
+    if (c == 'x' || c == 'X') c = '*';
+    if (strchr("0123456789.+-*/()%^", c)) {
+        char tok[2] = { c, 0 };
+        expr_append(app, tok);
+        return true;
+    }
+    return false;
+}
+
 calc_app *calc_app_new(const char *dir, int w, int h)
 {
     calc_app *app = calloc(1, sizeof(*app));
@@ -895,14 +1059,30 @@ calc_app *calc_app_new(const char *dir, int w, int h)
      * directly by tests / shot harnesses) - never the registry. */
     app->winui = tk_theme_default()->style == 2;
 
+    /* Landscape form (proportion pass): on a landscape window
+     * (this device's panel is 854x480 landscape; a maximized
+     * window is 850x368) the display column stands BESIDE the
+     * keypad, so the pad gets the full window height. The old
+     * single column spent ~200px of fixed chrome (display, tab
+     * strip, history row, a full-height "=" row) over the pad
+     * and the pad's rows absorbed the whole squeeze - 12px rows
+     * at 850x368, 0px at 480x272. Portrait windows keep the
+     * stacked column (the references' portrait form, and the
+     * form the UI tests drive at 480x800). */
+    app->split = w >= h;
+
     /* app->top is assembled at the end of the mode branch
      * below (single column in Android mode, split in WinUI). */
 
     /* Pages are built once; only the chrome around them and
-     * the page selector differ by mode (calc_show_page). */
+     * the page selector differ by mode (calc_show_page). The
+     * scientific / programmer pages change orientation with
+     * the form (their builders branch on app->split). */
     tk_widget *p_std = tk_box_new(TK_DIR_VERTICAL, 4, 0);
-    tk_widget *p_sci = tk_box_new(TK_DIR_VERTICAL, 4, 0);
-    tk_widget *p_prog = tk_box_new(TK_DIR_VERTICAL, 4, 0);
+    tk_widget *p_sci = tk_box_new(app->split ? TK_DIR_HORIZONTAL
+                                             : TK_DIR_VERTICAL, 4, 0);
+    tk_widget *p_prog = tk_box_new(app->split ? TK_DIR_HORIZONTAL
+                                              : TK_DIR_VERTICAL, 4, 0);
     tk_widget *p_conv = tk_box_new(TK_DIR_VERTICAL, 4, 0);
     app->pages[0] = p_std;
     app->pages[1] = p_sci;
@@ -943,11 +1123,20 @@ calc_app *calc_app_new(const char *dir, int w, int h)
      * result in the display size, right-aligned. The backspace
      * icon key sits at the display's right end (both modes). */
     tk_widget *drow = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
-    app->expr_field = tk_textfield_new("");
+    /* the idle display reads "0" from the start, as the
+     * reference calculators do (F-16) */
+    app->expr_field = tk_textfield_new("0");
     tk_set_flex(app->expr_field, 1);
     tk_add_child(drow, app->expr_field);
     tk_add_child(drow, icon_btn(app, "BS", "backspace", "backspace",
                                 on_backspace, app));
+    /* the history button is created here because the landscape
+     * Android form rides it in the display row (the caption
+     * row below has no room for a second row of chrome); the
+     * other forms put it in the history row as before */
+    tk_widget *hbtn = icon_btn(app, "履歴", "history", "history",
+                               on_hist_open, app);
+    if (app->split && !app->winui) tk_add_child(drow, hbtn);
     tk_add_child(left, drow);
     app->result_label = tk_label_new("");
     tk_widget_set_text_style(app->result_label, TK_TEXT_DISPLAY);
@@ -969,25 +1158,72 @@ calc_app *calc_app_new(const char *dir, int w, int h)
         tk_add_child(app->tabs, app->pages[i]);
     }
     tk_set_flex(app->tabs, 1);
-    tk_add_child(left, app->tabs);
     /* History (UI-REDESIGN 2.4): the main screen shows only the
      * newest entry as a caption plus a button; the full tape is
      * a sheet (dialog) - it no longer eats half the window.
      * The button is the history ICON (material / fluent
      * "history") in both modes; in WinUI mode the pane below
      * is the primary history surface and this row stays as the
-     * compact caption. */
+     * compact caption. In the stacked form the pages and this
+     * row join the display column; in the landscape form the
+     * pages stand beside it and only the caption stays. */
     tk_widget *hrow = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
     app->hist_recent = tk_label_new("");
     tk_widget_set_text_style(app->hist_recent, TK_TEXT_CAPTION);
     tk_set_flex(app->hist_recent, 1);
     tk_add_child(hrow, app->hist_recent);
-    tk_widget *hbtn = icon_btn(app, "履歴", "history", "history",
-                               on_hist_open, app);
-    tk_add_child(hrow, hbtn);
-    tk_add_child(left, hrow);
+    if (!(app->split && !app->winui)) tk_add_child(hrow, hbtn);
+    if (!app->split) {
+        tk_add_child(left, app->tabs);
+        tk_add_child(left, hrow);
+    } else {
+        tk_add_child(left, hrow);
+    }
 
-    if (app->winui) {
+    if (app->split) {
+        /* Landscape assembly: display column (flex 2) beside
+         * the pages (flex 3). WinUI keeps its history pane as a
+         * third column when the window is wide enough for it
+         * (>= 640px, the Windows small-width rule of thumb);
+         * below that the pane's list moves into the history
+         * sheet, like the Android form. */
+        tk_set_flex(left, 2);
+        tk_set_flex(app->tabs, 3);
+        tk_widget *split = tk_box_new(TK_DIR_HORIZONTAL, 4,
+                                      app->winui ? 0 : 4);
+        tk_add_child(split, left);
+        tk_add_child(split, app->tabs);
+        app->top = split;
+        if (app->winui && w >= 640) {
+            tk_widget *pane = tk_box_new(TK_DIR_VERTICAL, 4, 0);
+            int pane_w = w * 240 / 854;
+            if (pane_w < 160) pane_w = 160;
+            if (pane_w > w / 2) pane_w = w / 2;
+            tk_widget_set_min_size(pane, pane_w, 0);
+            tk_widget *ptitle = tk_label_new("履歴");
+            tk_widget_set_text_style(ptitle, TK_TEXT_HEADING);
+            tk_add_child(pane, ptitle);
+            tk_set_flex(app->hist_list, 1);
+            tk_add_child(pane, app->hist_list);
+            app->mem_label = tk_label_new("");
+            tk_add_child(pane, app->mem_label);
+            tk_add_child(split, pane);
+        } else if (app->winui) {
+            app->hist_dlg = tk_dialog_new("履歴");
+            tk_widget_set_min_size(app->hist_list, 224, 192);
+            tk_add_child(app->hist_dlg, app->hist_list);
+            tk_widget *hclose = tk_button_new("閉じる");
+            tk_button_set_on_click(hclose, on_hist_close, app);
+            tk_add_child(app->hist_dlg, hclose);
+        } else {
+            app->hist_dlg = tk_dialog_new("履歴");
+            tk_widget_set_min_size(app->hist_list, 224, 192);
+            tk_add_child(app->hist_dlg, app->hist_list);
+            tk_widget *hclose = tk_button_new("閉じる");
+            tk_button_set_on_click(hclose, on_hist_close, app);
+            tk_add_child(app->hist_dlg, hclose);
+        }
+    } else if (app->winui) {
         /* Windows Calculator form: the keypad column on the
          * left, a history / memory pane on the right (about
          * 240px at the 854px panel width; proportional on
@@ -1030,6 +1266,10 @@ calc_app *calc_app_new(const char *dir, int w, int h)
     hist_recent_sync(app);
     mem_label_sync(app);
     calc_show_page(app, 0);
+    /* hardware keys drive the engine from anywhere in the
+     * window (see calc_key_hook) */
+    tk_widget_set_event_hook(app->top, calc_key_hook, app);
+    tk_widget_set_event_hook(app->expr_field, calc_key_hook, app);
     app->root = tk_root_new(app->top);
     tk_root_layout(app->root, w, h);
     return app;

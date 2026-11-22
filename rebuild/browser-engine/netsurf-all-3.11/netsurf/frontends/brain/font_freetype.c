@@ -410,6 +410,11 @@ FT_Glyph fb_getglyph(const plot_font_style_t *fstyle, uint32_t ucs4)
         fb_fill_scalar(fstyle, &srec);
 
         fb_face = (fb_faceid_t *)srec.face_id;
+	if (fb_face == NULL) {
+		/* face not loaded (font init not run yet or the face
+		 * file was missing): no glyph, callers skip it */
+		return NULL;
+	}
 
         glyph_index = FTC_CMapCache_Lookup(ft_cmap_cache, srec.face_id,
 			fb_face->cidx, ucs4);

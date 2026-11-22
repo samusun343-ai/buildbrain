@@ -54,10 +54,16 @@ LDFLAGS += $(shell $(PKG_CONFIG) --libs freetype2)
 # libbrainui2.a (M24+) also references HarfBuzz symbols at link time
 LDFLAGS += $(shell $(PKG_CONFIG) --libs harfbuzz)
 LDFLAGS += -lm
-# the libnsfb brain surface registers itself from a constructor
-# in an archive member nothing else references; force the member
-# in or nsfb_type_from_name("brain") finds no surface
+# the libnsfb surfaces register themselves from constructors in
+# archive members nothing else references; force the members in.
+# brain_rtns: the display surface (else nsfb_type_from_name("brain")
+# finds no surface).  ram_rtns: the RAM surface — every decoded
+# image bitmap is an NSFB_SURFACE_RAM surface (bitmap_create), so
+# without it nsfb_new(NSFB_SURFACE_RAM) returns NULL, every image
+# conversion fails and pages render broken-object placeholders
+# (integration phase 10 root cause, F-04).
 LDFLAGS += -Wl,-u,brain_rtns
+LDFLAGS += -Wl,-u,ram_rtns
 
 # resource paths: the frontend's own res/ first, then the toolkit
 # fonts directory so the page font can fall back to the bundled

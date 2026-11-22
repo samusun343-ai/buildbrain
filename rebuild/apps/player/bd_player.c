@@ -100,6 +100,8 @@ struct player_app {
     tk_widget *vol_row, *volume, *vol_label;
     tk_widget *drill_row, *drill_label;
     tk_widget *list;
+    tk_widget *empty_label;      /* empty-library guidance
+                                  * (eval F-14) */
     tk_widget *ctx_bar;                    /* tk_bottombar */
     tk_widget *ctx_cells[7];
     tk_widget *status;
@@ -355,6 +357,9 @@ static void rebuild_rows(player_app *app)
     tk_listview_set_items(app->list,
                           (const char *const *)app->row_labels,
                           app->n_rows);
+    if (app->empty_label)
+        tk_set_visible(app->empty_label,
+                       pl_lib_count(app->lib) == 0);
     if (app->rows_are_tracks) {
         const char **subs = malloc((app->n_rows ? app->n_rows : 1) *
                                    sizeof(char *));
@@ -1610,8 +1615,13 @@ player_app *player_app_new(const char *data_root,
                 24, 24);
         }
         tk_drawer_set_on_select(app->win_nav, on_win_nav, app);
-        tk_drawer_attach(nav_pane, app->win_nav);
-        tk_set_flex(app->win_nav, 1);
+        /* int10 (independent review B): same drawer wrap as
+         * settings - 473px of destinations in a 304px pane
+         * clipped the last rows (C5/C10). */
+        tk_widget *nav_scroll = tk_scrollview_new();
+        tk_add_child(nav_pane, nav_scroll);
+        tk_set_flex(nav_scroll, 1);
+        tk_drawer_attach(nav_scroll, app->win_nav);
         tk_drawer_select(app->win_nav, V_SONGS);
 
         tk_set_flex(win_main, 1);
@@ -1722,6 +1732,19 @@ player_app *player_app_new(const char *data_root,
         tk_listview_set_on_activate(app->list, on_list_activate, app);
         tk_set_flex(app->list, 1);
         tk_add_child(lib_parent, app->list);
+        /* int10 (independent review B): the full sentence
+         * measures 544px and was clipped at the right edge
+         * of the 522px WinUI pane (C10); the WinUI form
+         * drops 「ここに」 and fits. */
+        app->empty_label = tk_label_new(app->winui
+            ? "音楽がありません。microSD に音楽ファイルを"
+              "入れると表示されます"
+            : "音楽がありません。microSD に音楽ファイルを"
+              "入れるとここに表示されます");
+        tk_widget_set_text_style(app->empty_label,
+                                 TK_TEXT_CAPTION);
+        tk_set_visible(app->empty_label, false);
+        tk_add_child(lib_parent, app->empty_label);
 
         app->ctx_bar = tk_bottombar_new();
         tk_bottombar_add_cell(app->ctx_bar, app->ic_play, 24, 24,
@@ -2217,9 +2240,25 @@ int main(int argc, char **argv)
     const char *files[64];
     size_t nf = 0;
     for (int i = 1; i < argc && nf < 64; i++) files[nf++] = argv[i];
-    /* Display first, real size (see bd_calc.c main note) */
+    /* Display first, real size (see bd_calc.c main note).
+     * The minimum is per form (proportion pass): the WinUI
+     * split keeps a fixed 304px art pane beside the content
+     * column, and below ~700px wide the content column can
+     * no longer hold the seek/volume row (the seek slider
+     * measured 13px at 480 wide) - so the WinUI form
+     * declares 700x360. The Android form declares 480x336:
+     * its resident chrome (header + tab bar + seek row +
+     * status + transport = ~253px) left the track list
+     * 52px high in the library at 272 and 0px once a track
+     * was selected and the seek row appeared (matrix floor
+     * check) - 336 is the smallest height that keeps a full
+     * row of the list visible in both states. */
     int vw, vh;
-    bd_app_display *disp = bd_app_display_open_ex("ミュージック", 0, 0, 480, 272, 480, 272, &vw, &vh);
+    bool winui = tk_theme_default() &&
+                 tk_theme_default()->style == 2;
+    bd_app_display *disp = bd_app_display_open_ex(
+        "ミュージック", 0, 0,
+        winui ? 700 : 480, winui ? 360 : 336, 480, 272, &vw, &vh);
     player_app *app = player_app_new(data, dirs, nd, mk_alsa, NULL,
                                      vw, vh);
     if (!app) { fprintf(stderr, "bd-player: init failed\n"); return 1; }

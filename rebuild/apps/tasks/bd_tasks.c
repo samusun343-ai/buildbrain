@@ -32,6 +32,19 @@ struct tasks_app {
     tk_widget *add_btn;
     tk_widget *task_list;
     tk_widget *status;
+    /* detail editor as a swapped page (proportion pass):
+     * the editor used to be a permanent block under the list;
+     * its ~270px of fixed fields plus four action rows summed
+     * past every window height and the box crushed the LIST
+     * to 0px - the app's main surface was invisible at every
+     * size in both modes. The editor now replaces the list
+     * area while open (the Google Tasks details form). */
+    tk_widget *detail_scroll;
+    tk_widget *arow;            /* list-page action row */
+    tk_widget *nrow, *lrow;    /* Android list-management rows */
+    tk_widget *lists_page;     /* Android: page holding nrow */
+    bool lists_open;
+    bool editing;
     /* detail editor */
     tk_widget *d_title;
     tk_widget *d_notes;
@@ -338,10 +351,15 @@ int tasks_app_save_detail(tasks_app *app)
 /* actions                                                           */
 /* ---------------------------------------------------------------- */
 
+static void tasks_set_editing(tasks_app *app, bool editing);
+static void tasks_set_lists(tasks_app *app, bool open);
+
 void tasks_app_set_view(tasks_app *app, tm_view view, uint64_t list_id)
 {
     app->view = view;
     app->view_list = list_id;
+    tasks_set_editing(app, false); /* a view switch leaves the editor */
+    tasks_set_lists(app, false);
     refresh_sidebar(app);
     refresh_rows(app);
 }
@@ -487,6 +505,76 @@ static void on_view_combo_change(tk_widget *w, void *ud)
     }
 }
 
+/* Swap the main column between the list page and the detail
+ * editor page (proportion pass). The quick-add row and the
+ * status line stay put in both pages. */
+static void tasks_set_editing(tasks_app *app, bool editing)
+{
+    if (!app->detail_scroll) return;
+    if (app->editing == editing) return;
+    app->editing = editing;
+    if (editing && app->lists_page) {
+        app->lists_open = false;
+        tk_set_visible(app->lists_page, false);
+    }
+    tk_set_visible(app->task_list, !editing);
+    tk_set_visible(app->arow, !editing);
+    if (app->lrow) tk_set_visible(app->lrow, !editing);
+    tk_set_visible(app->detail_scroll, editing);
+    tk_widget_invalidate(app->task_list);
+    tk_widget_invalidate(app->detail_scroll);
+    tk_rect tr = tk_widget_rect(app->top);
+    if (tr.w > 0 && tr.h > 0) tk_root_layout(app->root, tr.w, tr.h);
+}
+
+/* The list-management page (Android, proportion pass): the
+ * list name field + create/rename/delete row used to sit on
+ * the list page permanently, where together with the action
+ * row and the quick-add row it left the task list 1px high
+ * at the declared minimum height (480x272). List CRUD is a
+ * rare, secondary operation, so it gets its own page behind
+ * the action row's リスト管理 button - the same page-swap
+ * pattern as the detail editor. */
+static void tasks_set_lists(tasks_app *app, bool open)
+{
+    if (!app->lists_page) return;
+    if (app->lists_open == open) return;
+    if (open) tasks_set_editing(app, false);
+    app->lists_open = open;
+    tk_set_visible(app->task_list, !open);
+    tk_set_visible(app->arow, !open);
+    tk_set_visible(app->lists_page, open);
+    tk_widget_invalidate(app->task_list);
+    tk_widget_invalidate(app->lists_page);
+    tk_rect tr = tk_widget_rect(app->top);
+    if (tr.w > 0 && tr.h > 0) tk_root_layout(app->root, tr.w, tr.h);
+}
+
+static void on_lists_open(tk_widget *w, void *ud)
+{
+    (void)w;
+    tasks_set_lists(ud, true);
+}
+
+static void on_lists_close(tk_widget *w, void *ud)
+{
+    (void)w;
+    tasks_set_lists(ud, false);
+}
+
+static void on_detail_open(tk_widget *w, void *ud)
+{
+    (void)w;
+    tasks_app *app = ud;
+    if (app->selected_id) tasks_set_editing(app, true);
+}
+
+static void on_detail_close(tk_widget *w, void *ud)
+{
+    (void)w;
+    tasks_set_editing(ud, false);
+}
+
 static void on_task_select(tk_widget *w, void *ud)
 {
     tasks_app *app = ud;
@@ -528,12 +616,16 @@ static void on_save_detail(tk_widget *w, void *ud)
     if (tasks_app_save_detail(app) != 0) {
         tk_label_set_text(app->status, "保存に失敗（日付の形式を確認）");
         tk_widget_invalidate(app->status);
+    } else {
+        tasks_set_editing(app, false);
     }
 }
 static void on_delete(tk_widget *w, void *ud)
 {
     (void)w;
-    tasks_app_delete_selected(ud);
+    tasks_app *app = ud;
+    tasks_app_delete_selected(app);
+    tasks_set_editing(app, false);
 }
 static void on_subtask(tk_widget *w, void *ud)
 {
@@ -632,9 +724,16 @@ tasks_app *tasks_app_new(tm_store *store, const char *today, int w, int h)
         tk_add_child(nrow, app->list_name_field);
         tk_add_child(nrow, btn("色", on_cycle_color, app));
         tk_add_child(left, nrow);
-        tk_widget *lrow = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
-        tk_add_child(lrow, btn("作成", on_new_list, app));
-        tk_add_child(lrow, btn("名前変更", on_rename_list, app));
+        /* the three list actions stack in two rows: on one
+         * row they need ~230px, and in a 480px-wide window
+         * the sidebar is ~154px, which arranged 削除 to
+         * 0px wide (matrix floor check) */
+        tk_widget *lrow = tk_box_new(TK_DIR_VERTICAL, 4, 0);
+        tk_widget *lrow1 = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+        tk_add_child(lrow1, btn("作成", on_new_list, app));
+        tk_add_child(lrow1, btn("名前変更", on_rename_list, app));
+        tk_add_child(lrow, lrow1);
+        tk_widget *lrow2 = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
         tk_widget *ldel = btn("削除", on_delete_list, app);
         const uint32_t *dic = mode_icon(app, "delete", "delete",
                                         theme->text);
@@ -642,7 +741,9 @@ tasks_app *tasks_app_new(tm_store *store, const char *today, int w, int h)
             tk_button_set_icon(ldel, dic, 24, 24);
             tk_button_set_icon_layout(ldel, TK_BTN_ICON_ROW);
         }
-        tk_add_child(lrow, ldel);
+        tk_add_child(lrow2, ldel);
+        tk_add_child(lrow, lrow2);
+        app->lrow = lrow;
         tk_add_child(left, lrow);
         tk_add_child(top, left);
 
@@ -723,6 +824,8 @@ tasks_app *tasks_app_new(tm_store *store, const char *today, int w, int h)
         }
     }
     tk_add_child(arow, del);
+    tk_add_child(arow, btn("詳細", on_detail_open, app));
+    app->arow = arow;
     tk_add_child(main_col, arow);
 
     /* detail editor */
@@ -760,11 +863,27 @@ tasks_app *tasks_app_new(tm_store *store, const char *today, int w, int h)
     tk_add_child(drow2, app->d_url);
     tk_add_child(dgrid, drow2);
     tk_add_child(dgrid, btn("詳細を保存", on_save_detail, app));
-    tk_add_child(main_col, dgrid);
+    tk_add_child(dgrid, btn("閉じる", on_detail_close, app));
+    /* the editor page: a scrollview swapped with the list
+     * (see the struct note) - the fields keep their full
+     * 54px rows at every window size and scroll when the
+     * window is short */
+    app->detail_scroll = tk_scrollview_new();
+    tk_scrollview_set_child(app->detail_scroll, dgrid);
+    tk_set_flex(app->detail_scroll, 1);
+    tk_set_visible(app->detail_scroll, false);
+    tk_add_child(main_col, app->detail_scroll);
 
     if (!app->winui) {
-        /* Android: list management under the detail editor,
-         * then the quick-add row at the very bottom */
+        /* Android: list management lives on its own page
+         * (see tasks_set_lists); the quick-add row follows at
+         * the very bottom of the list page */
+        app->lists_page = tk_box_new(TK_DIR_VERTICAL, 4, 0);
+        tk_set_flex(app->lists_page, 1);
+        tk_set_visible(app->lists_page, false);
+        tk_widget *brow = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+        tk_add_child(brow, btn("戻る", on_lists_close, app));
+        tk_add_child(app->lists_page, brow);
         tk_widget *nrow = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
         app->list_name_field = tk_textfield_new("");
         tk_textfield_set_placeholder(app->list_name_field,
@@ -782,7 +901,10 @@ tasks_app *tasks_app_new(tm_store *store, const char *today, int w, int h)
             tk_button_set_icon_layout(ldel, TK_BTN_ICON_ROW);
         }
         tk_add_child(nrow, ldel);
-        tk_add_child(main_col, nrow);
+        app->nrow = nrow;
+        tk_add_child(app->lists_page, nrow);
+        tk_add_child(main_col, app->lists_page);
+        tk_add_child(app->arow, btn("リスト管理", on_lists_open, app));
         tk_add_child(main_col, qrow);
     }
 

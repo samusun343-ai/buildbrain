@@ -241,9 +241,27 @@ static tk_rect session_mascot_floor(bd_session *s)
         if (bd_shell_desktop_grid_rect(s->shell, &gr)) {
             tk_rect sr = bd_mascot_rect(s->mascot);
             int half = sr.w > 0 ? sr.w / 2 : 104;
-            int fx = gr.x + gr.w + 12 + half + 24;
-            if (mr.x + mr.w - fx >= 110)
-                return (tk_rect){ fx, mr.y, mr.x + mr.w - fx, mr.h };
+            /* The floor is the anchor's walk range: its left
+             * edge puts the sprite's left edge 12px right of
+             * the icon grid, its right edge is the main rect's
+             * right edge.  The previous form additionally
+             * demanded 110px of range beyond a further 24px
+             * margin and fell back to the FULL main rect when
+             * that failed - on the 854px screen with the WinUI
+             * grid (616px and up) the test passed by 3px on the
+             * host catalog and failed in the guest, so the
+             * mascot spawned mid-grid and stayed there
+             * (integration phase 10, second finding).  Now any
+             * non-degenerate range beside the grid is used;
+             * only a sprite wider than the whole strip pins
+             * the anchor to the strip's left edge (the sprite
+             * may then reach past the screen's right edge,
+             * but it never covers the grid). */
+            int lo = gr.x + gr.w + 12 + half;
+            int hi = mr.x + mr.w;
+            if (hi - lo >= 24)
+                return (tk_rect){ lo, mr.y, hi - lo, mr.h };
+            return (tk_rect){ lo, mr.y, 24, mr.h };
         }
     }
     return mr;
@@ -325,6 +343,16 @@ bd_session *bd_session_new(const bd_session_config *cfg)
             mc.floor_area = session_mascot_floor(s);
             mc.seed = (uint32_t)(uintptr_t)s;
             s->mascot = bd_mascot_new(&mc);
+            /* The floor above was computed with s->mascot still
+             * NULL, so session_mascot_floor used the default
+             * half-width and may have fallen back to the full
+             * main rect (wide icon grid, WinUI).  Re-apply it now
+             * that the real sprite size is known; set_floor also
+             * pulls the spawn anchor inside the corrected floor
+             * (integration phase 10). */
+            if (s->mascot)
+                bd_mascot_set_floor(s->mascot,
+                                    session_mascot_floor(s));
             free(pack);
         }
     }
@@ -373,6 +401,7 @@ void bd_session_sync_backend(bd_session *s)
 {
     (void)bd_shell_poll_backend(s->shell);
     (void)bd_shell_poll_wifi(s->shell);
+    (void)bd_shell_poll_windows(s->shell);
 }
 
 int bd_session_refresh_catalog(bd_session *s)

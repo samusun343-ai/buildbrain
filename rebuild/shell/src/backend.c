@@ -176,14 +176,65 @@ static bool sysfs_battery(bd_backend *be, bd_battery_info *out)
 
 /* ---------------- ALSA volume (raw ctl ioctls) ---------------- */
 
-/* Find the "Master" playback volume element and read its range
- * and current value (channel 0). Returns 0 on success. */
+/* Find the playback volume element and read its range and
+ * current value (channel 0). Returns 0 on success.
+ *
+ * The element is found by ENUMERATION, not by the fixed name
+ * "Master": cards name their output volume differently (the
+ * Brain's audio path does not expose a "Master" at all, which
+ * left the volume permanently unreadable - settings showed
+ * 取得不可 while sound itself worked; eval F-13). Preference:
+ * an exact "Master", then any name containing "Master", then
+ * "Volume", then the usual output names, then the first
+ * readable integer mixer element. */
+static int alsa_find_volume_id(int fd, struct snd_ctl_elem_id *out)
+{
+    struct snd_ctl_elem_list list = {0};
+    if (ioctl(fd, SNDRV_CTL_IOCTL_ELEM_LIST, &list) < 0) return -1;
+    unsigned int count = list.count;
+    if (count == 0 || count > 512) return -1;
+    struct snd_ctl_elem_id *ids = calloc(count, sizeof(*ids));
+    if (!ids) return -1;
+    list.pids = ids;
+    list.space = count;   /* without space the kernel copies
+                           * zero ids and every lookup misses */
+    if (ioctl(fd, SNDRV_CTL_IOCTL_ELEM_LIST, &list) < 0) {
+        free(ids);
+        return -1;
+    }
+    int best = -1, best_score = -1;
+    for (unsigned int i = 0; i < count; i++) {
+        if (ids[i].iface != SNDRV_CTL_ELEM_IFACE_MIXER) continue;
+        struct snd_ctl_elem_info info = {0};
+        info.id = ids[i];
+        if (ioctl(fd, SNDRV_CTL_IOCTL_ELEM_INFO, &info) < 0)
+            continue;
+        if (info.type != SNDRV_CTL_ELEM_TYPE_INTEGER) continue;
+        if (!(info.access & SNDRV_CTL_ELEM_ACCESS_READ)) continue;
+        const char *nm = (const char *)ids[i].name;
+        int score;
+        if (strcmp(nm, "Master") == 0) score = 100;
+        else if (strstr(nm, "Master")) score = 80;
+        else if (strstr(nm, "Volume")) score = 60;
+        else if (strcmp(nm, "Speaker") == 0 ||
+                 strcmp(nm, "Headphone") == 0 ||
+                 strcmp(nm, "Headphones") == 0) score = 50;
+        else if (strcmp(nm, "DAC") == 0 ||
+                 strcmp(nm, "PCM") == 0) score = 40;
+        else score = 10;
+        if (score > best_score) { best_score = score; best = (int)i; }
+    }
+    if (best < 0) { free(ids); return -1; }
+    *out = ids[best];
+    free(ids);
+    return 0;
+}
+
 static int alsa_master(int fd, long *minv, long *maxv, long *cur)
 {
     struct snd_ctl_elem_id id = {0};
+    if (alsa_find_volume_id(fd, &id) < 0) return -1;
     struct snd_ctl_elem_info info = {0};
-    id.iface = SNDRV_CTL_ELEM_IFACE_MIXER;
-    snprintf((char *)id.name, sizeof(id.name), "Master");
     info.id = id;
     if (ioctl(fd, SNDRV_CTL_IOCTL_ELEM_INFO, &info) < 0) return -1;
     if (info.type != SNDRV_CTL_ELEM_TYPE_INTEGER) return -1;
@@ -217,8 +268,12 @@ static int alsa_volume_set(bd_backend *be, int pct)
     int rc = alsa_master(fd, &minv, &maxv, NULL);
     if (rc == 0) {
         struct snd_ctl_elem_value val = {0};
-        val.id.iface = SNDRV_CTL_ELEM_IFACE_MIXER;
-        snprintf((char *)val.id.name, sizeof(val.id.name), "Master");
+        /* write to the SAME element the read path found
+         * (alsa_master resolved it by enumeration) */
+        if (alsa_find_volume_id(fd, &val.id) < 0) {
+            close(fd);
+            return -1;
+        }
         long v = minv + ((maxv - minv) * pct + 50) / 100;
         /* set every channel the element has */
         struct snd_ctl_elem_info info = {0};

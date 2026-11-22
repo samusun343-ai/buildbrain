@@ -387,8 +387,21 @@ static void handle_hello(bd_wm_server *s, int fd, const bd_wm_hello *hello)
         w->ch = wa.h - TITLEBAR_H - BORDER;
     } else {
         w->cw = cw; w->ch = ch;
-        w->x = wa.x + 16 + (int)off;
-        w->y = wa.y + 12 + (int)off;
+        int fw = cw + 2 * BORDER, fh = TITLEBAR_H + ch + BORDER;
+        if (fw > wa.w - 64 || fh > wa.h - 64) {
+            /* A window that (nearly) fills the work area is
+             * CENTRED in it, not cascaded: the cascade offset
+             * plus the containment clamp right-aligned the
+             * browser (asked 800x480) at left=50 / right=0,
+             * neither floating nor filled (eval F-05).
+             * Centring gives equal margins on both sides. */
+            w->x = wa.x + (wa.w - fw) / 2;
+            w->y = wa.y + (wa.h - fh) / 2;
+            if (w->y < wa.y) w->y = wa.y;
+        } else {
+            w->x = wa.x + 16 + (int)off;
+            w->y = wa.y + 12 + (int)off;
+        }
         w->state = BD_WIN_NORMAL;
         clamp_pos_to_wa(s, w);
     }
@@ -435,6 +448,10 @@ static void handle_commit(bd_wm_server *s, win *w, const char *payload,
         w->gen = w->pgen;
         w->has_pending = false;
         w->front = c.buf;
+        /* a grown NORMAL window must not end up reaching
+         * past the work area (the size cap alone leaves the
+         * position stale - eval F-05 class) */
+        if (w->state == BD_WIN_NORMAL) clamp_pos_to_wa(s, w);
         add_damage(s, old_frame);
         add_damage(s, frame_of(w));
     } else if (c.gen == w->gen) {
@@ -1093,23 +1110,37 @@ static void draw_chrome(bd_wm_server *s, win *w, tk_canvas *dst,
     tk_canvas_draw_text_st(dst, t, TK_TEXT_HEADING, f.x + 12,
                            f.y + (TITLEBAR_H - lh) / 2, w->title,
                            focused ? t->text : t->text_dim);
-    /* window buttons: minimize (bar), maximize (square),
-     * close (x) - glyphs stroked, faces neutral */
+    /* window buttons: minimize (bar), maximize (square) /
+     * restore (two squares), close (x). All three glyphs share
+     * one 14x14 glyph box at (+13,+13) inside the 40x40 button
+     * box, so their extents all span 13..26 on both axes and
+     * their centres coincide at box+19.5 - the Windows caption
+     * button convention. (Proportion pass: the previous hand-
+     * placed glyphs had centres at y 27.0 / 17.5 / 20.0, up to
+     * 10px apart, measured on the sd-v8 guest shots.) */
     tk_rect mb = min_box(w);
-    tk_canvas_fill_rect(dst, (tk_rect){ mb.x + 13, mb.y + 26, 14, 3 },
+    tk_canvas_fill_rect(dst, (tk_rect){ mb.x + 13, mb.y + 19, 14, 2 },
                         t->text);
     tk_rect xb = max_box(w);
-    if (w->state == BD_WIN_MAXIMIZED)
-        tk_canvas_stroke_rect(dst, (tk_rect){ xb.x + 14, xb.y + 12, 12, 12 },
+    if (w->state == BD_WIN_MAXIMIZED) {
+        /* restore: back square up-right, front square
+         * down-left filled with the band colour so the
+         * overlap reads as two sheets; union extent 13..26 */
+        tk_canvas_stroke_rect(dst, (tk_rect){ xb.x + 16, xb.y + 13, 11, 11 },
                               2, t->text);
-    else
+        tk_canvas_fill_rect(dst, (tk_rect){ xb.x + 13, xb.y + 16, 11, 11 },
+                            t->surface_alt);
+        tk_canvas_stroke_rect(dst, (tk_rect){ xb.x + 13, xb.y + 16, 11, 11 },
+                              2, t->text);
+    } else {
         tk_canvas_stroke_rect(dst, (tk_rect){ xb.x + 13, xb.y + 13, 14, 14 },
                               2, t->text);
+    }
     tk_rect cb = close_box(w);
-    for (int i = 0; i < 12; i++) {
-        tk_canvas_fill_rect(dst, (tk_rect){ cb.x + 14 + i, cb.y + 14 + i, 2, 2 },
+    for (int i = 0; i < 13; i++) {
+        tk_canvas_fill_rect(dst, (tk_rect){ cb.x + 13 + i, cb.y + 13 + i, 2, 2 },
                             t->text);
-        tk_canvas_fill_rect(dst, (tk_rect){ cb.x + 25 - i, cb.y + 14 + i, 2, 2 },
+        tk_canvas_fill_rect(dst, (tk_rect){ cb.x + 25 - i, cb.y + 13 + i, 2, 2 },
                             t->text);
     }
 }
