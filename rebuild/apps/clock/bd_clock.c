@@ -755,7 +755,7 @@ clock_app *clock_app_new(ck_store *store, int local_offset_min,
     app->now_label = tk_label_new("");
     tk_add_child(content, app->now_label);
 
-    tk_widget *brow = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+    tk_widget *brow = tk_box_new(TK_DIR_HORIZONTAL, 9, 0);
     app->banner = tk_label_new("");
     tk_set_flex(app->banner, 1);
     app->snooze_btn = btn("スヌーズ", on_snooze, app);
@@ -777,7 +777,7 @@ clock_app *clock_app_new(ck_store *store, int local_offset_min,
     app->city_list = tk_listview_new();
     tk_set_flex(app->city_list, 1);
     tk_add_child(world, app->city_list);
-    tk_widget *crow = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+    tk_widget *crow = tk_box_new(TK_DIR_HORIZONTAL, 9, 0);
     app->city_combo = tk_combobox_new();
     {
         size_t nb = ck_builtin_count();
@@ -830,7 +830,7 @@ clock_app *clock_app_new(ck_store *store, int local_offset_min,
     tk_add_child(erow2, app->e_snooze);
     tk_add_child(erow2, app->e_sound);
     tk_add_child(al, erow2);
-    tk_widget *abtns = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+    tk_widget *abtns = tk_box_new(TK_DIR_HORIZONTAL, 9, 0);
     tk_add_child(abtns, icon_text_btn(app, "新規", "add", "add",
                                      on_alarm_new, app));
     tk_add_child(abtns, btn("保存", on_alarm_save, app));
@@ -842,7 +842,7 @@ clock_app *clock_app_new(ck_store *store, int local_offset_min,
     tk_widget *swp = tk_box_new(TK_DIR_VERTICAL, 4, 0);
     app->sw_label = tk_label_new("00:00:00.0");
     tk_add_child(swp, app->sw_label);
-    tk_widget *swrow = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+    tk_widget *swrow = tk_box_new(TK_DIR_HORIZONTAL, 9, 0);
     tk_add_child(swrow, btn("開始/停止", on_sw_toggle, app));
     tk_add_child(swrow, btn("ラップ/リセット", on_sw_lap, app));
     tk_add_child(swp, swrow);
@@ -873,7 +873,7 @@ clock_app *clock_app_new(ck_store *store, int local_offset_min,
     tk_add_child(trow, icon_text_btn(app, "作成", "add", "add",
                                      on_timer_new, app));
     tk_add_child(tp, trow);
-    tk_widget *tbtns = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+    tk_widget *tbtns = tk_box_new(TK_DIR_HORIZONTAL, 9, 0);
     tk_add_child(tbtns, btn("開始", on_timer_start, app));
     tk_add_child(tbtns, btn("一時停止", on_timer_pause, app));
     tk_add_child(tbtns, btn("キャンセル", on_timer_cancel, app));

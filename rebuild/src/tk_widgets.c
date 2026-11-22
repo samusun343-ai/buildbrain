@@ -7943,7 +7943,7 @@ tk_widget *tk_filedialog_new(const char *title, const char *start_dir,
     tk_set_flex(st->list, 1);
     tk_listview_set_on_activate(st->list, fd_activate, dlg);
     tk_add_child(dlg, st->list);
-    tk_widget *row = tk_box_new(TK_DIR_HORIZONTAL, 8, 0);
+    tk_widget *row = tk_box_new(TK_DIR_HORIZONTAL, 9, 0);
     tk_widget *cancel = tk_button_new("キャンセル");
     tk_button_set_on_click(cancel, fd_on_cancel, dlg);
     tk_widget *ok = tk_button_new("選択");
@@ -8383,7 +8383,7 @@ tk_widget *tk_colorpicker_new(const char *title, uint32_t initial_rgba)
     st->preview = tk_label_new(" ");
     tk_widget_set_min_size(st->preview, 200, 28);
     tk_add_child(dlg, st->preview);
-    tk_widget *row = tk_box_new(TK_DIR_HORIZONTAL, 8, 0);
+    tk_widget *row = tk_box_new(TK_DIR_HORIZONTAL, 9, 0);
     tk_widget *cancel = tk_button_new("キャンセル");
     tk_button_set_variant(cancel, TK_BTN_TEXT);
     tk_button_set_on_click(cancel, cp_on_cancel, dlg);

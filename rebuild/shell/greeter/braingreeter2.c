@@ -94,16 +94,16 @@ static void greeter_place(int W, int H)
     if (compact) {
         tk_set_visible(avatar_view, false);
         tk_set_fixed_rect(name_label, (tk_rect){ 24, 12, card_w - 48, 26 });
-        tk_set_fixed_rect(pass_field, (tk_rect){ 24, 46, card_w - 48, 48 });
-        tk_set_fixed_rect(error_label, (tk_rect){ 24, 98, card_w - 48, 16 });
-        tk_set_fixed_rect(login_btn_w, (tk_rect){ 24, 118, card_w - 48, 48 });
+        tk_set_fixed_rect(pass_field, (tk_rect){ 24, 46, card_w - 48, 54 });
+        tk_set_fixed_rect(error_label, (tk_rect){ 24, 104, card_w - 48, 16 });
+        tk_set_fixed_rect(login_btn_w, (tk_rect){ 24, 124, card_w - 48, 54 });
     } else {
         tk_set_visible(avatar_view, true);
         tk_set_fixed_rect(avatar_view, (tk_rect){ 24, 24, 64, 64 });
         tk_set_fixed_rect(name_label, (tk_rect){ 104, 42, card_w - 128, 28 });
-        tk_set_fixed_rect(pass_field, (tk_rect){ 24, 108, card_w - 48, 48 });
-        tk_set_fixed_rect(error_label, (tk_rect){ 24, 160, card_w - 48, 18 });
-        tk_set_fixed_rect(login_btn_w, (tk_rect){ 24, 184, card_w - 48, 48 });
+        tk_set_fixed_rect(pass_field, (tk_rect){ 24, 108, card_w - 48, 54 });
+        tk_set_fixed_rect(error_label, (tk_rect){ 24, 166, card_w - 48, 18 });
+        tk_set_fixed_rect(login_btn_w, (tk_rect){ 24, 184, card_w - 48, 54 });
     }
     /* clock + date, centred, in the top third */
     {
@@ -143,11 +143,11 @@ static void greeter_place(int W, int H)
     /* int12: corner buttons use the 18px page margin and a
      * 10px pair gap (blind round 3 counted 14-16px margins
      * and an 8px gap as C7/C2 findings). */
-    tk_set_fixed_rect(kbd_btn, (tk_rect){ W - 18 - 176, 18, 176, 48 });
+    tk_set_fixed_rect(kbd_btn, (tk_rect){ W - 18 - 176, 18, 176, 54 });
     tk_set_fixed_rect(reboot_btn_w,
-                      (tk_rect){ W - 18 - 104 - 10 - 104, H - 66, 104, 48 });
+                      (tk_rect){ W - 18 - 104 - 10 - 104, H - 72, 104, 54 });
     tk_set_fixed_rect(power_btn_w,
-                      (tk_rect){ W - 18 - 104, H - 66, 104, 48 });
+                      (tk_rect){ W - 18 - 104, H - 72, 104, 54 });
     tk_set_visible(reboot_btn_w, !osk_open);
     tk_set_visible(power_btn_w, !osk_open);
     tk_set_fixed_rect(osk_widget, (tk_rect){ 0, H - sheet_h, W, sheet_h });

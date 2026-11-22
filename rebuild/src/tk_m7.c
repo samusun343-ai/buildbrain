@@ -2366,8 +2366,21 @@ static void drawer_paint(tk_widget *w, tk_canvas *c,
         y += 56;
     }
     int lh = tk_w_text_lh(w, t);
+    /* int13: row-boundary clipping. The canvas clip is the
+     * scroll viewport when the drawer rides in a scrollview
+     * (settings' nav pane): a row that the viewport cuts
+     * mid-glyph used to leak the top few px of its label at
+     * the panel's bottom edge (blind round 4, photos 19/20).
+     * Rows are now painted whole or not at all - the cut
+     * always lands on a row boundary. */
+    tk_rect clipb = tk_canvas_clip_bounds(c);
     for (size_t i = 0; i < w->n_menu_items; i++) {
         tk_menu_item *it = &w->menu_items[i];
+        if (!it->separator &&
+            (y + DRAWER_ROW > clipb.y + clipb.h || y < clipb.y)) {
+            y += DRAWER_ROW;
+            continue;
+        }
         if (it->separator) {
             tk_canvas_fill_rect(c, (tk_rect){ ox + DRAWER_PAD,
                                               y + 8, pw - 2 * DRAWER_PAD,
@@ -3204,7 +3217,7 @@ tk_size tk_m7_measure(tk_widget *w, tk_constraints c)
             for (size_t i = 0; i < w->n_items; i++)
                 if (w->items[i]) {
                     int tw = tk_text_width_st(t, TK_TEXT_CAPTION,
-                                              w->items[i]) + 16;
+                                              w->items[i]) + 36; /* int13 C7: 18px label inset */
                     if (tw > rw) rw = tw;
                 }
         }

@@ -1202,6 +1202,7 @@ settings_app *settings_app_new(bd_backend *backend, bd_wifi *wifi,
         outer = tk_box_new(TK_DIR_HORIZONTAL, 0, 0);
         app->top = outer;
         tk_widget *pane = tk_box_new(TK_DIR_VERTICAL, 8, 12);
+        tk_box_set_pad_x(pane, 16); /* int13 C7: search face at 18px */
         tk_widget_set_min_size(pane, 256, 0);
         tk_add_child(outer, pane);
         app->search = tk_searchbar_new("設定を検索");

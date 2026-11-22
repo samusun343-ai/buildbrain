@@ -1902,7 +1902,7 @@ player_app *player_app_new(const char *data_root,
             app->time_label = tk_label_new("0:00 / 0:00");
             tk_add_child(col, app->time_label);
         }
-        tk_widget *trow = tk_box_new(TK_DIR_HORIZONTAL, 6, 0);
+        tk_widget *trow = tk_box_new(TK_DIR_HORIZONTAL, 9, 0);
         /* CENTER, not the default STRETCH: the 72px round play
          * button must stay a circle, not an oval stretched to
          * the row's tallest cell */
@@ -2153,7 +2153,7 @@ player_app *player_app_new(const char *data_root,
         app->list_name = tk_textfield_new("");
         tk_textfield_set_placeholder(app->list_name, "プレイリスト名");
         tk_add_child(box, app->list_name);
-        tk_widget *row = tk_box_new(TK_DIR_HORIZONTAL, 8, 0);
+        tk_widget *row = tk_box_new(TK_DIR_HORIZONTAL, 9, 0);
         tk_widget *cancel = btn("キャンセル", on_list_cancel, app);
         tk_button_set_variant(cancel, TK_BTN_TEXT);
         tk_add_child(row, cancel);
@@ -2172,7 +2172,7 @@ player_app *player_app_new(const char *data_root,
         app->rename_field = tk_textfield_new("");
         tk_textfield_set_placeholder(app->rename_field, "新しい名前");
         tk_add_child(box, app->rename_field);
-        tk_widget *row = tk_box_new(TK_DIR_HORIZONTAL, 8, 0);
+        tk_widget *row = tk_box_new(TK_DIR_HORIZONTAL, 9, 0);
         tk_widget *cancel = btn("キャンセル", on_rename_cancel, app);
         tk_button_set_variant(cancel, TK_BTN_TEXT);
         tk_add_child(row, cancel);

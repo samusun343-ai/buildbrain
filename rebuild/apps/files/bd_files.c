@@ -1599,6 +1599,7 @@ files_app *files_app_new(const char *start_dir, const char *data_root,
          * column. No drill-down header. */
         top = tk_box_new(TK_DIR_HORIZONTAL, 4, 6);
         tk_widget *pane = tk_box_new(TK_DIR_VERTICAL, 2, 4);
+        tk_box_set_pad_x(pane, 9); /* int13 C7: nav content at 18px */
         tk_widget_set_min_size(pane, 208, 0);
         tk_widget *cap = tk_label_new("場所");
         tk_widget_set_text_style(cap, TK_TEXT_CAPTION);
@@ -1629,7 +1630,7 @@ files_app *files_app_new(const char *start_dir, const char *data_root,
         tk_widget *right = tk_box_new(TK_DIR_VERTICAL, 4, 6);
         tk_box_set_pad_x(right, BD_PAGE_PAD_X);
         tk_set_flex(right, 1);
-        tk_widget *cmdbar = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+        tk_widget *cmdbar = tk_box_new(TK_DIR_HORIZONTAL, 9, 0);
         tk_widget_set_min_size(cmdbar, 0, 56);
         tk_add_child(cmdbar, header_icon_btn("戻る",
             action_icon(app, "arrow_back", "arrow_left"),
@@ -1664,7 +1665,7 @@ files_app *files_app_new(const char *start_dir, const char *data_root,
          * name + path caption, then search / places / overflow
          * icons. The header is top's first child and Back is
          * its first child (UI test contract, SS5.1). */
-        tk_widget *header = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+        tk_widget *header = tk_box_new(TK_DIR_HORIZONTAL, 9, 0);
         tk_widget_set_min_size(header, 0, 56);
         uint32_t tint = bd_tint_of(tk_theme_default());
         tk_add_child(header, header_icon_btn("戻る",
@@ -1700,7 +1701,7 @@ files_app *files_app_new(const char *start_dir, const char *data_root,
     app->prompt_field = tk_textfield_new("");
     tk_add_child(app->prompt_dlg, app->prompt_title);
     tk_add_child(app->prompt_dlg, app->prompt_field);
-    tk_widget *prompt_btns = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+    tk_widget *prompt_btns = tk_box_new(TK_DIR_HORIZONTAL, 9, 0);
     tk_widget *prompt_cancel = btn("キャンセル", on_prompt_cancel, app);
     tk_button_set_variant(prompt_cancel, TK_BTN_TEXT);
     tk_add_child(prompt_btns, prompt_cancel);

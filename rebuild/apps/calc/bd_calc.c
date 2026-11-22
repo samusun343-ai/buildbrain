@@ -65,6 +65,7 @@ struct calc_app {
     tk_widget *expr_field, *result_label;
     tk_widget *hist_list;
     tk_widget *hist_recent;     /* newest entry, caption (P3) */
+    tk_widget *hist_empty;      /* WinUI pane: empty-state guide (int13) */
     tk_widget *hist_dlg;        /* history sheet (dialog) */
     ckey keys[MAX_KEYS];
     size_t nkeys;
@@ -870,6 +871,8 @@ static void mem_label_sync(calc_app *app)
 static void hist_recent_sync(calc_app *app)
 {
     size_t n = kc_hist_count(app->hist);
+    if (app->hist_empty)
+        tk_set_visible(app->hist_empty, n == 0);
     if (n == 0) {
         set_label(app->hist_recent, "");
         return;
@@ -1203,6 +1206,16 @@ calc_app *calc_app_new(const char *dir, int w, int h)
             tk_widget *ptitle = tk_label_new("履歴");
             tk_widget_set_text_style(ptitle, TK_TEXT_HEADING);
             tk_add_child(pane, ptitle);
+            app->hist_empty = tk_box_new(TK_DIR_VERTICAL, 2, 0);
+            {
+                tk_widget *e1 = tk_label_new("履歴はまだありません");
+                tk_widget_set_text_style(e1, TK_TEXT_CAPTION);
+                tk_add_child(app->hist_empty, e1);
+                tk_widget *e2 = tk_label_new("計算すると、ここに表示されます");
+                tk_widget_set_text_style(e2, TK_TEXT_CAPTION);
+                tk_add_child(app->hist_empty, e2);
+            }
+            tk_add_child(pane, app->hist_empty);
             tk_set_flex(app->hist_list, 1);
             tk_add_child(pane, app->hist_list);
             app->mem_label = tk_label_new("");
@@ -1238,6 +1251,16 @@ calc_app *calc_app_new(const char *dir, int w, int h)
         tk_widget *ptitle = tk_label_new("履歴");
         tk_widget_set_text_style(ptitle, TK_TEXT_HEADING);
         tk_add_child(pane, ptitle);
+        app->hist_empty = tk_box_new(TK_DIR_VERTICAL, 2, 0);
+        {
+            tk_widget *e1 = tk_label_new("履歴はまだありません");
+            tk_widget_set_text_style(e1, TK_TEXT_CAPTION);
+            tk_add_child(app->hist_empty, e1);
+            tk_widget *e2 = tk_label_new("計算すると、ここに表示されます");
+            tk_widget_set_text_style(e2, TK_TEXT_CAPTION);
+            tk_add_child(app->hist_empty, e2);
+        }
+        tk_add_child(pane, app->hist_empty);
         tk_set_flex(app->hist_list, 1);
         tk_add_child(pane, app->hist_list);
         app->mem_label = tk_label_new("");

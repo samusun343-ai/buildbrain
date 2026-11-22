@@ -729,7 +729,7 @@ tasks_app *tasks_app_new(tm_store *store, const char *today, int w, int h)
          * the sidebar is ~154px, which arranged 削除 to
          * 0px wide (matrix floor check) */
         tk_widget *lrow = tk_box_new(TK_DIR_VERTICAL, 4, 0);
-        tk_widget *lrow1 = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+        tk_widget *lrow1 = tk_box_new(TK_DIR_HORIZONTAL, 9, 0);
         tk_add_child(lrow1, btn("作成", on_new_list, app));
         tk_add_child(lrow1, btn("名前変更", on_rename_list, app));
         tk_add_child(lrow, lrow1);
@@ -767,6 +767,14 @@ tasks_app *tasks_app_new(tm_store *store, const char *today, int w, int h)
                                   on_view_combo_change, app);
         tk_set_flex(app->view_combo, 1);
         tk_add_child(hdr, app->view_combo);
+        /* int13: the list-management command rides in the
+         * header row (the combo is flex and absorbs the
+         * width). It used to be a 4th button in the action
+         * row below the list: at the 480px minimum width the
+         * row's four buttons at the C2-A 9px spacing no
+         * longer fit one row, wrapped to two, and crushed
+         * the task list to 0px (test_matrix floor24). */
+        tk_add_child(hdr, btn("リスト管理", on_lists_open, app));
         tk_add_child(top, hdr);
 
         main_col = tk_box_new(TK_DIR_VERTICAL, 4, 0);
@@ -776,7 +784,7 @@ tasks_app *tasks_app_new(tm_store *store, const char *today, int w, int h)
 
     /* quick-add row: top of the main column in WinUI mode,
      * bottom of the screen in Android mode (added last there) */
-    tk_widget *qrow = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+    tk_widget *qrow = tk_box_new(TK_DIR_HORIZONTAL, 9, 0);
     app->quick_field = tk_textfield_new("");
     tk_textfield_set_placeholder(app->quick_field, "新しいタスク");
     tk_set_flex(app->quick_field, 1);
@@ -802,7 +810,7 @@ tasks_app *tasks_app_new(tm_store *store, const char *today, int w, int h)
     tk_set_flex(app->task_list, 1);
     tk_add_child(main_col, app->task_list);
 
-    tk_widget *arow = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+    tk_widget *arow = tk_box_new(TK_DIR_HORIZONTAL, 9, 0);
     /* int12: the three actions' desired widths (348px) exceed
      * the editor column at 480px-wide windows; the box used to
      * clip the last button (詳細) to 14px.  Per the layout
@@ -890,7 +898,7 @@ tasks_app *tasks_app_new(tm_store *store, const char *today, int w, int h)
         tk_widget *brow = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
         tk_add_child(brow, btn("戻る", on_lists_close, app));
         tk_add_child(app->lists_page, brow);
-        tk_widget *nrow = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+        tk_widget *nrow = tk_box_new(TK_DIR_HORIZONTAL, 9, 0);
         app->list_name_field = tk_textfield_new("");
         tk_textfield_set_placeholder(app->list_name_field,
                                      "リスト名");
@@ -910,7 +918,6 @@ tasks_app *tasks_app_new(tm_store *store, const char *today, int w, int h)
         app->nrow = nrow;
         tk_add_child(app->lists_page, nrow);
         tk_add_child(main_col, app->lists_page);
-        tk_add_child(app->arow, btn("リスト管理", on_lists_open, app));
         tk_add_child(main_col, qrow);
     }
 

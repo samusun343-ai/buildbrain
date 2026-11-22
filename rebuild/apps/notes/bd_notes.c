@@ -1010,7 +1010,7 @@ notes_app *notes_app_new(nm_store *store, int w, int h, bool with_osk)
     /* ---------- list screen (Android drill-down) ---------- */
     app->scr_list = tk_box_new(TK_DIR_VERTICAL, 4, 6);
     {
-        tk_widget *hdr = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+        tk_widget *hdr = tk_box_new(TK_DIR_HORIZONTAL, 9, 0);
         tk_widget_set_min_size(hdr, 0, 56);
         tk_widget *tbox = tk_box_new(TK_DIR_VERTICAL, 0, 0);
         tk_set_flex(tbox, 1);
@@ -1085,7 +1085,7 @@ notes_app *notes_app_new(nm_store *store, int w, int h, bool with_osk)
     if (!app->winui) {
     app->scr_folders = tk_box_new(TK_DIR_VERTICAL, 4, 6);
     {
-        tk_widget *hdr = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+        tk_widget *hdr = tk_box_new(TK_DIR_HORIZONTAL, 9, 0);
         tk_widget_set_min_size(hdr, 0, 56);
         tk_add_child(hdr, header_back_btn(app, on_folders_back, app));
         tk_widget *title = tk_label_new("フォルダ");
@@ -1108,7 +1108,7 @@ notes_app *notes_app_new(nm_store *store, int w, int h, bool with_osk)
     if (!app->winui)
         app->scr_editor = tk_box_new(TK_DIR_VERTICAL, 4, 6);
     {
-        tk_widget *hdr = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+        tk_widget *hdr = tk_box_new(TK_DIR_HORIZONTAL, 9, 0);
         tk_widget_set_min_size(hdr, 0, 56);
         if (!app->winui)  /* panes have no back navigation */
             tk_add_child(hdr, header_back_btn(app, on_editor_back,
@@ -1126,7 +1126,7 @@ notes_app *notes_app_new(nm_store *store, int w, int h, bool with_osk)
             on_editor_more, app));
         tk_add_child(app->scr_editor, hdr);
 
-        app->search_bar = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+        app->search_bar = tk_box_new(TK_DIR_HORIZONTAL, 9, 0);
         app->search_field = tk_textfield_new("");
         tk_textfield_set_placeholder(app->search_field, "検索");
         tk_set_flex(app->search_field, 1);
@@ -1137,7 +1137,7 @@ notes_app *notes_app_new(nm_store *store, int w, int h, bool with_osk)
         tk_set_visible(app->search_bar, false);
         tk_add_child(app->scr_editor, app->search_bar);
 
-        app->replace_bar = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+        app->replace_bar = tk_box_new(TK_DIR_HORIZONTAL, 9, 0);
         app->replace_field = tk_textfield_new("");
         tk_textfield_set_placeholder(app->replace_field, "置換後の文字列");
         tk_set_flex(app->replace_field, 1);
@@ -1158,7 +1158,7 @@ notes_app *notes_app_new(nm_store *store, int w, int h, bool with_osk)
          * the WinUI form (OneNote / Notepad ribbon position).
          * The B/I/U labels are the conventional editing-command
          * notation, not icons. */
-        tk_widget *frow = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+        tk_widget *frow = tk_box_new(TK_DIR_HORIZONTAL, 9, 0);
         struct { const char *glyph, *name; tk_notify_cb cb; } fmts[8] = {
             { "#", "見出し", on_heading },
             { "B", "太字", on_bold },
@@ -1207,7 +1207,7 @@ notes_app *notes_app_new(nm_store *store, int w, int h, bool with_osk)
     app->attach_path = tk_textfield_new("");
     tk_textfield_set_placeholder(app->attach_path, "ファイルのパス");
     tk_add_child(app->attach_dlg, app->attach_path);
-    tk_widget *abtns = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+    tk_widget *abtns = tk_box_new(TK_DIR_HORIZONTAL, 9, 0);
     tk_widget *acancel = btn("キャンセル", on_attach_cancel, app);
     tk_button_set_variant(acancel, TK_BTN_TEXT);
     tk_add_child(abtns, acancel);
