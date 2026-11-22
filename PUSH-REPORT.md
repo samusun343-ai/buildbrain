@@ -315,3 +315,13 @@ push した。これで u-boot-brain の push 未完は解消。
   - 申し送り: sd-v11 の盲検第4ラウンドでは評価者間の結論が割れた（評価者G: 不合格2件＝写真23・25 のコマンドピル列の間隔 C2-A 4px で「盲検合格とは言えない」、評価者H: 不合格0で「盲検合格と言える（条件付き）」）。継続ラインの再測でもピル間隔 4px は再現したため、REPORT-integration-11.md §4.4 のとおり**盲検合格とはしない**。本 push は是正版の収蔵であり、盲検合格の主張ではない。残件は同レポート §7（コマンドピル列の 9px 化と CHECKLIST 次期版での C2 区分明文化、C1 推奨寸法未満の広範な要改善ほか）。
   - （本レポート） rebuild: push report update (integration phase 11, sd-v11 sync)
 - buildbrain `master` は無変更。サブモジュールポインタも不変更。linux-brain / u-boot-brain は今回の push 対象外。
+
+## 2026-11-23 第6弾 push（統合フェーズ第12段・sd-v12）
+
+- buildbrain `rebuild` ブランチ: `7fce57b24` → コミットを追加して push。
+  - `cb6f4bb1a` 第12段: 盲検第4ラウンド残件の是正（コマンドピル列の間隔 9px 化＝タスク/時計/メモ/ファイル/プレーヤー/共通ダイアログほか、グリーター固定矩形の 54px 化＝shell/greeter/braingreeter2.c、C1 測定注意の明文化、左端余白 18px の C7 是正＝設定/ファイル WinUI の pad_x 追加と時計 navrail 拡幅、設定 WinUI サイドバー下端の次行グリフ漏れ＝src/tk_m7.c の drawer 行境界クリッピング、電卓 WinUI 履歴パネルの空状態案内＝apps/calc/bd_calc.c、ゴールデン8件の再生成）＋ REPORT-integration-12.md を repo ルートへ収蔵。発行イメージ sd-v12.img（md5 `0fe0a6722d1db310d7151ca689530463`）。
+  - 同期方法: 作業ツリー（buildbrain-work/rebuild/）から repo の rebuild/ へ rsync（--delete なし、ビルド生成物 *.o/*.a/*.so と browser-engine の作業領域＝toolchain/.sysroot*/.work-* と展開済み上流 NetSurf ツリーは除外し前端 frontends/brain のみ別途同期、repo 側の rebuild/.gitignore は保持）。変更は追跡済み18ファイルのみ（アプリ7点・ゴールデン8点・グリーター1点・ツールキット2点）で、新規ソースは無し（作業側のみに存在／差分となったファイルは全て ELF 実行ファイル等のビルド生成物と libbrainime の *.a/*.o・m*work 実験ファイルで、従来方針どおり収蔵対象外）。上流 NetSurf ツリーの混入は無し（前端 frontends/brain に差分なし）。os-surgery/ に差分は無かった。image-work/ のイメージ本体と証拠ディレクトリ int13/ は収蔵していない（レポート本文のみ収蔵。盲検評価書 review-I.md / review-J.md も image-work/int13/ 側にのみ存在し、repo へは収蔵していない）。
+  - 申し送り（盲検第5ラウンド）: フェーズ12では盲検第5ラウンドがライン側で未実施だった（盲検セットと CHECKLIST-v12 は用意されたが、ライン側サブエージェントは独立評価者を立てられなかった。REPORT-integration-12.md §7）。その後、親が評価者2名（I・J）を立てて実施し、結論は両者とも **「盲検合格とはしない」**（評価者I: C7 不合格4件＝写真18・19・21・29 の矩形テーマのサイドバー／検索欄の左余白 16px／12px、評価者J: C7 不合格2件＝写真34・35 のブラウザ窓内容端からの本文・画像左余白 11px。評価書は image-work/int13/review-I.md と review-J.md）。本 push は是正版の収蔵であり、盲検合格の主張ではない。
+  - 申し送り（eMMC 事故）: REPORT-integration-12.md §6.3 のとおり、本ラインの追加スクリプト（wince2.py）が正規ハーネスの作業コピー（emmc-int9-wince.img）を経由せず、作業コピーでない実 emmc-int9.img を起動し、WinCE 初回設定ウィザードが進んだことで **emmc-int9.img の md5 が `b6d9fc54fd3cb1520c7e025d9bbbaec5` から `2af360a02f452979b4de84ba3b1845f5` に変化した**。影響範囲は WinCE 側の初回設定状態のみで、Brainux（SD）側・sd-v12 には無関係と報告されている。image-work 内に旧状態と同一の複製は存在せず、復旧の要否は eMMC の所有ライン（QEMU ライン／親）の判断待ち。本 push では eMMC イメージには一切触れていない。
+  - （本レポート） rebuild: push report update (integration phase 12, sd-v12 sync)
+- buildbrain `master` は無変更。サブモジュールポインタも不変更。linux-brain / u-boot-brain は今回の push 対象外。
