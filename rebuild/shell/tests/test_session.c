@@ -243,11 +243,17 @@ static char *write_session_pack(void)
         for (int j = 0; j < 6; j++)
             sput16(p, (size_t)j * 2, (uint16_t)poses[i][j]);
     }
-    uint32_t *atlas = (uint32_t *)(b + atlas_off);
+    /* atlas_off is not 4-byte aligned in this synthetic pack;
+     * write through memcpy (the loader reads the atlas the
+     * same way - a direct uint32_t* store is UB and would
+     * fault on the ARMv5 target) */
     for (int y = 0; y < 40; y++)
         for (int x = 0; x < 32; x++) {
-            atlas[y * 64 + x] = 0xFFFF0000u;
-            atlas[y * 64 + 32 + x] = 0x80008000u;
+            uint32_t red = 0xFFFF0000u, half = 0x80008000u;
+            memcpy(b + atlas_off + ((size_t)y * 64 + x) * 4,
+                   &red, 4);
+            memcpy(b + atlas_off + ((size_t)y * 64 + 32 + x) * 4,
+                   &half, 4);
         }
     char tmpl[] = "/tmp/bdsesspackXXXXXX";
     int fd = mkstemp(tmpl);

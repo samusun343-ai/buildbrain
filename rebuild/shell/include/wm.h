@@ -58,7 +58,24 @@ enum bd_wm_msg {
 };
 
 typedef struct { uint32_t magic, type, len; } bd_wm_hdr;
-typedef struct { char title[64]; int32_t req_w, req_h; } bd_wm_hello;
+/* HELLO payload. req_w/req_h are the requested content size;
+ * 0x0 (or the BD_WM_HELLO_MAXIMIZE flag) is the explicit
+ * "open maximized" intent - an app states its intent, not the
+ * panel's dimensions (DESIGN-layout-contract.md section 2.3).
+ * min_w/min_h declare the smallest content the app can lay
+ * out in; the server enforces it on resize (section 2.4).
+ * The struct may only grow by APPENDING: the server accepts
+ * every historical HELLO length (the original 72-byte form
+ * included) because frozen binaries that link an old client
+ * (nsfb-brain) ship unchanged across images and must keep
+ * working - "existing apps run as-is" is absolute. */
+#define BD_WM_HELLO_MAXIMIZE 1u
+typedef struct {
+    char title[64];
+    int32_t req_w, req_h;
+    int32_t min_w, min_h;
+    uint32_t flags;
+} bd_wm_hello;
 typedef struct { uint32_t win_id, gen; int32_t w, h; } bd_wm_geom;
 typedef struct { uint32_t gen; int32_t buf, nrects; } bd_wm_commit;
 typedef struct { uint32_t gen; int32_t buf; } bd_wm_bufref;
@@ -237,6 +254,12 @@ typedef struct {
  * to running standalone). */
 bd_wm_client *bd_wm_client_open(const char *sock_path, const char *title,
                                 int req_w, int req_h);
+/* Extended connect: declares the app's minimum content size
+ * (min_w/min_h, 0 = server default) and HELLO flags
+ * (BD_WM_HELLO_MAXIMIZE for the maximized intent). */
+bd_wm_client *bd_wm_client_open_ex(const char *sock_path, const char *title,
+                                   int req_w, int req_h,
+                                   int min_w, int min_h, uint32_t flags);
 void bd_wm_client_close(bd_wm_client *cl); /* sends BYE */
 bool bd_wm_client_dead(const bd_wm_client *cl);
 uint32_t bd_wm_client_id(const bd_wm_client *cl);

@@ -6,6 +6,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "bd_calc.h"
 #include "bdappmode.h"
+#include "bdapp_run.h"
 #include "bdicon.h"
 #include "bdstore.h"
 
@@ -1210,42 +1211,34 @@ int main(void)
 
     tk_font *font = tk_font_load_default();
     if (font) tk_font_install(font);
-    /* Open the fb first and build at the panel's real size: a
-     * hardcoded size that differs from the fb makes every flush a
-     * no-op (integration phase-2 defect). The fallback size is
-     * only for the headless smoke paint below. */
-    tk_fb *fb = tk_fb_open("/dev/fb0");
-    int vw = fb ? tk_fb_width(fb) : 480;
-    int vh = fb ? tk_fb_height(fb) : 272;
+    /* Open the display first and build at its real size: a
+     * hardcoded size that differs from the display makes every
+     * flush a no-op (integration phase-2 defect). The shared
+     * host probes the shell WM, then fbdev, then nothing; the
+     * fallback size is only for the headless smoke paint below
+     * (bdapp_run.h). */
+    int vw, vh;
+    /* declared minimum 480x360 (not the generic 480x272):
+     * the keypad's five rows plus display and tab bar need
+     * ~360 px to stay tappable; below that the grid compresses
+     * to nothing. The WM enforces the declared minimum, so a
+     * floating calc window can never be shrunk into the
+     * unusable zone (foundation audit, matrix SS7). */
+    bd_app_display *disp = bd_app_display_open_ex("電卓", 0, 0, 480, 360, 480, 272, &vw, &vh);
     calc_app *app = calc_app_new(root, vw, vh);
     if (!app) { fprintf(stderr, "bd-calc: cannot build UI\n"); return 1; }
 
-    tk_canvas *canvas = tk_canvas_new(vw, vh);
-    const tk_theme *theme = tk_theme_default();
-    if (fb && canvas) {
-        tk_evdev *ev = tk_evdev_open("/dev/input/event0");
-        for (;;) {
-            tk_event e;
-            if (ev) {
-                while (tk_evdev_poll(ev, &e)) {
-                    if (e.type == TK_EV_ACTION && e.action == TK_ACTION_HOME)
-                        goto done;
-                    tk_root_event(app->root, &e);
-                }
-            }
-            tk_root_paint_damage(app->root, canvas, theme);
-            tk_fb_flush_damage(fb, canvas);
-            struct timespec ts = { 0, 100 * 1000 * 1000 };
-            nanosleep(&ts, NULL);
-        }
-    done:
-        if (ev) tk_evdev_close(ev);
-        tk_fb_close(fb);
+    if (bd_app_display_live(disp)) {
+        bd_app_display_run(disp, app->root, NULL, NULL, 100);
     } else {
-        tk_root_paint(app->root, canvas, theme);
+        tk_canvas *canvas = tk_canvas_new(vw, vh);
+        if (canvas) {
+            tk_root_paint(app->root, canvas, tk_theme_default());
+            tk_canvas_free(canvas);
+        }
         printf("bd-calc: UI built (headless, no /dev/fb0)\n");
     }
-    if (canvas) tk_canvas_free(canvas);
+    bd_app_display_close(disp);
     calc_app_free(app);
     if (font) tk_font_free(font);
     return 0;

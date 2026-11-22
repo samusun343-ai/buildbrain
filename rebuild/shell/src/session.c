@@ -516,8 +516,10 @@ bool bd_session_event(bd_session *s, tk_event *ev)
         }
         /* The mascot floats above the windows on the desktop:
          * a touch that starts on it is its gesture (drag/tap)
-         * until the finger lifts. */
-        if (s->mascot && (ev->type == TK_EV_POINTER_DOWN ||
+         * until the finger lifts. A hidden mascot (a window is
+         * in front, contract 4.2) never starts a gesture. */
+        if (s->mascot && ((ev->type == TK_EV_POINTER_DOWN &&
+                           bd_mascot_visible(s->mascot)) ||
                           s->mascot_capture)) {
             bool done = bd_mascot_pointer(s->mascot, ev->type, ev->x,
                                           ev->y, session_now(s));
@@ -527,6 +529,17 @@ bool bd_session_event(bd_session *s, tk_event *ev)
             }
             if (ev->type == TK_EV_POINTER_UP) s->mascot_capture = false;
         }
+        /* Shell overlays (launcher, recents switcher, quick
+         * settings, notification sheet) are composited ABOVE
+         * the windows, so at points they cover the shell gets
+         * first claim: the WM-first order below would hand a
+         * tap on a switcher card to the maximized window
+         * underneath it, and the card could never be tapped
+         * (integration phase 6). Points the overlay does not
+         * consume still fall through to the windows. */
+        if (bd_shell_overlay_hit(s->shell, ev->x, ev->y) &&
+            tk_root_event(s->root, ev))
+            return true;
         int wt = ev->type == TK_EV_POINTER_DOWN ? BD_WM_EV_POINTER_DOWN :
                  ev->type == TK_EV_POINTER_UP ? BD_WM_EV_POINTER_UP :
                                                 BD_WM_EV_POINTER_MOVE;
@@ -635,6 +648,22 @@ static size_t session_frame(bd_session *s)
             cd[i] = tk_canvas_damage_rect(s->canvas, i);
         bd_mascot_paint(s->mascot, s->canvas, cd, ncd);
     }
+    /* Shell overlays (launcher, recents switcher, quick
+     * settings, notification sheet) belong ABOVE the windows:
+     * they were painted as part of the shell root UNDER the
+     * composited windows, so while one is open its surface is
+     * repainted over the windows (phase 6). Only the panels'
+     * own rects are repainted, and only while one is open -
+     * a quiet desktop frame still transfers zero bytes. */
+    {
+        tk_rect ov[4];
+        size_t nov = bd_shell_overlay_rects(s->shell, ov, 4);
+        for (size_t i = 0; i < nov; i++)
+            tk_root_invalidate_rect(s->root, ov[i]);
+        if (nov)
+            tk_root_paint_damage(s->root, s->canvas,
+                                 tk_theme_default());
+    }
     if (osk.w > 0)
         tk_root_paint_damage(oroot, s->canvas, tk_theme_default());
     if (s->fb) return tk_fb_flush_damage(s->fb, s->canvas);
@@ -707,18 +736,31 @@ size_t bd_session_step(bd_session *s, int timeout_ms)
         bd_session_refresh_catalog(s);
     }
     session_clock(s);
-    /* 3b. Desktop mascot: visibility policy (desktop view only;
-     * hidden over a focused fullscreen window unless the user
-     * opted in) and one simulation tick. Its damage is folded
-     * into the frame below. */
+    /* 3b. Desktop mascot: visibility policy and one simulation
+     * tick. Its damage is folded into the frame below.
+     * Layer rule (DESIGN-layout-contract.md 4.2): the mascot
+     * lives on the DESKTOP layer, so it is present only while
+     * the desktop itself is the frontmost surface - no window
+     * in front of it. The rule this replaces hid it only over
+     * a focused FULLSCREEN window, which let it paint over a
+     * maximized app's content (the phase-6 follow-up finding:
+     * the mascot covered the settings scrollbar and the
+     * calculator's right column in the guest shots). HOME
+     * minimizes every window, so "desktop frontmost" is
+     * exactly "no non-minimized window exists"; the old
+     * mascot/fullscreen opt-in is subsumed and gone. */
     if (s->mascot) {
         bool vis = bd_shell_view(s->shell) == BD_VIEW_DESKTOP;
-        if (vis && !s->mascot_over_fs) {
-            uint32_t fid = bd_wm_server_focused(s->wm);
-            bd_wm_win_info info;
-            if (fid && bd_wm_server_info_id(s->wm, fid, &info) &&
-                info.state == BD_WIN_FULLSCREEN)
-                vis = false;
+        if (vis) {
+            size_t n = bd_wm_server_count(s->wm);
+            for (size_t i = 0; i < n; i++) {
+                bd_wm_win_info info;
+                if (bd_wm_server_info(s->wm, i, &info) &&
+                    info.state != BD_WIN_MINIMIZED) {
+                    vis = false;
+                    break;
+                }
+            }
         }
         bd_mascot_set_floor(s->mascot, session_mascot_floor(s));
         bd_mascot_set_visible(s->mascot, vis);

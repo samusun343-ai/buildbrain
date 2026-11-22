@@ -135,11 +135,16 @@ static char *write_pack(void)
     }
     /* atlas: frame 0 opaque red (premult ARGB), frame 1
      * half-alpha green: a=128, g premult = 255*128/255 = 128 */
-    uint32_t *atlas = (uint32_t *)(b + atlas_off);
+    /* atlas_off is not 4-byte aligned here; write through
+     * memcpy (same fix as test_session.c: a direct uint32_t*
+     * store is UB and would fault on the ARMv5 target) */
     for (int y = 0; y < 40; y++)
         for (int x = 0; x < 32; x++) {
-            atlas[y * 64 + x] = 0xFFFF0000u;
-            atlas[y * 64 + 32 + x] = 0x80008000u;
+            uint32_t red = 0xFFFF0000u, half = 0x80008000u;
+            memcpy(b + atlas_off + ((size_t)y * 64 + x) * 4,
+                   &red, 4);
+            memcpy(b + atlas_off + ((size_t)y * 64 + 32 + x) * 4,
+                   &half, 4);
         }
     char tmpl[] = "/tmp/test-mascot-XXXXXX";
     int fd = mkstemp(tmpl);
@@ -299,10 +304,13 @@ static char *write_pack_v2(void)
         for (int j = 0; j < 6; j++)
             put16(p, (size_t)j * 2, (uint16_t)poses[i][j]);
     }
-    uint32_t *atlas = (uint32_t *)(b + atlas_off);
+    /* unaligned atlas offset: memcpy writes, as above */
     for (int y = 0; y < 40; y++)
-        for (int x = 0; x < 32; x++)
-            atlas[y * 64 + x] = 0xFFFF0000u; /* opaque red */
+        for (int x = 0; x < 32; x++) {
+            uint32_t red = 0xFFFF0000u; /* opaque red */
+            memcpy(b + atlas_off + ((size_t)y * 64 + x) * 4,
+                   &red, 4);
+        }
     char tmpl[] = "/tmp/test-mascot2-XXXXXX";
     int fd = mkstemp(tmpl);
     if (fd < 0) { free(b); return NULL; }
@@ -436,10 +444,13 @@ static char *write_pack_v3(void)
         for (int j = 0; j < 6; j++)
             put16(p, (size_t)j * 2, (uint16_t)poses[i][j]);
     }
-    uint32_t *atlas = (uint32_t *)(b + atlas_off);
+    /* unaligned atlas offset: memcpy writes, as above */
     for (int y = 0; y < 40; y++)
-        for (int x = 0; x < 32; x++)
-            atlas[y * 64 + x] = 0xFFFF0000u;
+        for (int x = 0; x < 32; x++) {
+            uint32_t red = 0xFFFF0000u;
+            memcpy(b + atlas_off + ((size_t)y * 64 + x) * 4,
+                   &red, 4);
+        }
     /* region stream */
     uint8_t *rg = b + regions_off;
     size_t ro = 0;
@@ -659,10 +670,13 @@ static char *write_pack_v3_order(void)
         for (int j = 0; j < 6; j++)
             put16(p, (size_t)j * 2, (uint16_t)poses[i][j]);
     }
-    uint32_t *atlas = (uint32_t *)(b + atlas_off);
+    /* unaligned atlas offset: memcpy writes, as above */
     for (int y = 0; y < 40; y++)
-        for (int x = 0; x < 32; x++)
-            atlas[y * 64 + x] = 0xFFFF0000u;
+        for (int x = 0; x < 32; x++) {
+            uint32_t red = 0xFFFF0000u;
+            memcpy(b + atlas_off + ((size_t)y * 64 + x) * 4,
+                   &red, 4);
+        }
     /* region stream (92 B) */
     uint8_t *rg = b + regions_off;
     size_t ro = 0;
@@ -841,8 +855,8 @@ static char *write_pack_v4(void)
         for (int j = 0; j < 6; j++)
             put16(p, (size_t)j * 2, (uint16_t)poses[i][j]);
     }
-    uint32_t *atlas = (uint32_t *)(b + atlas_off);
-    atlas[0] = 0xFFFF0000u;    /* opaque red */
+    { uint32_t red = 0xFFFF0000u;   /* opaque red */
+      memcpy(b + atlas_off, &red, 4); }
     char tmpl[] = "/tmp/test-mascot4-XXXXXX";
     int fd = mkstemp(tmpl);
     if (fd < 0) { free(b); return NULL; }

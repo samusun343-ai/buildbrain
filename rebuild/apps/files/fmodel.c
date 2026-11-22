@@ -239,7 +239,7 @@ int fm_mkdir(const char *dir, const char *name, char *out, size_t cap)
     (void)bd_fsync_dir_of(p);
     if (out) {
         if (strlen(p) + 1 > cap) return -1;
-        strcpy(out, p);
+        snprintf(out, cap, "%s", p);
     }
     return 0;
 }
@@ -253,7 +253,7 @@ int fm_create_file(const char *dir, const char *name, char *out, size_t cap)
     if (bd_write_atomic(p, "", 0) != 0) return -1;
     if (out) {
         if (strlen(p) + 1 > cap) return -1;
-        strcpy(out, p);
+        snprintf(out, cap, "%s", p);
     }
     return 0;
 }
@@ -271,7 +271,7 @@ int fm_rename(const char *path, const char *new_name,
     (void)bd_fsync_dir_of(p);
     if (out) {
         if (strlen(p) + 1 > cap) return -1;
-        strcpy(out, p);
+        snprintf(out, cap, "%s", p);
     }
     return 0;
 }
@@ -358,7 +358,7 @@ int fm_copy(const char *src, const char *dst_dir, bool overwrite,
     if (copied_out) *copied_out = copied;
     if (out) {
         if (strlen(dst) + 1 > cap) return -1;
-        strcpy(out, dst);
+        snprintf(out, cap, "%s", dst);
     }
     return 0;
 }
@@ -379,7 +379,7 @@ int fm_move(const char *src, const char *dst_dir, bool overwrite,
         (void)bd_fsync_dir_of(dst);
         if (out) {
             if (strlen(dst) + 1 > cap) return -1;
-            strcpy(out, dst);
+            snprintf(out, cap, "%s", dst);
         }
         return 0;
     }
@@ -389,7 +389,7 @@ int fm_move(const char *src, const char *dst_dir, bool overwrite,
     if (bd_remove_recursive(src) < 0) return -1;
     if (out) {
         if (strlen(dst) + 1 > cap) return -1;
-        strcpy(out, dst);
+        snprintf(out, cap, "%s", dst);
     }
     return 0;
 }
@@ -928,7 +928,7 @@ int fm_trash_restore(fm_trash *t, uint64_t id, const char *fallback_dir,
     t->total -= size;
     if (out) {
         if (strlen(dst) + 1 > cap) { fm_trash_list_free(&l); return -1; }
-        strcpy(out, dst);
+        snprintf(out, cap, "%s", dst);
     }
     fm_trash_list_free(&l);
     return 0;

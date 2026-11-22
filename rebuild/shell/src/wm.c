@@ -107,6 +107,8 @@ typedef struct win {
     bd_win_state state_before_min;
     tk_rect prev_frame;       /* before maximize/fullscreen */
     int prev_cw, prev_ch;
+    int min_cw, min_ch;       /* client-declared minimum content
+                                 size (HELLO), enforced on resize */
 
     uint32_t gen;
     int fds[2];
@@ -317,6 +319,25 @@ static void remove_win(bd_wm_server *s, win *w)
     free(w);
 }
 
+/* Keep a NORMAL window's frame inside the work area
+ * (DESIGN-layout-contract.md 2.4): programmatic placement -
+ * the initial cascade and the restore path - never leaves
+ * part of a window outside the area the user can see and
+ * reach. (Dragging keeps its own reachability clamp in
+ * bd_wm_server_move.) */
+static void clamp_pos_to_wa(bd_wm_server *s, win *w)
+{
+    tk_rect wa = eff_workarea(s);
+    tk_rect f = frame_of(w);
+    if (f.x < wa.x) w->x += wa.x - f.x;
+    if (f.y < wa.y) w->y += wa.y - f.y;
+    f = frame_of(w);
+    if (f.x + f.w > wa.x + wa.w) w->x -= f.x + f.w - (wa.x + wa.w);
+    if (f.y + f.h > wa.y + wa.h) w->y -= f.y + f.h - (wa.y + wa.h);
+    if (w->x < wa.x) w->x = wa.x;
+    if (w->y < wa.y) w->y = wa.y;
+}
+
 static void handle_hello(bd_wm_server *s, int fd, const bd_wm_hello *hello)
 {
     win *w = calloc(1, sizeof(*w));
@@ -326,29 +347,61 @@ static void handle_hello(bd_wm_server *s, int fd, const bd_wm_hello *hello)
     w->front = -1;
     snprintf(w->title, sizeof(w->title), "%s",
              hello->title[0] ? hello->title : "window");
+    w->min_cw = hello->min_w > MIN_CW ? hello->min_w : MIN_CW;
+    w->min_ch = hello->min_h > MIN_CH ? hello->min_h : MIN_CH;
     tk_rect wa = eff_workarea(s);
     int cw = hello->req_w > 0 ? hello->req_w : 320;
     int ch = hello->req_h > 0 ? hello->req_h : 240;
-    if (cw < MIN_CW) cw = MIN_CW;
-    if (ch < MIN_CH) ch = MIN_CH;
+    if (cw < w->min_cw) cw = w->min_cw;
+    if (ch < w->min_ch) ch = w->min_ch;
     if (cw > wa.w - 2 * BORDER) cw = wa.w - 2 * BORDER;
     if (ch > wa.h - TITLEBAR_H - BORDER)
         ch = wa.h - TITLEBAR_H - BORDER;
-    w->cw = cw; w->ch = ch;
     unsigned off = (s->cascade++ % 5) * 24;
-    w->x = wa.x + 16 + (int)off;
-    w->y = wa.y + 12 + (int)off;
-    w->state = BD_WIN_NORMAL;
+    /* A client that asks for at least the whole work area is
+     * asking for the panel-filling presentation: start it
+     * MAXIMIZED with exactly the geometry set_state would give
+     * it, keeping the floating placement computed above as the
+     * restore geometry. The DE's own apps open this way (they
+     * request the panel size; on a fixed 854x480 panel a
+     * floating near-full-size window would only add cascade
+     * offset and leave the app one gesture away from the
+     * switcher model). Clients that ask for less keep the
+     * classic floating placement - the browser asks for
+     * 800x480 and stays a normal window. The shell panel is
+     * outside the work area either way, so it stays visible
+     * and operable while any window is in front. */
+    if ((hello->flags & BD_WM_HELLO_MAXIMIZE) ||
+        (hello->req_w == 0 && hello->req_h == 0) ||
+        (hello->req_w >= wa.w && hello->req_h >= wa.h)) {
+        w->prev_cw = cw;
+        w->prev_ch = ch;
+        w->prev_frame = (tk_rect){ wa.x + 16 + (int)off,
+                                   wa.y + 12 + (int)off,
+                                   cw + 2 * BORDER,
+                                   TITLEBAR_H + ch + BORDER };
+        w->state = BD_WIN_MAXIMIZED;
+        w->x = wa.x;
+        w->y = wa.y;
+        w->cw = wa.w - 2 * BORDER;
+        w->ch = wa.h - TITLEBAR_H - BORDER;
+    } else {
+        w->cw = cw; w->ch = ch;
+        w->x = wa.x + 16 + (int)off;
+        w->y = wa.y + 12 + (int)off;
+        w->state = BD_WIN_NORMAL;
+        clamp_pos_to_wa(s, w);
+    }
     w->gen = 0;
-    if (alloc_bufs(cw, ch, w->fds, w->px) < 0) { close(fd); free(w); return; }
+    if (alloc_bufs(w->cw, w->ch, w->fds, w->px) < 0) { close(fd); free(w); return; }
     if (s->n >= s->cap) {
         size_t nc = s->cap ? s->cap * 2 : 8;
         win **na = realloc(s->wins, nc * sizeof(win *));
-        if (!na) { free_bufs(cw, ch, w->fds, w->px); close(fd); free(w); return; }
+        if (!na) { free_bufs(w->cw, w->ch, w->fds, w->px); close(fd); free(w); return; }
         s->wins = na; s->cap = nc;
     }
     s->wins[s->n++] = w;
-    bd_wm_geom g = { w->id, w->gen, cw, ch };
+    bd_wm_geom g = { w->id, w->gen, w->cw, w->ch };
     int fds[2] = { w->fds[0], w->fds[1] };
     send_msg(fd, BD_WM_GEOM, &g, sizeof(g), fds, 2);
     add_damage(s, frame_of(w));
@@ -580,11 +633,21 @@ int bd_wm_server_poll(bd_wm_server *s, int timeout_ms)
                  * immediately on connect) */
                 bd_wm_hdr hdr; bd_wm_hello hello;
                 struct pollfd apf = { fd, POLLIN, 0 };
+                /* HELLO is versioned by length: the original
+                 * form (title + req size only, 72 bytes) must
+                 * keep working forever - nsfb-brain is a frozen
+                 * binary that ships unchanged across images and
+                 * links the old client (the phase-8 guest run
+                 * caught it silently falling back to direct-fb
+                 * when the extended form was required). The
+                 * extension fields default to zero. */
+                const size_t hello_v1 = 64 + 2 * sizeof(int32_t);
+                memset(&hello, 0, sizeof(hello));
                 if (poll(&apf, 1, 1000) <= 0 ||
                     recv(fd, &hdr, sizeof(hdr), MSG_WAITALL) != (ssize_t)sizeof(hdr) ||
                     hdr.magic != BD_WM_MAGIC || hdr.type != BD_WM_HELLO ||
-                    hdr.len != sizeof(hello) ||
-                    recv(fd, &hello, sizeof(hello), MSG_WAITALL) != (ssize_t)sizeof(hello)) {
+                    (hdr.len != sizeof(hello) && hdr.len != hello_v1) ||
+                    recv(fd, &hello, hdr.len, MSG_WAITALL) != (ssize_t)hdr.len) {
                     close(fd);
                     continue;
                 }
@@ -694,8 +757,21 @@ bool bd_wm_server_resize(bd_wm_server *s, uint32_t id, int content_w, int conten
 {
     win *w = find_win(s, id);
     if (!w || w->state == BD_WIN_MINIMIZED) return false;
-    if (content_w < MIN_CW) content_w = MIN_CW;
-    if (content_h < MIN_CH) content_h = MIN_CH;
+    /* The client's declared minimum is enforced here, the one
+     * funnel every size change passes through
+     * (DESIGN-layout-contract.md 2.4); the work area caps the
+     * size so a window can never outgrow the visible area
+     * (fullscreen is the explicit exception). */
+    int lo_w = w->min_cw > MIN_CW ? w->min_cw : MIN_CW;
+    int lo_h = w->min_ch > MIN_CH ? w->min_ch : MIN_CH;
+    if (content_w < lo_w) content_w = lo_w;
+    if (content_h < lo_h) content_h = lo_h;
+    if (w->state != BD_WIN_FULLSCREEN) {
+        tk_rect wa = eff_workarea(s);
+        if (content_w > wa.w - 2 * BORDER) content_w = wa.w - 2 * BORDER;
+        if (content_h > wa.h - TITLEBAR_H - BORDER)
+            content_h = wa.h - TITLEBAR_H - BORDER;
+    }
     if (content_w == w->cw && content_h == w->ch && !w->has_pending)
         return true;
     if (w->has_pending) free_bufs(w->pcw, w->pch, w->pfds, w->ppx);
@@ -754,6 +830,16 @@ bool bd_wm_server_set_state(bd_wm_server *s, uint32_t id, bd_win_state st)
             int pcw = w->prev_cw, pch = w->prev_ch;
             w->state = BD_WIN_NORMAL;
             w->x = w->prev_frame.x; w->y = w->prev_frame.y;
+            /* the saved position must still fit the work area
+             * with the restored size (contract 2.4) */
+            tk_rect wa = eff_workarea(s);
+            int fw = pcw + 2 * BORDER, fh = TITLEBAR_H + pch + BORDER;
+            if (w->x < wa.x) w->x = wa.x;
+            if (w->y < wa.y) w->y = wa.y;
+            if (w->x + fw > wa.x + wa.w) w->x = wa.x + wa.w - fw;
+            if (w->y + fh > wa.y + wa.h) w->y = wa.y + wa.h - fh;
+            if (w->x < wa.x) w->x = wa.x;
+            if (w->y < wa.y) w->y = wa.y;
             add_damage(s, frame_of(w));
             return bd_wm_server_resize(s, id, pcw, pch);
         }

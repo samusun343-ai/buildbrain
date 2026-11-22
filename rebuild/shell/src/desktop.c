@@ -588,7 +588,9 @@ static char (*list_desktop_files(const char *dir, size_t *n_out))[256]
         }
     }
     closedir(d);
-    qsort(names, n, sizeof(*names), cmp_names);
+    /* n == 0 leaves names NULL; qsort requires a valid base
+     * pointer even for an empty range (UBSan nonnull). */
+    if (n > 1) qsort(names, n, sizeof(*names), cmp_names);
     *n_out = n;
     return names;
 }

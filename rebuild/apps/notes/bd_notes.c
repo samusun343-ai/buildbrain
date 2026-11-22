@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "bd_notes.h"
 #include "bdappmode.h"
+#include "bdapp_run.h"
 #include "bdicon.h"
 #include "bdstore.h"
 #include "brainime.h"
@@ -1331,6 +1332,12 @@ int notes_ime_test(const char *dict, const char *bisc, const char *root)
 /* ---------------------------------------------------------------- */
 
 #ifdef BD_NOTES_MAIN
+static void notes_tick_cb(void *ud, uint64_t mono)
+{
+    (void)mono;
+    notes_app_autosave((notes_app *)ud);
+}
+
 int main(int argc, char **argv)
 {
     bd_app_theme(); /* display mode from brainreg ui/mode */
@@ -1353,40 +1360,24 @@ int main(int argc, char **argv)
     if (argc > 1) dict = argv[1];
     eng = bi_engine_open(dict);
 
-    /* fb first, real panel size (see bd_calc.c main note) */
-    tk_fb *fb = tk_fb_open("/dev/fb0");
-    int vw = fb ? tk_fb_width(fb) : 480;
-    int vh = fb ? tk_fb_height(fb) : 272;
+    /* Display first, real size (see bd_calc.c main note) */
+    int vw, vh;
+    bd_app_display *disp = bd_app_display_open_ex("メモ", 0, 0, 480, 272, 480, 272, &vw, &vh);
     notes_app *app = notes_app_new(store, vw, vh, true);
     if (eng) notes_app_set_engine(app, eng);
 
-    tk_canvas *canvas = tk_canvas_new(vw, vh);
-    const tk_theme *theme = tk_theme_default();
-    if (fb && canvas) {
-        tk_evdev *ev = tk_evdev_open("/dev/input/event0");
-        for (;;) {
-            tk_event e;
-            if (ev) {
-                while (tk_evdev_poll(ev, &e)) {
-                    if (e.type == TK_EV_ACTION && e.action == TK_ACTION_HOME)
-                        goto done;
-                    tk_root_event(app->root, &e);
-                }
-            }
-            notes_app_autosave(app);
-            tk_root_paint_damage(app->root, canvas, theme);
-            tk_fb_flush_damage(fb, canvas);
-            usleep(20000);
-        }
-    done:
-        if (ev) tk_evdev_close(ev);
-        tk_fb_close(fb);
+    if (bd_app_display_live(disp)) {
+        bd_app_display_run(disp, app->root, notes_tick_cb, app, 20);
     } else {
         /* headless smoke: build + one paint, then exit */
-        tk_root_paint(app->root, canvas, theme);
+        tk_canvas *canvas = tk_canvas_new(vw, vh);
+        if (canvas) {
+            tk_root_paint(app->root, canvas, tk_theme_default());
+            tk_canvas_free(canvas);
+        }
         printf("bd-notes: UI built (headless, no /dev/fb0)\n");
     }
-    if (canvas) tk_canvas_free(canvas);
+    bd_app_display_close(disp);
     notes_app_free(app);
     if (eng) bi_engine_close(eng);
     nm_close(store);

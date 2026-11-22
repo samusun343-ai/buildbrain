@@ -12,6 +12,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "bd_settings.h"
 #include "bdappmode.h"
+#include "bdapp_run.h"
 #include "bdicon.h"
 
 #include <math.h>
@@ -231,6 +232,11 @@ struct settings_app {
     bd_wifi *wifi;           /* borrowed */
     sy_sys *sys;             /* borrowed */
     bool winui;
+    bool compact;   /* short window: compact theme derivation */
+    tk_theme compact_theme;   /* per-app storage for the
+                                 derivation (a file-static copy
+                                 broke mode switches within one
+                                 process - ASan sweep finding) */
 
     /* chrome (built once; visibility switches views) */
     tk_widget *search;
@@ -1162,6 +1168,24 @@ settings_app *settings_app_new(bd_backend *backend, bd_wifi *wifi,
     app->win_w = w;
     app->win_h = h;
 
+    /* Compact derivation (DESIGN-layout-contract.md 1.5): in
+     * a window shorter than the theme's compact_below token,
+     * fixed chrome costs shrink before content does - the
+     * category list's two-line rows take the one-line height
+     * (row_h2 -> row_h via tk_theme_compact) and the home
+     * header tightens - so the home page keeps the four
+     * categories the fullscreen build shows. The derivation
+     * is computed from the CURRENT default theme on every
+     * build (the caller installs the reg theme first); an
+     * earlier first-build snapshot froze the mode for the
+     * whole process and broke the winui test case. */
+    const tk_theme *base_theme = tk_theme_default();
+    app->compact = h > 0 && h < tk_theme_compact_below(base_theme);
+    if (app->compact) {
+        app->compact_theme = tk_theme_compact(base_theme);
+        tk_theme_set_default(&app->compact_theme);
+    }
+
     const tk_theme *t = tk_theme_default();
     app->winui = t->style == 2;
 
@@ -1214,12 +1238,15 @@ settings_app *settings_app_new(bd_backend *backend, bd_wifi *wifi,
         app->status = lbl(main_, "");
         app->page = SET_PAGE_DISPLAY;
     } else {
-        outer = tk_box_new(TK_DIR_VERTICAL, 8, 16);
+        outer = tk_box_new(TK_DIR_VERTICAL, app->compact ? 4 : 8,
+                           app->compact ? 8 : 16);
         app->top = outer;
-        app->hdr_home = tk_box_new(TK_DIR_VERTICAL, 8, 0);
+        app->hdr_home = tk_box_new(TK_DIR_VERTICAL,
+                                   app->compact ? 4 : 8, 0);
         tk_add_child(outer, app->hdr_home);
         tk_widget *title = lbl(app->hdr_home, "設定");
-        tk_widget_set_text_style(title, TK_TEXT_DISPLAY);
+        tk_widget_set_text_style(title, app->compact ? TK_TEXT_TITLE
+                                                     : TK_TEXT_DISPLAY);
         app->search = tk_searchbar_new("設定を検索");
         tk_searchbar_set_on_change(app->search, on_search_change,
                                    app);
@@ -1340,39 +1367,25 @@ int main(void)
     sy_sys *sys = sy_open("/proc", "/var/log");
     tk_font *font = tk_font_load_default();
     if (font) tk_font_install(font);
-    /* fb first, real panel size (see bd_calc.c main note) */
-    tk_fb *fb = tk_fb_open("/dev/fb0");
-    int vw = fb ? tk_fb_width(fb) : 800;
-    int vh = fb ? tk_fb_height(fb) : 600;
+    /* Display first, built at its real size (see bd_calc.c
+     * main note): the shared host probes the shell WM, then
+     * fbdev, then nothing (bdapp_run.h). */
+    int vw, vh;
+    bd_app_display *disp = bd_app_display_open_ex("設定", 0, 0, 480, 272, 800, 600, &vw, &vh);
     settings_app *app = settings_app_new(be, wifi, sys, vw, vh);
     if (!app) { fprintf(stderr, "bd-settings: cannot build UI\n"); return 1; }
 
-    tk_canvas *canvas = tk_canvas_new(vw, vh);
-    const tk_theme *theme = tk_theme_default();
-    if (fb && canvas) {
-        tk_evdev *ev = tk_evdev_open("/dev/input/event0");
-        for (;;) {
-            tk_event e;
-            if (ev) {
-                while (tk_evdev_poll(ev, &e)) {
-                    if (e.type == TK_EV_ACTION && e.action == TK_ACTION_HOME)
-                        goto done;
-                    tk_root_event(app->root, &e);
-                }
-            }
-            tk_root_paint_damage(app->root, canvas, theme);
-            tk_fb_flush_damage(fb, canvas);
-            struct timespec ts = { 0, 20 * 1000 * 1000 };
-            nanosleep(&ts, NULL);
-        }
-    done:
-        if (ev) tk_evdev_close(ev);
-        tk_fb_close(fb);
+    if (bd_app_display_live(disp)) {
+        bd_app_display_run(disp, app->root, NULL, NULL, 20);
     } else {
-        tk_root_paint(app->root, canvas, theme);
+        tk_canvas *canvas = tk_canvas_new(vw, vh);
+        if (canvas) {
+            tk_root_paint(app->root, canvas, tk_theme_default());
+            tk_canvas_free(canvas);
+        }
         printf("bd-settings: UI built (headless, no /dev/fb0)\n");
     }
-    if (canvas) tk_canvas_free(canvas);
+    bd_app_display_close(disp);
     settings_app_free(app);
     sy_close(sys);
     bd_wifi_free(wifi);

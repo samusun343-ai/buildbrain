@@ -3,6 +3,7 @@
 #include "bdstore.h"
 #include "bdmime.h"
 #include "bdappmode.h"
+#include "bdapp_run.h"
 #include "bdicon.h"
 #include "desktop.h"
 #include "reg.h"
@@ -1706,38 +1707,23 @@ int main(int argc, char **argv)
 
     tk_font *font = tk_font_load_default();
     if (font) tk_font_install(font);
-    /* fb first, real panel size (see bd_calc.c main note) */
-    tk_fb *fb = tk_fb_open("/dev/fb0");
-    int vw = fb ? tk_fb_width(fb) : 480;
-    int vh = fb ? tk_fb_height(fb) : 272;
+    /* Display first, real size (see bd_calc.c main note) */
+    int vw, vh;
+    bd_app_display *disp = bd_app_display_open_ex("ファイル", 0, 0, 480, 272, 480, 272, &vw, &vh);
     files_app *app = files_app_new(start, data, vw, vh);
     if (!app) { fprintf(stderr, "bd-files: init failed\n"); return 1; }
 
-    tk_canvas *canvas = tk_canvas_new(vw, vh);
-    const tk_theme *theme = tk_theme_default();
-    if (fb && canvas) {
-        tk_evdev *ev = tk_evdev_open("/dev/input/event0");
-        for (;;) {
-            tk_event e;
-            if (ev) {
-                while (tk_evdev_poll(ev, &e)) {
-                    if (e.type == TK_EV_ACTION && e.action == TK_ACTION_HOME)
-                        goto done;
-                    tk_root_event(app->root, &e);
-                }
-            }
-            tk_root_paint_damage(app->root, canvas, theme);
-            tk_fb_flush_damage(fb, canvas);
-            usleep(20000);
-        }
-    done:
-        if (ev) tk_evdev_close(ev);
-        tk_fb_close(fb);
+    if (bd_app_display_live(disp)) {
+        bd_app_display_run(disp, app->root, NULL, NULL, 20);
     } else {
-        tk_root_paint(app->root, canvas, theme);
+        tk_canvas *canvas = tk_canvas_new(vw, vh);
+        if (canvas) {
+            tk_root_paint(app->root, canvas, tk_theme_default());
+            tk_canvas_free(canvas);
+        }
         printf("bd-files: UI built (headless, no /dev/fb0)\n");
     }
-    if (canvas) tk_canvas_free(canvas);
+    bd_app_display_close(disp);
     files_app_free(app);
     if (font) tk_font_free(font);
     return 0;

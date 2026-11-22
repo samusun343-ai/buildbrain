@@ -254,6 +254,9 @@ struct tk_kbd {
     held_key held[KBD_MAX_HELD];
     int n_held;
     int latest;           /* held[] index of the repeat target, -1 */
+    char rel_text[8];     /* release event's text snapshot: the
+                             event points here, never at the
+                             stack copy of the released key */
 };
 
 void tk_kbd_config_defaults(tk_kbd_config *cfg)
@@ -407,7 +410,15 @@ bool tk_kbd_feed(tk_kbd *k, int code, int value, long now_ms, tk_event *out)
             k->latest--;
         /* Actions are press-only. */
         if (e->kind == TK_KBD_KIND_ACTION) return false;
+        /* fill_event points out->text at the key's snapshot;
+         * for a release that snapshot is `copy`, a stack local
+         * - move it into the kbd's own slot so the pointer the
+         * caller keeps stays valid after this call returns
+         * (ASan stack-use-after-return via the session's key
+         * forwarding, foundation audit). */
+        memcpy(k->rel_text, copy.text, sizeof(k->rel_text));
         fill_event(k, &copy, true, false, false, out);
+        if (out->text) out->text = k->rel_text;
         return true;
     }
     return false;

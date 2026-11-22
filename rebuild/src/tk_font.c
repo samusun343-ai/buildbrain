@@ -648,7 +648,9 @@ void tk_canvas_draw_text_px(tk_canvas *c, const tk_theme *t, int px,
              * glyph is placed at the rounded position, so shaped
              * kerning/ligature advances never accumulate rounding
              * drift along the line. */
-            long pen = ((long)(x + pass)) << 6;
+            /* x may be negative (scrolled text); a left shift
+             * of a negative value is UB, so scale by multiply */
+            long pen = ((long)(x + pass)) * 64;
             for (size_t i = 0; i < n; i++) {
                 tk_shaped_glyph *g = &g_shaped[i];
                 glyph_entry *e = glyph_for_gid(g->src, px, g->glyph);

@@ -65,8 +65,10 @@ static void test_scroll_shift(void)
 {
     const tk_theme *t = tk_theme_default();
     tk_widget *svA, *svB, *rowA, *rowB;
-    tk_root *rA = tk_root_new(build_list_screen(&svA, &rowA));
-    tk_root *rB = tk_root_new(build_list_screen(&svB, &rowB));
+    tk_widget *topA = build_list_screen(&svA, &rowA);
+    tk_widget *topB = build_list_screen(&svB, &rowB);
+    tk_root *rA = tk_root_new(topA);
+    tk_root *rB = tk_root_new(topB);
     tk_root_set_scroll_blit(rA, true);
     tk_root_layout(rA, 800, 480);
     tk_root_layout(rB, 800, 480);
@@ -114,6 +116,7 @@ static void test_scroll_shift(void)
     CHECK(memcmp(tk_canvas_pixels(cA), tk_canvas_pixels(cB),
                  800 * 480 * 4) == 0);
     tk_root_free(rA); tk_root_free(rB);
+    tk_widget_free(topA); tk_widget_free(topB);
     tk_canvas_free(cA); tk_canvas_free(cB);
     tk_fb_close(fA); tk_fb_close(fB);
 }
@@ -151,6 +154,7 @@ static void test_culling(void)
         }
     CHECK(same);
     tk_root_free(r);
+    tk_widget_free(box);
     tk_canvas_free(full); tk_canvas_free(part);
 }
 
@@ -173,7 +177,8 @@ static void test_animation(void)
     CHECK(tk_ease_in_out_cubic(1.0f) == 1.0f);
     CHECK(tk_ease_out_cubic(0.5f) > 0.8f); /* fast start */
 
-    tk_root *r = tk_root_new(tk_box_new(TK_DIR_VERTICAL, 0, 0));
+    tk_widget *top = tk_box_new(TK_DIR_VERTICAL, 0, 0);
+    tk_root *r = tk_root_new(top);
     anim_n = 0; anim_done_n = 0;
     tk_root_tick(r, 1000);
     tk_anim *a = tk_anim_start(r, 0, 100, 160, tk_ease_out_cubic,
@@ -203,6 +208,7 @@ static void test_animation(void)
     CHECK(a == NULL);
     CHECK(anim_n == 1 && anim_vals[0] == 77 && anim_done_n == 1);
     tk_root_free(r);
+    tk_widget_free(top); /* the root does not own its top */
 }
 
 static void test_switch_knob(void)
@@ -241,13 +247,15 @@ static void test_switch_knob(void)
     tk_color snap = tk_canvas_pixel(c, wr.x + 4 + 12, cy);
     CHECK(snap.r == t->surface.r && snap.g == t->surface.g);
     tk_root_free(r);
+    tk_widget_free(box);
     tk_canvas_free(c);
 }
 
 static void test_overlay_slide(void)
 {
     /* no tick ever: the dialog lands at its final rect at once */
-    tk_root *r1 = tk_root_new(tk_box_new(TK_DIR_VERTICAL, 0, 0));
+    tk_widget *top1 = tk_box_new(TK_DIR_VERTICAL, 0, 0);
+    tk_root *r1 = tk_root_new(top1);
     tk_root_layout(r1, 800, 480);
     tk_widget *d1 = tk_dialog_new("確認");
     tk_add_child(d1, tk_label_new("本文"));
@@ -256,7 +264,8 @@ static void test_overlay_slide(void)
     tk_dialog_close(r1, d1);
 
     /* live clock: the dialog starts 12px low and settles */
-    tk_root *r2 = tk_root_new(tk_box_new(TK_DIR_VERTICAL, 0, 0));
+    tk_widget *top2 = tk_box_new(TK_DIR_VERTICAL, 0, 0);
+    tk_root *r2 = tk_root_new(top2);
     tk_root_layout(r2, 800, 480);
     tk_root_tick(r2, 1000);
     tk_widget *d2 = tk_dialog_new("確認");
@@ -266,6 +275,7 @@ static void test_overlay_slide(void)
     tk_root_tick(r2, 1000 + TK_ANIM_DURATION_MS + 40);
     CHECK(tk_widget_rect(d2).y == y_final);
     tk_root_free(r1); tk_root_free(r2);
+    tk_widget_free(top1); tk_widget_free(top2);
     tk_widget_free(d1); tk_widget_free(d2);
 }
 
@@ -328,6 +338,7 @@ static void test_setters(void)
     SETTER_NOOP(tk_set_enabled(slider, false));
 
     tk_root_free(r);
+    tk_widget_free(box);
     tk_canvas_free(c);
 }
 
@@ -444,6 +455,7 @@ static void test_pickers(void)
     send_click(r, wr.x + wr.w - 14, wr.y + wr.h / 4);
     CHECK(picker_changes == 1);
     tk_root_free(r);
+    tk_widget_free(box);
 
     /* time picker wraps hours, honours seconds visibility */
     int hh, mm, ss;
@@ -511,6 +523,7 @@ static void test_listview_composite(void)
     CHECK(!tk_listview_row_checked(lv, 3));
     CHECK(!tk_listview_is_header(lv, 1));
     tk_root_free(r);
+    tk_widget_free(box);
 }
 
 /* ---------- file dialog ---------- */
@@ -548,7 +561,8 @@ static void test_filedialog(void)
     CHECK(strcmp(tk_listview_item(list, 2), "a.txt") == 0);
     CHECK(strcmp(tk_listview_item(list, 3), "c.txt") == 0);
 
-    tk_root *r = tk_root_new(tk_box_new(TK_DIR_VERTICAL, 0, 0));
+    tk_widget *fdtop = tk_box_new(TK_DIR_VERTICAL, 0, 0);
+    tk_root *r = tk_root_new(fdtop);
     tk_root_layout(r, 800, 480);
     tk_filedialog_show(r, dlg);
     CHECK(tk_dialog_is_shown(r, dlg));
@@ -569,6 +583,7 @@ static void test_filedialog(void)
     CHECK(strcmp(fd_result, "/tmp/tk4fd/a.txt") == 0);
     CHECK(!tk_dialog_is_shown(r, dlg));
     tk_root_free(r);
+    tk_widget_free(fdtop);
     tk_widget_free(dlg);
     snprintf(cmd, sizeof cmd, "rm -rf %s", base);
     int rc = system(cmd);

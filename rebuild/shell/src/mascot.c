@@ -65,6 +65,9 @@ struct bd_mascot {
     int size_h, atlas_w, atlas_h, nframes, scale_q8, crop_w_s;
     const uint8_t *frames_tab, *poses_tab;
     const uint32_t *atlas;
+    uint32_t *atlas_copy;   /* aligned copy, made at load when
+                               the pack's atlas offset is not
+                               4-byte aligned (see bd_mascot_new) */
     /* v2: sparse-delta composition */
     int frame_stride;              /* 12 (v1) or 20 (v2) */
     const uint8_t *patches_tab;    /* damage band records */
@@ -343,6 +346,23 @@ bd_mascot *bd_mascot_new(const bd_mascot_config *cfg)
             return NULL;
         }
     }
+    /* The pack format does not guarantee the atlas offset is
+     * 4-byte aligned, but the blit paths read atlas pixels as
+     * uint32_t (blit_sprite). On the ARMv5 target an unaligned
+     * word load silently returns rotated data, so an unaligned
+     * atlas is copied once into an owned aligned buffer at
+     * load; aligned packs keep the zero-copy mmap path. (Found
+     * by UBSan's alignment check, foundation audit.) */
+    if ((uintptr_t)m->atlas & 3u) {
+        size_t bytes = (size_t)m->atlas_w * (size_t)m->atlas_h * 4;
+        m->atlas_copy = malloc(bytes ? bytes : 4);
+        if (!m->atlas_copy) {
+            bd_mascot_free(m);
+            return NULL;
+        }
+        memcpy(m->atlas_copy, m->atlas, bytes);
+        m->atlas = m->atlas_copy;
+    }
     if (m->version >= 2) {
         m->comp = calloc((size_t)m->crop_w_s *
                              (size_t)m->size_h,
@@ -396,6 +416,7 @@ void bd_mascot_free(bd_mascot *m)
 {
     if (!m) return;
     if (m->map) munmap(m->map, m->map_len);
+    free(m->atlas_copy);
     free(m->comp);
     free(m->band_start);
     free(m->rgn_scratch);

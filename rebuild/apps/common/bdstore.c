@@ -220,7 +220,7 @@ int bd_unique_path(const char *path, char *out, size_t cap)
     struct stat st;
     if (stat(path, &st) != 0) {
         if (strlen(path) + 1 > cap) return -1;
-        strcpy(out, path);
+        snprintf(out, cap, "%s", path);
         return 0;
     }
     /* split dir / stem / ext */
@@ -270,12 +270,12 @@ int bd_dirname(const char *path, char *out, size_t cap)
     const char *slash = strrchr(path, '/');
     if (!slash) {
         if (cap < 2) return -1;
-        strcpy(out, ".");
+        snprintf(out, cap, "%s", ".");
         return 0;
     }
     if (slash == path) {
         if (cap < 2) return -1;
-        strcpy(out, "/");
+        snprintf(out, cap, "%s", "/");
         return 0;
     }
     size_t len = (size_t)(slash - path);

@@ -80,11 +80,19 @@ static void save_list(char **arr, size_t n, const char *key)
     size_t total = 1;
     for (size_t i = 0; i < n; i++) total += strlen(arr[i]) + 1;
     char *buf = malloc(total);
-    buf[0] = 0;
+    if (!buf) return;
+    /* bounded by construction: total is the sum of the exact
+     * lengths plus separators and the NUL (this file links
+     * without the toolkit in test_desktop, so no tk_strlcat;
+     * a cursor + memcpy states the bound directly) */
+    char *p = buf;
     for (size_t i = 0; i < n; i++) {
-        if (i) strcat(buf, ";");
-        strcat(buf, arr[i]);
+        if (i) *p++ = ';';
+        size_t len = strlen(arr[i]);
+        memcpy(p, arr[i], len);
+        p += len;
     }
+    *p = '\0';
     reg_set("shell", key, buf);
     free(buf);
 }

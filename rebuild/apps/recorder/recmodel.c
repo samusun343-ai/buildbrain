@@ -406,7 +406,7 @@ size_t rc_peaks(const char *wav_path, uint8_t *out, size_t max)
     char pk[1100];
     snprintf(pk, sizeof(pk), "%s", wav_path);
     char *dot = strrchr(pk, '.');
-    if (dot && strcmp(dot, ".wav") == 0) strcpy(dot, ".peaks");
+    if (dot && strcmp(dot, ".wav") == 0) snprintf(dot, sizeof(pk) - (size_t)(dot - pk), "%s", ".peaks");
     size_t len;
     char *data = bd_read_all(pk, &len);
     if (data) {

@@ -84,6 +84,11 @@ test_wifi: tests/test_wifi.c $(LIB)
 test_session: tests/test_session.c $(LIB) $(TKLIB)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $< -o $@ -L. -lbdshell ../libbrainui2.a $(TEXT_LIBS) -lm
 
+# Real-app session test: driven from the apps tree's check
+# (it needs the built app binaries as arguments).
+test_session_apps: tests/test_session_apps.c $(LIB) $(TKLIB)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $< -o $@ -L. -lbdshell ../libbrainui2.a $(TEXT_LIBS) -lm
+
 test_mascot: tests/test_mascot.c $(LIB) $(TKLIB)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $< -o $@ -L. -lbdshell ../libbrainui2.a $(TEXT_LIBS) -lm
 

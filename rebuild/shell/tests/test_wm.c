@@ -486,6 +486,187 @@ int main(void)
         CHECK(wait_count(2, 3000));
     }
 
+    /* --- born-maximized: a client that asks for at least the
+     * whole work area starts MAXIMIZED with exactly the
+     * geometry set_state would give it (the DE's own apps open
+     * this way - they request the panel size); a client asking
+     * for less in either dimension keeps the floating placement
+     * (the browser's 800-wide ask on an 854 panel is the
+     * standing example) --- */
+    {
+        char *big_args[] = { "./wm_sample_raw", sockpath, "BigApp",
+                             "800", "480", "3060a0", NULL };
+        pid_t big_pid = spawn(big_args);
+        CHECK(wait_count(3, 3000));
+        bd_wm_win_info big;
+        CHECK(info_by_title("BigApp", &big));
+        CHECK(big.state == BD_WIN_MAXIMIZED);
+        CHECK(big.frame.x == 0 && big.frame.y == 0 &&
+              big.frame.w == 800 && big.frame.h == 448);
+        CHECK(big.content.w == 800 - 4 && big.content.h == 448 - 42);
+        CHECK(bd_wm_server_focused(srv) == big.id);
+
+        char *short_args[] = { "./wm_sample_raw", sockpath, "ShortApp",
+                               "800", "400", "3060a0", NULL };
+        pid_t short_pid = spawn(short_args);
+        CHECK(wait_count(4, 3000));
+        bd_wm_win_info shrt;
+        CHECK(info_by_title("ShortApp", &shrt));
+        CHECK(shrt.state == BD_WIN_NORMAL);
+        CHECK(shrt.content.w == 800 - 4 && shrt.content.h == 400);
+
+        /* minimize -> restore returns the born-maximized window
+         * to MAXIMIZED (state_before_min), not to floating */
+        CHECK(bd_wm_server_set_state(srv, big.id, BD_WIN_MINIMIZED));
+        CHECK(bd_wm_server_set_state(srv, big.id, BD_WIN_NORMAL));
+        CHECK(info_by_title("BigApp", &big));
+        CHECK(big.state == BD_WIN_MAXIMIZED);
+        /* an explicit unmaximize lands on the floating restore
+         * geometry: the clamped request size */
+        CHECK(bd_wm_server_set_state(srv, big.id, BD_WIN_NORMAL));
+        CHECK(info_by_title("BigApp", &big));
+        CHECK(big.state == BD_WIN_NORMAL);
+        CHECK(big.content.w == 800 - 4 && big.content.h == 448 - 42);
+        CHECK(bd_wm_server_set_state(srv, big.id, BD_WIN_MAXIMIZED));
+        CHECK(info_by_title("BigApp", &big));
+        CHECK(big.state == BD_WIN_MAXIMIZED &&
+              big.frame.x == 0 && big.frame.y == 0);
+
+        CHECK(bd_wm_server_close(srv, big.id));
+        CHECK(bd_wm_server_close(srv, shrt.id));
+        int status = 0;
+        bool big_out = false, short_out = false;
+        for (int t = 0; t < 3000 && !(big_out && short_out); t += 20) {
+            bd_wm_server_poll(srv, 20);
+            if (!big_out && waitpid(big_pid, &status, WNOHANG) == big_pid)
+                big_out = true;
+            if (!short_out &&
+                waitpid(short_pid, &status, WNOHANG) == short_pid)
+                short_out = true;
+        }
+        CHECK(big_out && short_out);
+        CHECK(wait_count(2, 3000));
+    }
+
+    /* --- layout contract: declared minimum is ENFORCED by
+     * the WM, the maximize intent is a flag (not a size), and
+     * a floating window's initial frame lands inside the
+     * work area (DESIGN-layout-contract.md SS2) --- */
+    {
+        int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+        struct sockaddr_un un = {0};
+        un.sun_family = AF_UNIX;
+        snprintf(un.sun_path, sizeof(un.sun_path), "%s", sockpath);
+        CHECK(connect(fd, (struct sockaddr *)&un, sizeof(un)) == 0);
+        bd_wm_hello hello = {0};
+        snprintf(hello.title, sizeof(hello.title), "MinWin");
+        hello.req_w = 300; hello.req_h = 200;
+        hello.min_w = 480; hello.min_h = 272;
+        raw_send(fd, BD_WM_HELLO, &hello, sizeof(hello));
+        CHECK(wait_count(3, 3000));
+        bd_wm_win_info mw;
+        CHECK(info_by_title("MinWin", &mw));
+        CHECK(mw.state == BD_WIN_NORMAL);
+        /* the declared minimum applies from birth: the
+         * 300x200 request was clamped UP to 480x272 */
+        CHECK(mw.content.w == 480 && mw.content.h == 272);
+        /* A resize is negotiated: the server answers with a
+         * RESIZE message carrying the size it will accept.
+         * Below the minimum it clamps UP... */
+        raw_reader rr = { .fd = fd };
+        char payload[256];
+        uint32_t mlen = 0;
+        /* move off the minimum first (a clamped resize that
+         * lands on the current size is a no-op by design) */
+        CHECK(bd_wm_server_resize(srv, mw.id, 600, 300));
+        CHECK(raw_wait(&rr, BD_WM_RESIZE, payload, &mlen, 3000));
+        bd_wm_geom g0;
+        memcpy(&g0, payload, sizeof(g0));
+        CHECK(g0.w == 600 && g0.h == 300);
+        CHECK(bd_wm_server_resize(srv, mw.id, 100, 100));
+        CHECK(raw_wait(&rr, BD_WM_RESIZE, payload, &mlen, 3000));
+        bd_wm_geom g;
+        memcpy(&g, payload, sizeof(g));
+        CHECK(g.w == 480 && g.h == 272);
+        /* ...and past the work area it clamps DOWN to it */
+        CHECK(bd_wm_server_resize(srv, mw.id, 5000, 5000));
+        CHECK(raw_wait(&rr, BD_WM_RESIZE, payload, &mlen, 3000));
+        memcpy(&g, payload, sizeof(g));
+        CHECK(g.w == 800 - 4 && g.h == 448 - 42);
+        close(fd);
+        CHECK(wait_count(2, 3000));
+    }
+    {
+        int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+        struct sockaddr_un un = {0};
+        un.sun_family = AF_UNIX;
+        snprintf(un.sun_path, sizeof(un.sun_path), "%s", sockpath);
+        CHECK(connect(fd, (struct sockaddr *)&un, sizeof(un)) == 0);
+        bd_wm_hello hello = {0};
+        snprintf(hello.title, sizeof(hello.title), "MaxFlag");
+        hello.req_w = 200; hello.req_h = 120;
+        hello.flags = BD_WM_HELLO_MAXIMIZE;
+        raw_send(fd, BD_WM_HELLO, &hello, sizeof(hello));
+        CHECK(wait_count(3, 3000));
+        bd_wm_win_info mf;
+        CHECK(info_by_title("MaxFlag", &mf));
+        CHECK(mf.state == BD_WIN_MAXIMIZED);
+        CHECK(mf.frame.x == 0 && mf.frame.y == 0 &&
+              mf.frame.w == 800 && mf.frame.h == 448);
+        CHECK(mf.content.w == 800 - 4 && mf.content.h == 448 - 42);
+        close(fd);
+        CHECK(wait_count(2, 3000));
+    }
+    {
+        int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+        struct sockaddr_un un = {0};
+        un.sun_family = AF_UNIX;
+        snprintf(un.sun_path, sizeof(un.sun_path), "%s", sockpath);
+        CHECK(connect(fd, (struct sockaddr *)&un, sizeof(un)) == 0);
+        bd_wm_hello hello = {0};
+        snprintf(hello.title, sizeof(hello.title), "PlaceWin");
+        hello.req_w = 796; hello.req_h = 400;
+        raw_send(fd, BD_WM_HELLO, &hello, sizeof(hello));
+        CHECK(wait_count(3, 3000));
+        bd_wm_win_info pw;
+        CHECK(info_by_title("PlaceWin", &pw));
+        CHECK(pw.state == BD_WIN_NORMAL);
+        /* the whole frame is inside the work area */
+        CHECK(pw.frame.x >= 0 && pw.frame.y >= 0 &&
+              pw.frame.x + pw.frame.w <= 800 &&
+              pw.frame.y + pw.frame.h <= 448);
+        close(fd);
+        CHECK(wait_count(2, 3000));
+    }
+
+    /* --- protocol compat: the ORIGINAL 72-byte HELLO (title
+     * + req size only) must still be accepted. nsfb-brain is
+     * a frozen binary linking the old client; when the
+     * extended HELLO was first required it silently fell
+     * back to direct framebuffer painting in the guest
+     * (phase-8 finding). Frozen clients are forever. --- */
+    {
+        int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+        struct sockaddr_un un = {0};
+        un.sun_family = AF_UNIX;
+        snprintf(un.sun_path, sizeof(un.sun_path), "%s", sockpath);
+        CHECK(connect(fd, (struct sockaddr *)&un, sizeof(un)) == 0);
+        struct { char title[64]; int32_t req_w, req_h; } old;
+        memset(&old, 0, sizeof(old));
+        snprintf(old.title, sizeof(old.title), "LegacyWin");
+        old.req_w = 200; old.req_h = 120;
+        bd_wm_hdr hdr = { BD_WM_MAGIC, BD_WM_HELLO, sizeof(old) };
+        (void)!write(fd, &hdr, sizeof(hdr));
+        (void)!write(fd, &old, sizeof(old));
+        CHECK(wait_count(3, 3000));
+        bd_wm_win_info lw;
+        CHECK(info_by_title("LegacyWin", &lw));
+        CHECK(lw.state == BD_WIN_NORMAL);
+        CHECK(lw.content.w == 200 && lw.content.h == 120);
+        close(fd);
+        CHECK(wait_count(2, 3000));
+    }
+
     /* --- close: server request exits the client, window goes --- */
     CHECK(bd_wm_server_close(srv, tk.id));
     {

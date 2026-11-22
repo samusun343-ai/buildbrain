@@ -690,8 +690,12 @@ void bd_shell_refresh_apps(bd_shell *sh)
         sh->cap_results = m;
         sh->results = realloc(sh->results, m * sizeof(de_entry *));
     }
-    memcpy(sh->results, tmp, (m < 256 ? m : 256) * sizeof(de_entry *));
     sh->n_results = m < 256 ? m : 256;
+    /* results may still be NULL when nothing matched yet;
+     * memcpy requires a valid destination even for 0 bytes
+     * (UBSan nonnull) */
+    if (sh->n_results)
+        memcpy(sh->results, tmp, sh->n_results * sizeof(de_entry *));
 
     /* pins, resolved against the catalog */
     sh->n_pin_entries = 0;
@@ -819,6 +823,17 @@ static void on_gear_btn(tk_widget *w, void *ud)
     else bd_shell_set_quick_open(sh, !sh->quick_open);
 }
 
+/* Overlay open/close changes which subtrees are visible, and
+ * the toolkit only assigns rects at layout time: a subtree
+ * that was hidden at the last layout has zeroed rects and
+ * neither paints nor hit-tests. Re-run the layout (idempotent,
+ * sized from the last call) so a freshly opened overlay is
+ * arranged in the same turn. No-op before the first layout. */
+static void shell_relayout(bd_shell *sh)
+{
+    if (sh->w > 0 && sh->h > 0) bd_shell_layout(sh, sh->w, sh->h);
+}
+
 static void on_clock_btn(tk_widget *w, void *ud)
 {
     (void)w;
@@ -826,6 +841,7 @@ static void on_clock_btn(tk_widget *w, void *ud)
     sh->sheet_open = !sh->sheet_open;
     tk_set_visible(sh->sheet_panel, sh->sheet_open);
     if (sh->sheet_open) bd_shell_set_quick_open(sh, false);
+    shell_relayout(sh);
 }
 
 static void on_dismiss_btn(tk_widget *w, void *ud)
@@ -2032,6 +2048,54 @@ static void recents_rebuild(bd_shell *sh)
 
 bool bd_shell_recents_open(const bd_shell *sh) { return sh->recents_open; }
 
+/* The overlay surfaces that float above the windows, in
+ * stacking order. Visibility is the open state: every opener
+ * toggles its panel's visibility. */
+static size_t overlay_panels(const bd_shell *sh, tk_widget **out)
+{
+    size_t n = 0;
+    if (sh->launcher_view && tk_is_visible(sh->launcher_view))
+        out[n++] = sh->launcher_view;
+    if (sh->recents_panel && tk_is_visible(sh->recents_panel))
+        out[n++] = sh->recents_panel;
+    if (sh->quick_panel && tk_is_visible(sh->quick_panel))
+        out[n++] = sh->quick_panel;
+    if (sh->sheet_panel && tk_is_visible(sh->sheet_panel))
+        out[n++] = sh->sheet_panel;
+    return n;
+}
+
+bool bd_shell_overlay_open(const bd_shell *sh)
+{
+    tk_widget *p[4];
+    return overlay_panels(sh, p) > 0;
+}
+
+size_t bd_shell_overlay_rects(const bd_shell *sh, tk_rect *out,
+                              size_t max)
+{
+    tk_widget *p[4];
+    size_t n = overlay_panels(sh, p);
+    size_t k = 0;
+    for (size_t i = 0; i < n && k < max; i++) {
+        tk_rect r = tk_widget_rect(p[i]);
+        if (r.w > 0 && r.h > 0) out[k++] = r;
+    }
+    return k;
+}
+
+bool bd_shell_overlay_hit(const bd_shell *sh, int x, int y)
+{
+    tk_widget *p[4];
+    size_t n = overlay_panels(sh, p);
+    for (size_t i = 0; i < n; i++) {
+        tk_rect r = tk_widget_rect(p[i]);
+        if (x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h)
+            return true;
+    }
+    return false;
+}
+
 void bd_shell_set_recents_open(bd_shell *sh, bool open)
 {
     sh->recents_open = open;
@@ -2044,6 +2108,7 @@ void bd_shell_set_recents_open(bd_shell *sh, bool open)
             bd_shell_show_launcher(sh, false);
         recents_rebuild(sh);
     }
+    shell_relayout(sh);
 }
 
 void bd_shell_set_nav_sink(bd_shell *sh, bd_shell_nav_cb cb, void *userdata)
@@ -2112,6 +2177,7 @@ void bd_shell_show_launcher(bd_shell *sh, bool show)
         tk_set_visible(sh->sheet_panel, false);
         tk_focus(sh->root, sh->search_field);
     }
+    shell_relayout(sh);
 }
 
 void bd_shell_set_clock(bd_shell *sh, const char *hhmm)
@@ -2300,6 +2366,7 @@ void bd_shell_set_quick_open(bd_shell *sh, bool open)
         tk_set_visible(sh->sheet_panel, false);
         bd_shell_set_recents_open(sh, false);
     }
+    shell_relayout(sh);
 }
 
 void bd_shell_set_wifi(bd_shell *sh, bool on)

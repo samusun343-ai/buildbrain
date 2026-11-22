@@ -33,6 +33,10 @@ TEXT_LIBS = -lharfbuzz -lfreetype
 endif
 
 COMMON   = common/bdstore.c
+# Shared display host (bdapp_run.h): WM-client / fbdev /
+# headless run for every app binary. Only the app binaries
+# link it - the model tests must stay free of display deps.
+APPHOST  = common/bdapp_run.c
 FMODEL   = files/fmodel.c common/bdmime.c
 NMODEL   = notes/nmodel.c
 TMODEL   = tasks/tmodel.c
@@ -49,7 +53,7 @@ TESTS    = test_files test_files_ui test_notes test_tasks test_tasks_ui \
            test_clock test_clock_ui test_calc test_calc_ui \
            test_recorder test_recorder_ui test_player test_player_ui \
            test_pkg test_pkg_ui test_settings test_settings_ui \
-           test_admin test_admin_ui test_alarmd
+           test_admin test_admin_ui test_alarmd test_matrix
 
 all: $(APPS) tests
 
@@ -63,9 +67,9 @@ $(IMELIB):
 	$(MAKE) -C $(ROOT)/libbrainime libbrainime.a
 
 # ---------------- bd-files ----------------
-bd-files: files/bd_files.c $(FMODEL) $(COMMON) $(SHELLIB) $(TKLIB)
+bd-files: files/bd_files.c $(FMODEL) $(COMMON) $(APPHOST) $(SHELLIB) $(TKLIB)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -DBD_FILES_MAIN files/bd_files.c \
-	    $(FMODEL) $(COMMON) \
+	    $(FMODEL) $(COMMON) $(APPHOST) \
 	    -o $@ $(SHELLIB) $(TKLIB) $(TEXT_LIBS) -lm
 
 test_files: files/tests/test_files.c $(FMODEL) $(COMMON) $(SHELLIB)
@@ -79,9 +83,9 @@ test_files_ui: files/tests/test_files_ui.c files/bd_files.c \
 	    -o $@ $(SHELLIB) $(TKLIB) $(TEXT_LIBS) -lm
 
 # ---------------- bd-notes ----------------
-bd-notes: notes/bd_notes.c $(NMODEL) $(COMMON) $(SHELLIB) $(TKLIB) $(IMELIB)
+bd-notes: notes/bd_notes.c $(NMODEL) $(COMMON) $(APPHOST) $(SHELLIB) $(TKLIB) $(IMELIB)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -DBD_NOTES_MAIN notes/bd_notes.c \
-	    $(NMODEL) $(COMMON) $(ROOT)/osk/osk_brainime.c \
+	    $(NMODEL) $(COMMON) $(ROOT)/osk/osk_brainime.c $(APPHOST) \
 	    -o $@ $(SHELLIB) $(TKLIB) $(TEXT_LIBS) $(IMELIB) -lm
 
 test_notes: notes/tests/test_notes.c notes/bd_notes.c \
@@ -92,9 +96,9 @@ test_notes: notes/tests/test_notes.c notes/bd_notes.c \
 	    -o $@ $(SHELLIB) $(TKLIB) $(TEXT_LIBS) $(IMELIB) -lm
 
 # ---------------- bd-tasks ----------------
-bd-tasks: tasks/bd_tasks.c $(TMODEL) $(COMMON) $(SHELLIB) $(TKLIB)
+bd-tasks: tasks/bd_tasks.c $(TMODEL) $(COMMON) $(APPHOST) $(SHELLIB) $(TKLIB)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -DBD_TASKS_MAIN tasks/bd_tasks.c \
-	    $(TMODEL) $(COMMON) \
+	    $(TMODEL) $(COMMON) $(APPHOST) \
 	    -o $@ $(SHELLIB) $(TKLIB) $(TEXT_LIBS) -lm
 
 test_tasks: tasks/tests/test_tasks.c $(TMODEL) $(COMMON)
@@ -108,9 +112,9 @@ test_tasks_ui: tasks/tests/test_tasks_ui.c tasks/bd_tasks.c \
 	    -o $@ $(SHELLIB) $(TKLIB) $(TEXT_LIBS) -lm
 
 # ---------------- bd-clock ----------------
-bd-clock: clock/bd_clock.c $(CKMODEL) $(COMMON) $(SHELLIB) $(TKLIB)
+bd-clock: clock/bd_clock.c $(CKMODEL) $(COMMON) $(APPHOST) $(SHELLIB) $(TKLIB)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -DBD_CLOCK_MAIN clock/bd_clock.c \
-	    $(CKMODEL) $(COMMON) \
+	    $(CKMODEL) $(COMMON) $(APPHOST) \
 	    -o $@ $(SHELLIB) $(TKLIB) $(TEXT_LIBS) -lm
 
 test_clock: clock/tests/test_clock.c $(CKMODEL) $(COMMON)
@@ -135,10 +139,24 @@ test_alarmd: alarmd/tests/test_alarmd.c $(ALARMDCORE) $(CKMODEL) $(COMMON)
 	$(CC) $(CPPFLAGS) $(CFLAGS) alarmd/tests/test_alarmd.c \
 	    $(ALARMDCORE) $(CKMODEL) $(COMMON) -o $@ -lm
 
+# Layout matrix gate (DESIGN-layout-contract.md SS7): the four
+# user-facing apps x size axis x theme axis, validate +
+# sentinel paint + golden hashes (tests/golden/).
+test_matrix: tests/test_matrix.c calc/bd_calc.c settings/bd_settings.c \
+             notes/bd_notes.c files/bd_files.c \
+             $(KCMODEL) $(STMODEL) $(NMODEL) $(FMODEL) $(COMMON) \
+             $(SHELLIB) $(TKLIB) $(IMELIB)
+	$(CC) $(CPPFLAGS) $(CFLAGS) tests/test_matrix.c \
+	    calc/bd_calc.c settings/bd_settings.c \
+	    notes/bd_notes.c files/bd_files.c \
+	    $(KCMODEL) $(STMODEL) $(NMODEL) $(FMODEL) $(COMMON) \
+	    $(ROOT)/osk/osk_brainime.c \
+	    -o $@ $(SHELLIB) $(TKLIB) $(TEXT_LIBS) $(IMELIB) -lm
+
 # ---------------- bd-calc ----------------
-bd-calc: calc/bd_calc.c $(KCMODEL) $(COMMON) $(SHELLIB) $(TKLIB)
+bd-calc: calc/bd_calc.c $(KCMODEL) $(COMMON) $(APPHOST) $(SHELLIB) $(TKLIB)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -DBD_CALC_MAIN calc/bd_calc.c \
-	    $(KCMODEL) $(COMMON) \
+	    $(KCMODEL) $(COMMON) $(APPHOST) \
 	    -o $@ $(SHELLIB) $(TKLIB) $(TEXT_LIBS) -lm
 
 test_calc: calc/tests/test_calc.c $(KCMODEL) $(COMMON)
@@ -152,9 +170,9 @@ test_calc_ui: calc/tests/test_calc_ui.c calc/bd_calc.c \
 	    -o $@ $(TKLIB) $(TEXT_LIBS) -lm
 
 # ---------------- bd-recorder ----------------
-bd-recorder: recorder/bd_recorder.c $(RCMODEL) $(COMMON) $(SHELLIB) $(TKLIB)
+bd-recorder: recorder/bd_recorder.c $(RCMODEL) $(COMMON) $(APPHOST) $(SHELLIB) $(TKLIB)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -DBD_RECORDER_MAIN recorder/bd_recorder.c \
-	    $(RCMODEL) $(COMMON) \
+	    $(RCMODEL) $(COMMON) $(APPHOST) \
 	    -o $@ $(SHELLIB) $(TKLIB) $(TEXT_LIBS) -lasound -lm
 
 test_recorder: recorder/tests/test_recorder.c $(RCMODEL) $(COMMON)
@@ -168,9 +186,9 @@ test_recorder_ui: recorder/tests/test_recorder_ui.c recorder/bd_recorder.c \
 	    -o $@ $(SHELLIB) $(TKLIB) $(TEXT_LIBS) -lasound -lm
 
 # ---------------- bd-player ----------------
-bd-player: player/bd_player.c $(PLMODEL) $(COMMON) $(SHELLIB) $(TKLIB)
+bd-player: player/bd_player.c $(PLMODEL) $(COMMON) $(APPHOST) $(SHELLIB) $(TKLIB)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -DBD_PLAYER_MAIN player/bd_player.c \
-	    $(PLMODEL) $(COMMON) \
+	    $(PLMODEL) $(COMMON) $(APPHOST) \
 	    -o $@ $(SHELLIB) $(TKLIB) $(TEXT_LIBS) -lasound -ldl -lm
 
 test_player: player/tests/test_player.c $(PLMODEL) $(COMMON)
@@ -184,9 +202,9 @@ test_player_ui: player/tests/test_player_ui.c player/bd_player.c \
 	    -o $@ $(SHELLIB) $(TKLIB) $(TEXT_LIBS) -lasound -ldl -lm
 
 # ---------------- bd-pkg ----------------
-bd-pkg: pkg/bd_pkg.c $(PKMODEL) $(COMMON) $(SHELLIB) $(TKLIB)
+bd-pkg: pkg/bd_pkg.c $(PKMODEL) $(COMMON) $(APPHOST) $(SHELLIB) $(TKLIB)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -DBD_PKG_MAIN pkg/bd_pkg.c \
-	    $(PKMODEL) $(COMMON) \
+	    $(PKMODEL) $(COMMON) $(APPHOST) \
 	    -o $@ $(SHELLIB) $(TKLIB) $(TEXT_LIBS) -lm
 
 test_pkg: pkg/tests/test_pkg.c $(PKMODEL) $(COMMON)
@@ -202,9 +220,9 @@ test_pkg_ui: pkg/tests/test_pkg_ui.c pkg/bd_pkg.c \
 # ---------------- bd-settings / bd-admin ----------------
 STMODEL  = settings/setmodel.c $(SYMODEL)
 
-bd-settings: settings/bd_settings.c $(STMODEL) $(COMMON) $(SHELLIB) $(TKLIB)
+bd-settings: settings/bd_settings.c $(STMODEL) $(COMMON) $(APPHOST) $(SHELLIB) $(TKLIB)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -DBD_SETTINGS_MAIN settings/bd_settings.c \
-	    $(STMODEL) $(COMMON) \
+	    $(STMODEL) $(COMMON) $(APPHOST) \
 	    -o $@ $(SHELLIB) $(TKLIB) $(TEXT_LIBS) -lm
 
 test_settings: settings/tests/test_settings.c $(STMODEL) $(COMMON) $(SHELLIB) $(TKLIB)
@@ -217,9 +235,9 @@ test_settings_ui: settings/tests/test_settings_ui.c settings/bd_settings.c \
 	    settings/bd_settings.c $(STMODEL) $(COMMON) \
 	    -o $@ $(SHELLIB) $(TKLIB) $(TEXT_LIBS) -lm
 
-bd-admin: admin/bd_admin.c $(SYMODEL) $(COMMON) $(SHELLIB) $(TKLIB)
+bd-admin: admin/bd_admin.c $(SYMODEL) $(COMMON) $(APPHOST) $(SHELLIB) $(TKLIB)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -DBD_ADMIN_MAIN admin/bd_admin.c \
-	    $(SYMODEL) $(COMMON) \
+	    $(SYMODEL) $(COMMON) $(APPHOST) \
 	    -o $@ $(SHELLIB) $(TKLIB) $(TEXT_LIBS) -lm
 
 test_admin: admin/tests/test_admin.c $(SYMODEL) $(COMMON)
@@ -238,6 +256,7 @@ DICT ?= $(ROOT)/../ime-dict/brainux2.bidf
 BISC ?= $(ROOT)/libbrainime/data/brainux2.bisc
 
 check: tests $(APPS)
+	./test_matrix
 	./test_files
 	./test_files_ui
 	./test_tasks
@@ -273,6 +292,12 @@ check: tests $(APPS)
 	    esac; \
 	done
 	@rm -rf $(CURDIR)/.smoke-home
+	# Real-app session test (shell/tests/test_session_apps.c):
+	# the built apps as WM clients of a real session - windows
+	# maximized inside the work area, bar intact, switcher
+	# switching driven by taps on the bar itself.
+	$(MAKE) -C $(ROOT)/shell test_session_apps
+	cd $(ROOT)/shell && ./test_session_apps $(CURDIR)/bd-calc $(CURDIR)/bd-notes
 
 clean:
 	rm -f $(APPS) $(TESTS)

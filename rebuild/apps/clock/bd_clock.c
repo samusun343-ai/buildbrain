@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include "bd_clock.h"
 #include "bdappmode.h"
+#include "bdapp_run.h"
 #include "bdicon.h"
 #include "bdstore.h"
 #ifdef BD_CLOCK_MAIN
@@ -418,13 +419,21 @@ int clock_app_toggle_alarm_row(clock_app *app, size_t row)
     return rc;
 }
 
-static int editor_fields(clock_app *app, ck_alarm *out)
+/* lb/sb are CALLER-owned buffers that must outlive the
+ * model call: out->label/out->sound point into them, and the
+ * model dups them synchronously. They used to be locals of
+ * this function - the pointers dangled the moment it returned
+ * and only worked by stack-layout luck (ASan
+ * stack-use-after-return, foundation audit). */
+static int editor_fields(clock_app *app, ck_alarm *out,
+                         char *lb, size_t lbn,
+                         char *sb, size_t sbn)
 {
-    char hb[16], mb[16], lb[512], sb[256];
+    char hb[16], mb[16];
     tk_textfield_text(app->e_hour, hb, sizeof(hb));
     tk_textfield_text(app->e_min, mb, sizeof(mb));
-    tk_textfield_text(app->e_label, lb, sizeof(lb));
-    tk_textfield_text(app->e_sound, sb, sizeof(sb));
+    tk_textfield_text(app->e_label, lb, lbn);
+    tk_textfield_text(app->e_sound, sb, sbn);
     memset(out, 0, sizeof(*out));
     out->hour = atoi(hb);
     out->min = atoi(mb);
@@ -447,9 +456,9 @@ static int editor_fields(clock_app *app, ck_alarm *out)
 uint64_t clock_app_editor_new(clock_app *app)
 {
     ck_alarm f;
-    /* editor_fields points label/sound at stack buffers; the
-     * model dups them synchronously in ck_alarm_add. */
-    if (editor_fields(app, &f) != 0) return 0;
+    char lb[512], sb[256];   /* must outlive the model call */
+    if (editor_fields(app, &f, lb, sizeof(lb),
+                      sb, sizeof(sb)) != 0) return 0;
     uint64_t id = ck_alarm_add(app->store, &f);
     if (id) {
         app->selected_alarm = id;
@@ -464,7 +473,9 @@ int clock_app_editor_save(clock_app *app)
     const ck_alarm *cur = ck_alarm_find(app->store, app->selected_alarm);
     if (!cur) return -1;
     ck_alarm f;
-    if (editor_fields(app, &f) != 0) return -1;
+    char lb[512], sb[256];   /* must outlive the model call */
+    if (editor_fields(app, &f, lb, sizeof(lb),
+                      sb, sizeof(sb)) != 0) return -1;
     f.id = cur->id;
     f.enabled = cur->enabled;
     int rc = ck_alarm_update(app->store, &f);
@@ -957,6 +968,11 @@ tk_widget *clock_app_timer_list(clock_app *app) { return app->timer_list; }
 
 /* ---------------------------------------------------------------- */
 #ifdef BD_CLOCK_MAIN
+static void clock_tick_cb(void *ud, uint64_t mono)
+{
+    clock_app_tick((clock_app *)ud, (int64_t)time(NULL), (int64_t)mono);
+}
+
 int main(void)
 {
     bd_app_theme(); /* display mode from brainreg ui/mode */
@@ -976,42 +992,23 @@ int main(void)
 
     tk_font *font = tk_font_load_default();
     if (font) tk_font_install(font);
-    /* fb first, real panel size (see bd_calc.c main note) */
-    tk_fb *fb = tk_fb_open("/dev/fb0");
-    int vw = fb ? tk_fb_width(fb) : 480;
-    int vh = fb ? tk_fb_height(fb) : 272;
+    /* Display first, real size (see bd_calc.c main note) */
+    int vw, vh;
+    bd_app_display *disp = bd_app_display_open_ex("時計", 0, 0, 480, 272, 480, 272, &vw, &vh);
     clock_app *app = clock_app_new(store, local_off, vw, vh);
 
-    tk_canvas *canvas = tk_canvas_new(vw, vh);
-    const tk_theme *theme = tk_theme_default();
-    if (fb && canvas) {
-        tk_evdev *ev = tk_evdev_open("/dev/input/event0");
-        for (;;) {
-            tk_event e;
-            if (ev) {
-                while (tk_evdev_poll(ev, &e)) {
-                    if (e.type == TK_EV_ACTION && e.action == TK_ACTION_HOME)
-                        goto done;
-                    tk_root_event(app->root, &e);
-                }
-            }
-            struct timespec ts;
-            clock_gettime(CLOCK_MONOTONIC, &ts);
-            int64_t mono = (int64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
-            clock_app_tick(app, (int64_t)time(NULL), mono);
-            tk_root_paint_damage(app->root, canvas, theme);
-            tk_fb_flush_damage(fb, canvas);
-            usleep(200000);
-        }
-    done:
-        if (ev) tk_evdev_close(ev);
-        tk_fb_close(fb);
+    if (bd_app_display_live(disp)) {
+        bd_app_display_run(disp, app->root, clock_tick_cb, app, 200);
     } else {
         clock_app_tick(app, (int64_t)time(NULL), 0);
-        tk_root_paint(app->root, canvas, theme);
+        tk_canvas *canvas = tk_canvas_new(vw, vh);
+        if (canvas) {
+            tk_root_paint(app->root, canvas, tk_theme_default());
+            tk_canvas_free(canvas);
+        }
         printf("bd-clock: UI built (headless, no /dev/fb0)\n");
     }
-    if (canvas) tk_canvas_free(canvas);
+    bd_app_display_close(disp);
     clock_app_free(app);
     ck_close(store);
     if (font) tk_font_free(font);

@@ -396,6 +396,49 @@ tk_theme tk_theme_density(const tk_theme *base, int level)
     return out;
 }
 
+/* Foundation contract (DESIGN-layout-contract.md 1.5): the
+ * compact derivation. Below the compact_below height the fixed
+ * costs shrink first: two-line rows take the one-line height.
+ * Touch targets (control_h) and font sizes never shrink -
+ * legibility and target size are floors, not variables. */
+tk_theme tk_theme_compact(const tk_theme *base)
+{
+    tk_theme out = base ? *base : tk_theme_light;
+    if (out.row_h2 > out.row_h) out.row_h2 = out.row_h;
+    return out;
+}
+
+int tk_theme_compact_below(const tk_theme *t)
+{
+    if (!t) t = tk_theme_default();
+    return t->compact_below > 0 ? t->compact_below : 420;
+}
+
+size_t tk_strlcpy(char *dst, const char *src, size_t cap)
+{
+    size_t n = strlen(src);
+    if (cap) {
+        size_t c = n < cap - 1 ? n : cap - 1;
+        memcpy(dst, src, c);
+        dst[c] = '\0';
+    }
+    return n;
+}
+
+size_t tk_strlcat(char *dst, const char *src, size_t cap)
+{
+    size_t d = 0;
+    while (d < cap && dst[d]) d++;
+    size_t n = strlen(src);
+    if (d < cap) {
+        size_t room = cap - d - 1;
+        size_t c = n < room ? n : room;
+        memcpy(dst + d, src, c);
+        dst[d + c] = '\0';
+    }
+    return d + n;
+}
+
 int tk_theme_style_px(const tk_theme *t, tk_text_style s)
 {
     if (!t) t = tk_theme_default();
@@ -683,9 +726,62 @@ static void free_subtree(tk_widget *w)
     free(w);
 }
 
+/* Root-state hygiene (foundation audit, found by ASan): the
+ * root holds raw pointers into the tree - focus, pointer
+ * capture, hover, the drag-scroll target, the modal overlay.
+ * Freeing a subtree that contains one of them must clear the
+ * pointer first, or the next event dereferences freed memory
+ * (the shell's recents rebuild frees its cards while one of
+ * them holds focus; the next click then read the freed card
+ * in set_focus). The same applies to focus_return slots in
+ * widgets OUTSIDE the subtree (a dialog waiting to hand focus
+ * back to a widget being freed). */
+static bool ptr_in_subtree(const tk_widget *sub, const tk_widget *p)
+{
+    for (; p; p = p->parent)
+        if (p == sub) return true;
+    return false;
+}
+
+static void forget_refs_rec(tk_root *r, tk_widget *w,
+                            const tk_widget *sub)
+{
+    if (w->focus_return && ptr_in_subtree(sub, w->focus_return))
+        w->focus_return = NULL;
+    for (size_t i = 0; i < w->n_children; i++)
+        forget_refs_rec(r, w->children[i], sub);
+}
+
+static void root_forget_subtree(tk_root *r, tk_widget *sub)
+{
+    if (r->focused && ptr_in_subtree(sub, r->focused)) r->focused = NULL;
+    if (r->capture && ptr_in_subtree(sub, r->capture)) r->capture = NULL;
+    if (r->hover && ptr_in_subtree(sub, r->hover)) r->hover = NULL;
+    if (r->drag_sv && ptr_in_subtree(sub, r->drag_sv)) r->drag_sv = NULL;
+    if (r->modal && ptr_in_subtree(sub, r->modal)) r->modal = NULL;
+    if (r->snack_widget && ptr_in_subtree(sub, r->snack_widget))
+        r->snack_widget = NULL;
+    /* if the subtree root itself is a registered overlay,
+     * unregister it (the caller should prefer
+     * tk_root_remove_overlay, but a dangling overlay entry
+     * would be worse) */
+    for (size_t i = 0; i < r->n_overlays; i++)
+        if (r->overlays[i] == sub) {
+            memmove(&r->overlays[i], &r->overlays[i + 1],
+                    (r->n_overlays - i - 1) * sizeof(*r->overlays));
+            r->n_overlays--;
+            break;
+        }
+    if (r->top) forget_refs_rec(r, r->top, sub);
+    for (size_t i = 0; i < r->n_overlays; i++)
+        forget_refs_rec(r, r->overlays[i], sub);
+}
+
 void tk_widget_free(tk_widget *w)
 {
     if (!w) return;
+    tk_root *r = tk_widget_root(w);
+    if (r) root_forget_subtree(r, w);
     if (w->parent) tk_remove_child(w->parent, w);
     free_subtree(w);
 }
@@ -1139,7 +1235,12 @@ static void grid_tracks(tk_widget *w, tk_rect r, int *colw, int *rowh,
     for (int ry = 0; ry < rows; ry++) total_h += rowh[ry];
     int avail_w = r.w - 2 * w->padding - (cols > 1 ? w->spacing * (cols - 1) : 0);
     int avail_h = r.h - 2 * w->padding - (rows > 1 ? w->vspacing * (rows - 1) : 0);
-    if (avail_w >= 0 && total_w > 0 && avail_w != total_w) {
+    /* a grid smaller than its own spacing must still scale
+     * its tracks to zero-ish, never keep desired sizes and
+     * overflow (foundation audit: calc keypad at 480x272) */
+    if (avail_w < 0) avail_w = 0;
+    if (avail_h < 0) avail_h = 0;
+    if (total_w > 0 && avail_w != total_w) {
         if (avail_w > total_w) {
             int extra = avail_w - total_w, per = extra / cols, rem = extra % cols;
             for (int cx = 0; cx < cols; cx++) colw[cx] += per + (cx == cols - 1 ? rem : 0);
@@ -1152,7 +1253,7 @@ static void grid_tracks(tk_widget *w, tk_rect r, int *colw, int *rowh,
             }
         }
     }
-    if (avail_h >= 0 && total_h > 0 && avail_h != total_h) {
+    if (total_h > 0 && avail_h != total_h) {
         if (avail_h > total_h) {
             int extra = avail_h - total_h, per = extra / rows, rem = extra % rows;
             for (int ry = 0; ry < rows; ry++) rowh[ry] += per + (ry == rows - 1 ? rem : 0);
@@ -1165,6 +1266,40 @@ static void grid_tracks(tk_widget *w, tk_rect r, int *colw, int *rowh,
             }
         }
     }
+}
+
+/* Zero a whole subtree's rects. A container that skips a
+ * child during arrange (invisible, inactive tab page) must
+ * not leave stale rects behind: they would still be painted
+ * against, hit-tested, and flagged by tk_root_validate
+ * (foundation audit: settings' hidden app bar kept its back
+ * button at a live position). */
+static void zero_subtree(tk_widget *w)
+{
+    w->rect = (tk_rect){0, 0, 0, 0};
+    for (size_t i = 0; i < w->n_children; i++)
+        zero_subtree(w->children[i]);
+}
+
+/* Intersect a child's arranged rect with its parent's rect,
+ * flooring sizes at 0 and pulling the origin inside. An
+ * over-constrained container (fixed children summing past
+ * the available space, padding wider than the box) must
+ * squeeze its children, never let them escape or go
+ * negative - the layout contract's no-escape invariant
+ * (DESIGN-layout-contract.md SS1.4). Scroll/FIXED containers
+ * are exempt by design and do not use this. */
+static tk_rect clamp_to_parent(tk_rect cr, tk_rect pr)
+{
+    if (cr.x < pr.x) cr.x = pr.x;
+    if (cr.y < pr.y) cr.y = pr.y;
+    if (cr.x > pr.x + pr.w) cr.x = pr.x + pr.w;
+    if (cr.y > pr.y + pr.h) cr.y = pr.y + pr.h;
+    if (cr.x + cr.w > pr.x + pr.w) cr.w = pr.x + pr.w - cr.x;
+    if (cr.y + cr.h > pr.y + pr.h) cr.h = pr.y + pr.h - cr.y;
+    if (cr.w < 0) cr.w = 0;
+    if (cr.h < 0) cr.h = 0;
+    return cr;
 }
 
 void tk_arrange(tk_widget *w, tk_rect r)
@@ -1191,13 +1326,14 @@ void tk_arrange(tk_widget *w, tk_rect r)
             if (row_w == 0 && j == i) break; /* only invisible children */
             for (size_t k = i; k < j; k++) {
                 tk_widget *ch = w->children[k];
-                if (!ch->visible) { ch->rect = (tk_rect){0, 0, 0, 0}; continue; }
+                if (!ch->visible) { zero_subtree(ch); continue; }
                 int chh = ch->desired.h;
                 int cy = y;
                 if (w->cross_align == TK_ALIGN_CENTER) cy = y + (row_h - chh) / 2;
                 else if (w->cross_align == TK_ALIGN_END) cy = y + row_h - chh;
                 else if (w->cross_align == TK_ALIGN_STRETCH) chh = row_h;
-                tk_arrange(ch, (tk_rect){x, cy, ch->desired.w, chh});
+                tk_arrange(ch, clamp_to_parent(
+                    (tk_rect){x, cy, ch->desired.w, chh}, r));
                 x += ch->desired.w + w->spacing;
             }
             i = j;
@@ -1216,7 +1352,7 @@ void tk_arrange(tk_widget *w, tk_rect r)
             for (size_t i = 0; i < w->n_children; i++) {
                 tk_widget *ch = w->children[i];
                 if (!ch->visible || ch->cell_x < 0) {
-                    ch->rect = (tk_rect){0, 0, 0, 0};
+                    zero_subtree(ch);
                     continue;
                 }
                 int cs = grid_span_cols(ch, cols);
@@ -1231,6 +1367,20 @@ void tk_arrange(tk_widget *w, tk_rect r)
                     y += rowh[ry] + w->vspacing;
                 for (int ry = ch->cell_y; ry < ch->cell_y + rs && ry < rows; ry++)
                     chh += rowh[ry] + (ry > ch->cell_y ? w->vspacing : 0);
+                /* when the grid is over-constrained the track
+                 * origins (spacing alone) can run past the
+                 * grid's own rect; clamp the child into the
+                 * grid so the no-escape invariant always holds
+                 * (the cell just paints nothing when fully
+                 * squeezed out) */
+                if (x < r.x) x = r.x;
+                if (y < r.y) y = r.y;
+                if (x > r.x + r.w) x = r.x + r.w;
+                if (y > r.y + r.h) y = r.y + r.h;
+                if (x + cw > r.x + r.w) cw = r.x + r.w - x;
+                if (y + chh > r.y + r.h) chh = r.y + r.h - y;
+                if (cw < 0) cw = 0;
+                if (chh < 0) chh = 0;
                 tk_arrange(ch, (tk_rect){x, y, cw, chh});
             }
         }
@@ -1243,7 +1393,7 @@ void tk_arrange(tk_widget *w, tk_rect r)
                 tk_arrange(ch, (tk_rect){r.x, r.y + bar_h, r.w,
                                          r.h > bar_h ? r.h - bar_h : 0});
             else
-                tk_arrange(ch, (tk_rect){r.x, r.y + bar_h, 0, 0});
+                zero_subtree(ch);
         }
     } else if (w->kind == TK_W_BOX || w->kind == TK_W_DIALOG ||
                w->kind == TK_W_CARD || w->kind == TK_W_SHEET) {
@@ -1254,6 +1404,8 @@ void tk_arrange(tk_widget *w, tk_rect r)
             title_h = 30; /* M7: drag-handle zone */
         int inner_main = (vert ? r.h : r.w) - 2 * w->padding - title_h;
         int inner_cross = (vert ? r.w : r.h) - 2 * w->padding;
+        if (inner_main < 0) inner_main = 0;
+        if (inner_cross < 0) inner_cross = 0;
         int nvis = 0, fixed_main = 0, flex_total = 0;
         for (size_t i = 0; i < w->n_children; i++) {
             tk_widget *ch = w->children[i];
@@ -1290,7 +1442,7 @@ void tk_arrange(tk_widget *w, tk_rect r)
         int flex_seen = 0;
         for (size_t i = 0; i < w->n_children; i++) {
             tk_widget *ch = w->children[i];
-            if (!ch->visible) { ch->rect = (tk_rect){0, 0, 0, 0}; continue; }
+            if (!ch->visible) { zero_subtree(ch); continue; }
             int main_sz;
             if (ch->flex > 0 && flex_total > 0) {
                 flex_seen += ch->flex;
@@ -1322,7 +1474,7 @@ void tk_arrange(tk_widget *w, tk_rect r)
             }
             tk_rect cr = vert ? (tk_rect){cross_pos, pos, cross_sz, main_sz}
                               : (tk_rect){pos, cross_pos, main_sz, cross_sz};
-            tk_arrange(ch, cr);
+            tk_arrange(ch, clamp_to_parent(cr, r));
             pos += main_sz + w->spacing;
         }
     } else if (w->kind == TK_W_FIXED) {
@@ -1364,7 +1516,7 @@ void tk_arrange(tk_widget *w, tk_rect r)
         int x = r.x + r.w - t->unit - total;
         for (size_t i = start; i < w->n_children; i++) {
             tk_widget *ch = w->children[i];
-            if (!ch->visible) { ch->rect = (tk_rect){0, 0, 0, 0}; continue; }
+            if (!ch->visible) { zero_subtree(ch); continue; }
             tk_arrange(ch, (tk_rect){ x,
                                       r.y + (r.h - ch->desired.h) / 2,
                                       ch->desired.w, ch->desired.h });
@@ -1385,7 +1537,7 @@ void tk_arrange(tk_widget *w, tk_rect r)
         int x = r.x + r.w - 8 - total;
         for (size_t i = 0; i < w->n_children; i++) {
             tk_widget *ch = w->children[i];
-            if (!ch->visible) { ch->rect = (tk_rect){0, 0, 0, 0}; continue; }
+            if (!ch->visible) { zero_subtree(ch); continue; }
             tk_arrange(ch, (tk_rect){ x,
                                       r.y + (r.h - ch->desired.h) / 2,
                                       ch->desired.w, ch->desired.h });
@@ -1827,12 +1979,83 @@ static void layout_overlay(tk_root *r, tk_widget *ov)
 
 void tk_root_layout(tk_root *r, int w, int h)
 {
+    TK_ASSERT(r != NULL);
+    TK_ASSERT(w >= 0 && h >= 0);
+    if (!r) return;
+    if (w < 0) w = 0;
+    if (h < 0) h = 0;
     r->w = w; r->h = h;
     (void)tk_measure(r->top, (tk_constraints){0, w, 0, h});
     tk_arrange(r->top, (tk_rect){0, 0, w, h});
     for (size_t i = 0; i < r->n_overlays; i++)
         layout_overlay(r, r->overlays[i]);
     r->dmg.full = true; /* M3: geometry changed, repaint everything */
+}
+
+/* Layout validator (DESIGN-layout-contract.md 5.2). Containment
+ * is skipped where the contract makes overflow the defined
+ * behaviour: a scroll container's content (it scrolls) and a
+ * FIXED container's children (explicit positioning is the app's
+ * stated responsibility). Invisible widgets carry a zero rect
+ * by convention and are skipped. */
+static void validate_dump_rec(const tk_widget *w,
+                              const tk_widget *parent, int depth,
+                              FILE *out)
+{
+    if (w->rect.w < 0 || w->rect.h < 0)
+        fprintf(out, "%*sNEGATIVE kind=%d rect=%d,%d %dx%d\n",
+                depth * 2, "", (int)w->kind, w->rect.x, w->rect.y,
+                w->rect.w, w->rect.h);
+    if (parent && w->visible && parent->kind != TK_W_SCROLLVIEW &&
+        parent->kind != TK_W_FIXED) {
+        if (w->rect.x < parent->rect.x || w->rect.y < parent->rect.y ||
+            w->rect.x + w->rect.w > parent->rect.x + parent->rect.w ||
+            w->rect.y + w->rect.h > parent->rect.y + parent->rect.h)
+            fprintf(out,
+                    "%*sESCAPE kind=%d rect=%d,%d %dx%d "
+                    "desired=%dx%d parent kind=%d rect=%d,%d "
+                    "%dx%d text=%s\n",
+                    depth * 2, "", (int)w->kind, w->rect.x,
+                    w->rect.y, w->rect.w, w->rect.h,
+                    w->desired.w, w->desired.h,
+                    (int)parent->kind, parent->rect.x,
+                    parent->rect.y, parent->rect.w, parent->rect.h,
+                    w->text ? w->text : "");
+    }
+    for (size_t i = 0; i < w->n_children; i++)
+        validate_dump_rec(w->children[i], w, depth + 1, out);
+}
+
+void tk_root_validate_dump(const tk_root *r, FILE *out)
+{
+    if (!r || !r->top || !out) return;
+    validate_dump_rec(r->top, NULL, 0, out);
+}
+
+static int validate_rec(const tk_widget *w, const tk_widget *parent)
+{
+    int bad = 0;
+    if (w->rect.w < 0 || w->rect.h < 0) bad++;
+    /* an invisible subtree has no layout contract: arrange
+     * zeroes its rects (zero_subtree) and nothing paints or
+     * hit-tests inside it */
+    if (!w->visible) return bad;
+    if (parent && w->visible && parent->kind != TK_W_SCROLLVIEW &&
+        parent->kind != TK_W_FIXED) {
+        if (w->rect.x < parent->rect.x || w->rect.y < parent->rect.y ||
+            w->rect.x + w->rect.w > parent->rect.x + parent->rect.w ||
+            w->rect.y + w->rect.h > parent->rect.y + parent->rect.h)
+            bad++;
+    }
+    for (size_t i = 0; i < w->n_children; i++)
+        bad += validate_rec(w->children[i], w);
+    return bad;
+}
+
+int tk_root_validate(const tk_root *r)
+{
+    if (!r || !r->top) return 0;
+    return validate_rec(r->top, NULL);
 }
 
 /* ---- floating overlays (M6) ------------------------------------ */

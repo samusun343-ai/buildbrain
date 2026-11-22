@@ -240,6 +240,13 @@ static int cl_parse_one(bd_wm_client *cl, bd_wm_client_event *ev)
 bd_wm_client *bd_wm_client_open(const char *sock_path, const char *title,
                                 int req_w, int req_h)
 {
+    return bd_wm_client_open_ex(sock_path, title, req_w, req_h, 0, 0, 0);
+}
+
+bd_wm_client *bd_wm_client_open_ex(const char *sock_path, const char *title,
+                                   int req_w, int req_h,
+                                   int min_w, int min_h, uint32_t flags)
+{
     const char *path = sock_path ? sock_path : bd_wm_default_path();
     int fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (fd < 0) return NULL;
@@ -259,6 +266,8 @@ bd_wm_client *bd_wm_client_open(const char *sock_path, const char *title,
     bd_wm_hello hello = {0};
     snprintf(hello.title, sizeof(hello.title), "%s", title ? title : "app");
     hello.req_w = req_w; hello.req_h = req_h;
+    hello.min_w = min_w; hello.min_h = min_h;
+    hello.flags = flags;
     if (cl_send(cl, BD_WM_HELLO, &hello, sizeof(hello)) < 0) goto fail;
     /* wait for GEOM (with fds) */
     for (;;) {

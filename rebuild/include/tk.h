@@ -7,6 +7,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>   /* FILE for tk_root_validate_dump */
 #include "textcore.h"
 
 typedef struct tk_widget tk_widget;
@@ -19,6 +20,25 @@ typedef struct { int min_w, max_w, min_h, max_h; } tk_constraints;
 typedef struct { uint8_t r, g, b, a; } tk_color;
 
 #define TK_UNLIMITED 100000
+
+/* Invariant assertions (DESIGN-layout-contract.md section 5).
+ * Library boundaries state their preconditions with TK_ASSERT;
+ * the test builds keep them live, release builds compile them
+ * out via NDEBUG (assert.h semantics), so the 128 MB target
+ * pays nothing. Before this contract the tree had ZERO asserts:
+ * broken preconditions failed silently as drawing corruption. */
+#ifndef TK_ASSERT
+#include <assert.h>
+#define TK_ASSERT(x) assert(x)
+#endif
+
+/* Bounded string copy (BSD strlcpy semantics): always
+ * NUL-terminates when cap > 0, returns strlen(src). The tree's
+ * path handling used raw strcpy/strcat on caller-sized buffers
+ * (AUDIT-foundation.md Q-2); new code uses this, and the old
+ * call sites are migrated to it. */
+size_t tk_strlcpy(char *dst, const char *src, size_t cap);
+size_t tk_strlcat(char *dst, const char *src, size_t cap);
 
 /* ------------------------------------------------------------------ */
 /* Theme tokens (DESIGN section 7; values re-based by UI-REDESIGN     */
@@ -115,6 +135,11 @@ typedef struct {
      * pairs with the secondaryContainer indicator. */
     tk_color on_container;     /* M3 onPrimaryContainer */
     tk_color on_selection;     /* M3 onSecondaryContainer */
+    /* Foundation contract (DESIGN-layout-contract.md section
+     * 1.5): root heights below compact_below ask apps to switch
+     * to the compact derivation (tk_theme_compact). 0 = unset,
+     * the helper substitutes the default 420. */
+    int compact_below;
 } tk_theme;
 
 extern const tk_theme tk_theme_light;
@@ -143,6 +168,17 @@ void tk_theme_set_default(const tk_theme *t);
  *   static tk_theme roomy; roomy = tk_theme_density(&tk_theme_v2, 1);
  *   tk_theme_set_default(&roomy); */
 tk_theme tk_theme_density(const tk_theme *base, int level);
+/* The compact derivation (DESIGN-layout-contract.md section
+ * 1.5), the counterpart of tk_theme_density: for windows whose
+ * height is below the theme's compact_below token, fixed chrome
+ * costs shrink FIRST - two-line list rows take the one-line
+ * height (row_h2 -> row_h) - while touch targets (control_h)
+ * never shrink. Returns a copy; install it with
+ * tk_theme_set_default() as with the density derivation. */
+tk_theme tk_theme_compact(const tk_theme *base);
+/* The root height below which an app should use the compact
+ * derivation (theme token compact_below, default 420). */
+int tk_theme_compact_below(const tk_theme *t);
 
 /* Typography levels (UI-REDESIGN 2.2). Widgets carry one style
  * (default TK_TEXT_BODY) and measure/draw their text with it, so
@@ -487,12 +523,29 @@ bool tk_dispatch(tk_widget *w, tk_event *ev); /* returns handled */
 tk_widget *tk_hit_test(tk_widget *w, int x, int y);
 
 /* ------------------------------------------------------------------ */
-/* Root: owns focus, pointer capture, the top widget                   */
+/* Root: holds focus, pointer capture, and the top widget.             */
+/* Ownership (made explicit by the foundation audit,                   */
+/* AUDIT-foundation.md Q-3: the rule existed only implicitly           */
+/* and the test suites guessed wrong in five places): the root         */
+/* does NOT own the top widget tree or the overlays -                 */
+/* tk_root_free releases only root-internal state. The caller          */
+/* frees the tree with tk_widget_free, after tk_root_free.             */
 /* ------------------------------------------------------------------ */
 tk_root *tk_root_new(tk_widget *top);
 void tk_root_free(tk_root *r);
 tk_widget *tk_root_top(const tk_root *r);
 void tk_root_layout(tk_root *r, int w, int h);
+/* Layout validator (DESIGN-layout-contract.md section 5.2):
+ * walks the laid-out tree and counts contract violations -
+ * negative sizes anywhere, and (outside scroll containers and
+ * explicitly-positioned FIXED children) a child rect escaping
+ * its parent's rect. 0 means the layout honours the contract
+ * at the current root size. Tests call this at every size of
+ * the layout matrix; apps may call it in debug builds. */
+int tk_root_validate(const tk_root *r);
+/* Human-readable dump of the violations tk_root_validate()
+ * counts (one line per violation: kind, rect, parent rect). */
+void tk_root_validate_dump(const tk_root *r, FILE *out);
 void tk_root_paint(tk_root *r, tk_canvas *c, const tk_theme *t);
 /* Damage-driven repaint (M3): layout, handled events, focus moves,
  * overlay open/close and explicit invalidation accumulate damage

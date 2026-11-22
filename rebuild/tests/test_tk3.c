@@ -1025,6 +1025,7 @@ int main(void)
         #undef FRAME_PX
         tk_root_free(r);
         tk_widget_free(fx);
+        tk_widget_free(sink); /* attach does not own the sink */
         tk_canvas_free(cv);
     }
 

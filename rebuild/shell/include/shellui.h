@@ -225,6 +225,16 @@ void bd_shell_set_nav_sink(bd_shell *sh, bd_shell_nav_cb cb, void *userdata);
 void bd_shell_nav(bd_shell *sh, bd_nav_action act); /* as if tapped */
 bool bd_shell_recents_open(const bd_shell *sh);
 void bd_shell_set_recents_open(bd_shell *sh, bool open);
+/* Shell overlay surfaces (launcher, recents switcher, quick
+ * settings, notification sheet) float above the WM windows:
+ * the session repaints them over the composited windows while
+ * one is open, and routes pointer input to the shell first at
+ * points they cover, so a window underneath can neither hide
+ * them nor steal their taps (integration phase 6). */
+bool bd_shell_overlay_open(const bd_shell *sh);
+size_t bd_shell_overlay_rects(const bd_shell *sh, tk_rect *out,
+                              size_t max);
+bool bd_shell_overlay_hit(const bd_shell *sh, int x, int y);
 
 /* Window bridge for the app switcher, implemented by the
  * session over the WM server. list() fills up to `max` entries

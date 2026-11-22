@@ -989,7 +989,7 @@ int nm_attach_add(nm_store *s, uint64_t id, const char *src_path,
     if (out_name) {
         const char *bn = bd_basename(dst);
         if (strlen(bn) + 1 > cap) return -1;
-        strcpy(out_name, bn);
+        snprintf(out_name, cap, "%s", bn);
     }
     return 0;
 }

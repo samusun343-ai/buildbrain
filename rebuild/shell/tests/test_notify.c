@@ -49,12 +49,19 @@ static bool mock_exec(void *ud, const de_entry *e, char *const argv[],
     return true;
 }
 
+/* the shell borrows the catalog and the store (bd_shell_free
+ * does not free them); keep them reachable so the test can
+ * release them after the shell */
+static de_catalog *g_cat;
+static ln_store *g_store;
+
 static bd_shell *make_shell(void)
 {
-    de_catalog *cat = de_catalog_new(NULL);
-    de_catalog_load_dir(cat, "tests/fixtures/applications");
-    ln_store *store = ln_store_new();
-    bd_shell *sh = bd_shell_new(800, 480, cat, store, mock_exec, NULL);
+    g_cat = de_catalog_new(NULL);
+    de_catalog_load_dir(g_cat, "tests/fixtures/applications");
+    g_store = ln_store_new();
+    bd_shell *sh = bd_shell_new(800, 480, g_cat, g_store,
+                                mock_exec, NULL);
     if (sh) bd_shell_layout(sh, 800, 480);
     return sh;
 }
@@ -302,6 +309,8 @@ int main(void)
 
     bd_nt_server_free(srv);
     bd_shell_free(sh);
+    ln_store_free(g_store);   /* the shell does not own these */
+    de_catalog_free(g_cat);
 
     /* --- session wiring: a real session step delivers a post --- */
     char wmp[128], ntp[128];
