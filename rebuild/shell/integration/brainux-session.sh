@@ -25,6 +25,19 @@ LOG="$LOG_DIR/session.log"
 exec >>"$LOG" 2>&1
 echo "=== brainux-session $(date 2>/dev/null || echo unknown-time) ==="
 
+# This session owns tty1, but the greeter and the shell read the
+# keyboard exclusively through evdev - nothing reads keys from
+# this tty. systemd's TTYReset has just restored the tty defaults
+# (echo on), so the tty line discipline would mirror every
+# keystroke onto fbcon as text at the bottom of the screen for
+# the whole session. Turn echo off on our controlling terminal
+# for the duration of the session; systemd resets the tty again
+# when the service stops, and getty sets its own termios when it
+# runs, so this cannot leak into a later console login.
+if [ -t 0 ]; then
+    stty -echo 2>/dev/null || true
+fi
+
 # 1. Greeter (root, owns tty1/fb0 until login succeeds).
 USER_NAME="$(/usr/local/bin/braingreeter2)"
 grc=$?
