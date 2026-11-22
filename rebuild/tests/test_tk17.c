@@ -315,7 +315,7 @@ static void test_glyph_shapes(void)
     r = root_of(lv);
     q = tk_widget_rect(lv);
     int rh = tk_listview_row_h(lv, t);
-    tk_rect lbox = { q.x + 2 * t->unit,
+    tk_rect lbox = { q.x + 2 * t->unit + 2, /* int14: LV_PAD_X */
                      q.y + rh + (rh - 21) / 2, 21, 21 };
     c = paint_full(r);
     CHECK(col_eq(px(c, lbox.x + 4, lbox.y + 4), t->accent));

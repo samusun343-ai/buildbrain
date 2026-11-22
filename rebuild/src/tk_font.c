@@ -609,6 +609,52 @@ int tk_text_width_st(const tk_theme *t, tk_text_style s, const char *utf8)
     return tk_text_width_px(t, tk_theme_style_px(t, s), utf8);
 }
 
+/* int14: ink-centre shift. Advance-width centring puts the
+ * GLYPH bbox off-centre by the font's side bearings (blind
+ * round 5: the greeter clock measured -3px on every login
+ * shot, both themes). This walks the same shaped run the
+ * painter walks and returns the dx that moves an
+ * advance-centred pen so the ink bbox is centred instead:
+ * shift = (advance - ink_left - ink_right) / 2, all relative
+ * to the pen origin. First line only; 0 when there is no
+ * ink (spaces) or no font. */
+int tk_text_ink_shift_px(const tk_theme *t, int px, bool bold,
+                         const char *utf8)
+{
+    (void)t;
+    if (!utf8 || !g_current_font) return 0;
+    size_t len = strlen(utf8);
+    const char *nl = strchr(utf8, '\n');
+    if (nl) len = (size_t)(nl - utf8);
+    size_t n = shape_run(g_current_font, px, utf8, len);
+    long pen = 0, adv_total = 0;
+    long ink_l = 0, ink_r = 0;
+    bool have = false;
+    for (size_t i = 0; i < n; i++) {
+        tk_shaped_glyph *g = &g_shaped[i];
+        glyph_entry *e = glyph_for_gid(g->src, px, g->glyph);
+        if (e && e->bmp) {
+            long gx = (long)((pen + g->xoff + 32) >> 6) + e->xoff;
+            long gr = gx + e->w + (bold ? 1 : 0);
+            if (!have || gx < ink_l) ink_l = gx;
+            if (!have || gr > ink_r) ink_r = gr;
+            have = true;
+        }
+        pen += g->adv;
+        adv_total += g->adv;
+    }
+    if (!have) return 0;
+    long adv = (adv_total + 32) >> 6;
+    return (int)((adv - ink_l - ink_r) / 2);
+}
+
+int tk_text_ink_shift_st(const tk_theme *t, tk_text_style s,
+                         const char *utf8)
+{
+    return tk_text_ink_shift_px(t, tk_theme_style_px(t, s),
+                                tk_theme_style_bold(s), utf8);
+}
+
 int tk_line_height_px(const tk_theme *t, int px)
 {
     (void)t;

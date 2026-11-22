@@ -31,6 +31,7 @@ struct tasks_app {
     tk_widget *quick_field;
     tk_widget *add_btn;
     tk_widget *task_list;
+    tk_widget *empty_label;      /* int14: empty-state guidance */
     tk_widget *status;
     /* detail editor as a swapped page (proportion pass):
      * the editor used to be a permanent block under the list;
@@ -257,6 +258,11 @@ static void refresh_rows(tasks_app *app)
     char st[128];
     snprintf(st, sizeof(st), "%zu 件", app->n_rows);
     tk_label_set_text(app->status, st);
+    /* int14 (round 5, photos 22/23): an empty list showed the
+     * count only - add the how-to guidance the passing apps
+     * (notes/player) already had. */
+    if (app->empty_label)
+        tk_set_visible(app->empty_label, app->n_rows == 0);
     /* setters do not auto-invalidate (SDK-verified pitfall):
      * without these, damage presentation would ship 0 bytes */
     tk_widget_invalidate(app->status);
@@ -716,7 +722,7 @@ tasks_app *tasks_app_new(tm_store *store, const char *today, int w, int h)
         /* name field + colour cycle on one row, list actions
          * on the next: four buttons on one row overflow the
          * sidebar at 800x480 and clip the last one */
-        tk_widget *nrow = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+        tk_widget *nrow = tk_box_new(TK_DIR_HORIZONTAL, 9, 0); /* int14: field+button = C2-A 9px (round 5 flag: 4-6px) */
         app->list_name_field = tk_textfield_new("");
         tk_textfield_set_placeholder(app->list_name_field,
                                      "リスト名");
@@ -757,7 +763,7 @@ tasks_app *tasks_app_new(tm_store *store, const char *today, int w, int h)
          * the BOTTOM (below the detail editor). */
         top = tk_box_new(TK_DIR_VERTICAL, 4, 6);
 
-        tk_widget *hdr = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+        tk_widget *hdr = tk_box_new(TK_DIR_HORIZONTAL, 9, 0); /* int14: combo+button = C2-A 9px (round 5 flag: 4px) */
         tk_widget_set_min_size(hdr, 0, 56);
         tk_widget *title = tk_label_new("タスク");
         tk_widget_set_text_style(title, TK_TEXT_TITLE);
@@ -809,6 +815,22 @@ tasks_app *tasks_app_new(tm_store *store, const char *today, int w, int h)
                                 app);
     tk_set_flex(app->task_list, 1);
     tk_add_child(main_col, app->task_list);
+
+    /* int14: empty-state guidance. One caption line: a
+     * two-line box cost the flex list 40px of height and
+     * crushed it under the 24px floor at 480x272 (matrix
+     * floor24); the single sentence fits the main column at
+     * every matrix size. The quick-add field is at the top
+     * in WinUI and the bottom in Android - visible in both. */
+    /* wording per form (the player precedent): the WinUI main
+     * column is ~290px at the 480px floor, where the full
+     * sentence measured ~336px and clipped (C10) */
+    app->empty_label = tk_label_new(app->winui
+        ? "タスクなし。上の欄で追加できます"
+        : "タスクがありません。入力欄から追加できます");
+    tk_widget_set_text_style(app->empty_label, TK_TEXT_CAPTION);
+    tk_set_visible(app->empty_label, false);
+    tk_add_child(main_col, app->empty_label);
 
     tk_widget *arow = tk_box_new(TK_DIR_HORIZONTAL, 9, 0);
     /* int12: the three actions' desired widths (348px) exceed

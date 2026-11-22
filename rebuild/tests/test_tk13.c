@@ -1593,7 +1593,7 @@ static void listview_flow(const tk_theme *theme)
      * and the glyph probe sits on the long arm of the
      * material3-ratio check path in each size. */
     int lbs = t->style == 1 ? 21 : 18;
-    int bx = q.x + 2 * t->unit, by = q.y + 2 * rh + (rh - lbs) / 2;
+    int bx = q.x + 2 * t->unit + 2, /* int14: LV_PAD_X */ by = q.y + 2 * rh + (rh - lbs) / 2;
     CHECK(col_near_c(px(c, bx + (t->style == 1 ? 12 : 11),
                         by + (t->style == 1 ? 10 : 9)),
                      t->on_accent, 2));

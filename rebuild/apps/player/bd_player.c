@@ -1586,7 +1586,11 @@ player_app *player_app_new(const char *data_root,
     if (app->winui) {
         win_main = tk_box_new(TK_DIR_VERTICAL, 0, 0);
         app->scr_win = win_main;
-        nav_pane = tk_box_new(TK_DIR_VERTICAL, 8, 12);
+        nav_pane = tk_box_new(TK_DIR_VERTICAL, 8, 18); /* int14 C7:
+                                     * the drawer face sat at x14 =
+                                     * 12px from the window content
+                                     * edge (round 5, photo 29); the
+                                     * pane pad IS the margin here */
         tk_widget_set_min_size(nav_pane, 224, 0);
         tk_add_child(app->top, nav_pane);
         tk_widget *nav_title = tk_label_new("ミュージック");

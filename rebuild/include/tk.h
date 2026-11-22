@@ -284,6 +284,12 @@ void tk_canvas_damage_clear(tk_canvas *c);
  * that fallback exists for headless tests, not as a product path. */
 int tk_text_width(const tk_theme *t, const char *utf8);
 int tk_text_cp_width(const tk_theme *t, uint32_t codepoint);
+/* int14: dx that centres the ink bbox (not the advance box)
+ * of the first line; add to an advance-centred pen x. */
+int tk_text_ink_shift_px(const tk_theme *t, int px, bool bold,
+                         const char *utf8);
+int tk_text_ink_shift_st(const tk_theme *t, tk_text_style s,
+                         const char *utf8);
 int tk_line_height(const tk_theme *t);
 void tk_canvas_draw_text(tk_canvas *c, const tk_theme *t, int x, int y,
                          const char *utf8, tk_color col);

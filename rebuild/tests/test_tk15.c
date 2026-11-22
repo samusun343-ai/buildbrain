@@ -584,7 +584,7 @@ static void listview_e_winui_flow(const tk_theme *theme)
      * (bx+1, by+1) is on the arc itself since the box
      * outline follows the rounded fill (it was accent only
      * under the pre-fix square stroke) */
-    int bx = q.x + 2 * t->unit, by = q.y + 2 * rh + (rh - 18) / 2;
+    int bx = q.x + 2 * t->unit + 2, /* int14: LV_PAD_X */ by = q.y + 2 * rh + (rh - 18) / 2;
     CHECK(col_near_c(px(c, bx + 9, by + 9), t->on_accent, 2));
     CHECK(col_near_c(px(c, bx + 2, by + 2), t->accent, 2));
     /* the selected row's label glyphs render */

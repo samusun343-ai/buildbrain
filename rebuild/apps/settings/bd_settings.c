@@ -893,7 +893,8 @@ static void build_row(settings_app *app, tk_widget *parent,
      * tapped AP row */
     if (strncmp(r->id, "ap", 2) == 0 &&
         strcmp(app->expanded_id, r->id) == 0) {
-        tk_widget *form = hbox(row, 8);
+        tk_widget *form = hbox(row, 9); /* int14: field+button pair
+                                         * takes the C2-A 9px gap */
         app->psk = tk_textfield_new("");
         tk_textfield_set_placeholder(app->psk, "パスワード");
         tk_textfield_set_password(app->psk, true);
@@ -1202,7 +1203,11 @@ settings_app *settings_app_new(bd_backend *backend, bd_wifi *wifi,
         outer = tk_box_new(TK_DIR_HORIZONTAL, 0, 0);
         app->top = outer;
         tk_widget *pane = tk_box_new(TK_DIR_VERTICAL, 8, 12);
-        tk_box_set_pad_x(pane, 16); /* int13 C7: search face at 18px */
+        tk_box_set_pad_x(pane, 18); /* int14 C7: search face 18px
+                                     * from the window content edge
+                                     * (int13's 16 put the face at
+                                     * x18 = 16px from the x2 edge,
+                                     * blind round 5 photos 18/19) */
         tk_widget_set_min_size(pane, 256, 0);
         tk_add_child(outer, pane);
         app->search = tk_searchbar_new("設定を検索");

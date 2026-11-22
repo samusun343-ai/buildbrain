@@ -74,6 +74,13 @@ static tk_widget *power_btn_w;
 static tk_widget *login_btn_w;
 static bool osk_open;
 static int last_clock_min = -1;
+/* int14: the clock/date strings and the last placed size, so
+ * clock_update can re-place the labels with the ink-centre
+ * correction for the CURRENT string (digit shapes change
+ * the side bearings). */
+static char clock_text[32] = "--:--";
+static char date_text[64] = "";
+static int place_W, place_H;
 
 /* Position every element for screen W x H and the current OSK
  * state. Normal form (H >= 360): clock in the top third, card
@@ -83,6 +90,7 @@ static int last_clock_min = -1;
  * shrinks so the card and sheet still fit. */
 static void greeter_place(int W, int H)
 {
+    place_W = W; place_H = H;
     bool compact = H < 360;
     int sheet_h = compact ? H * 45 / 100 : 236;
     int card_w = 400;
@@ -105,17 +113,27 @@ static void greeter_place(int W, int H)
         tk_set_fixed_rect(error_label, (tk_rect){ 24, 166, card_w - 48, 18 });
         tk_set_fixed_rect(login_btn_w, (tk_rect){ 24, 184, card_w - 48, 54 });
     }
-    /* clock + date, centred, in the top third */
+    /* clock + date, centred, in the top third. int14: centre
+     * the INK bbox, not the advance box - advance centring
+     * left the clock glyphs -3px off centre on every blind
+     * round-5 login shot (font side bearings). */
     {
+        const tk_theme *th = tk_theme_default();
         tk_size cs = tk_measure(clock_label,
                                 (tk_constraints){ 0, TK_UNLIMITED, 0, TK_UNLIMITED });
         int cy = compact ? 4 : 20;
+        int cshift = tk_text_ink_shift_st(
+            th, tk_widget_text_style(clock_label), clock_text);
         tk_set_fixed_rect(clock_label,
-                          (tk_rect){ (W - cs.w) / 2, cy, cs.w, cs.h });
+                          (tk_rect){ (W - cs.w) / 2 + cshift, cy,
+                                     cs.w, cs.h });
         tk_size ds = tk_measure(date_label,
                                 (tk_constraints){ 0, TK_UNLIMITED, 0, TK_UNLIMITED });
+        int dshift = tk_text_ink_shift_st(
+            th, tk_widget_text_style(date_label), date_text);
         tk_set_fixed_rect(date_label,
-                          (tk_rect){ (W - ds.w) / 2, cy + cs.h + 4, ds.w, ds.h });
+                          (tk_rect){ (W - ds.w) / 2 + dshift,
+                                     cy + cs.h + 4, ds.w, ds.h });
         tk_set_visible(clock_label, !osk_open);
         tk_set_visible(date_label, !osk_open);
     }
@@ -258,12 +276,17 @@ static void clock_update(void)
     char buf[32];
     snprintf(buf, sizeof(buf), "%02d:%02d", tmv.tm_hour, tmv.tm_min);
     tk_label_set_text(clock_label, buf);
+    snprintf(clock_text, sizeof(clock_text), "%s", buf);
     static const char *const wday[7] = {
         "日", "月", "火", "水", "木", "金", "土"
     };
     snprintf(buf, sizeof(buf), "%d月%d日（%s）",
              tmv.tm_mon + 1, tmv.tm_mday, wday[tmv.tm_wday % 7]);
     tk_label_set_text(date_label, buf);
+    snprintf(date_text, sizeof(date_text), "%s", buf);
+    /* int14: re-place so the ink-centre correction follows
+     * the new digit shapes (placement is idempotent). */
+    if (place_W > 0) greeter_place(place_W, place_H);
 }
 
 static int gui_main(void)

@@ -1467,6 +1467,15 @@ void tk_listview_set_item_icons(tk_widget *w,
     tk_widget_invalidate(w);
 }
 
+/* int14 (blind round 5, C7 origin 3): list content starts
+ * 18px inside the list face. The historical 2*unit (16px)
+ * start put the first glyph/icon at 16-17px from the face's
+ * inner edge in every app (clock, software, sysmon, files
+ * nav), 1-2px under the 18px checklist floor. LV_PAD_X is
+ * the single place that offset lives: paint, measure and
+ * the checkbox hit cell all use it. */
+#define LV_PAD_X(t) (2 * (t)->unit + 2)
+
 /* Row height: two-line rows (main + sub) when any sub-text exists. */
 static int lv_row_h(const tk_widget *w, const tk_theme *t)
 {
@@ -1761,12 +1770,12 @@ tk_size tk_leaf_measure(tk_widget *w, tk_constraints c)
         int widest = 80;
         int icon_extra = w->n_item_icons ? w->item_icon_w + t->unit : 0;
         for (size_t i = 0; i < w->n_items; i++) {
-            int tw = tk_text_width(t, w->items[i]) + 2 * t->unit + icon_extra;
+            int tw = tk_text_width(t, w->items[i]) + LV_PAD_X(t) + icon_extra;
             if (tw > widest) widest = tw;
             if (i < w->n_subitems && w->subitems[i]) {
                 int sw = tk_text_width_st(t, TK_TEXT_CAPTION,
                                           w->subitems[i])
-                         + 2 * t->unit + icon_extra;
+                         + LV_PAD_X(t) + icon_extra;
                 if (sw > widest) widest = sw;
             }
         }
@@ -3289,7 +3298,7 @@ void tk_leaf_paint(tk_widget *w, tk_canvas *c, const tk_theme *t)
                 /* M5 section header: caption-weight, dim, no pill,
                  * no selection - a label for the rows below it */
                 tk_canvas_draw_text_st(c, t, TK_TEXT_CAPTION,
-                                       r.x + 2 * t->unit,
+                                       r.x + LV_PAD_X(t),
                                        row.y + (rh - lh_cap) / 2,
                                        w->items[idx],
                                        w->enabled ? t->text_dim : fg);
@@ -3335,7 +3344,7 @@ void tk_leaf_paint(tk_widget *w, tk_canvas *c, const tk_theme *t)
                     tk_canvas_fill_rect(c, (tk_rect){ r.x, row.y, 3, rh },
                                         t->accent);
             }
-            int tx = r.x + 2 * t->unit;
+            int tx = r.x + LV_PAD_X(t);
             if (w->lv_checkable || w->lv_multi) {
                 /* M5: same box language as the CheckBox widget,
                  * at the row's left edge. M21: the M3 box is
@@ -3408,7 +3417,7 @@ void tk_leaf_paint(tk_widget *w, tk_canvas *c, const tk_theme *t)
                               r.w - 8, rh };
             tk_canvas_fill_round_rect(c, ghost, 8, t->surface);
             tk_canvas_stroke_round_rect(c, ghost, 8, 1, t->border);
-            tk_canvas_draw_text(c, t, ghost.x + 2 * t->unit,
+            tk_canvas_draw_text(c, t, ghost.x + LV_PAD_X(t),
                                 ghost.y + (rh - lh) / 2,
                                 w->items[w->lv_drag_row], fg);
             int slot = (w->lv_drag_y - r.y) / rh + w->top_index;
@@ -3891,7 +3900,7 @@ bool tk_leaf_event(tk_widget *w, tk_root *root, tk_event *ev)
                 /* M5: a tap on the checkbox cell toggles the check
                  * and leaves the selection alone */
                 if (w->lv_checkable &&
-                    ev->x < w->rect.x + 2 * t->unit + 18 + t->unit) {
+                    ev->x < w->rect.x + LV_PAD_X(t) + 18 + t->unit) {
                     lv_toggle_check(w, row);
                     return true;
                 }

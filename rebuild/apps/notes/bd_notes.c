@@ -968,7 +968,7 @@ notes_app *notes_app_new(nm_store *store, int w, int h, bool with_osk)
             tk_add_child(left, app->folder_combo);
 
             app->list_search_row = tk_box_new(TK_DIR_HORIZONTAL,
-                                              4, 0);
+                                              9, 0); /* int14: field+button = C2-A 9px (round 5 flag: 5px) */
             app->list_search_field = tk_textfield_new("");
             tk_textfield_set_placeholder(app->list_search_field,
                                          "検索");
@@ -991,10 +991,20 @@ notes_app *notes_app_new(nm_store *store, int w, int h, bool with_osk)
                                       on_note_select, app);
             tk_set_flex(app->note_list, 1);
             tk_add_child(left, app->note_list);
-            app->empty_label = tk_label_new(
-                "ノートがありません");
-            tk_widget_set_text_style(app->empty_label,
-                                     TK_TEXT_CAPTION);
+            /* int14 (round 5, photo 15): the WinUI list pane
+             * showed the state line only, no how-to - the
+             * Android form's guidance, in the two-line form
+             * that fits the narrow pane (C10). */
+            app->empty_label = tk_box_new(TK_DIR_VERTICAL, 2, 0);
+            {
+                tk_widget *e1 = tk_label_new("ノートがありません");
+                tk_widget_set_text_style(e1, TK_TEXT_CAPTION);
+                tk_add_child(app->empty_label, e1);
+                tk_widget *e2 = tk_label_new(
+                    "新規ノートから作成できます");
+                tk_widget_set_text_style(e2, TK_TEXT_CAPTION);
+                tk_add_child(app->empty_label, e2);
+            }
             tk_set_visible(app->empty_label, false);
             tk_add_child(left, app->empty_label);
         }
@@ -1034,7 +1044,7 @@ notes_app *notes_app_new(nm_store *store, int w, int h, bool with_osk)
             on_list_more, app));
         tk_add_child(app->scr_list, hdr);
 
-        app->list_search_row = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+        app->list_search_row = tk_box_new(TK_DIR_HORIZONTAL, 9, 0); /* int14: field+button = C2-A 9px */
         app->list_search_field = tk_textfield_new("");
         tk_textfield_set_placeholder(app->list_search_field, "検索");
         tk_set_flex(app->list_search_field, 1);

@@ -45,6 +45,8 @@ struct rec_app {
     tk_widget *trim_start, *trim_end, *btn_trim_keep, *btn_trim_del;
     tk_widget *btn_record, *btn_rec_pause, *btn_rec_stop;
     tk_widget *level_bar, *rec_label;
+    tk_widget *empty_label;      /* int14: empty-state guidance box */
+    tk_widget *empty_e1, *empty_e2; /* its lines */
     tk_widget *status;
     /* Android page swap (proportion pass): list page and
      * detail page replace each other - see rec_set_detail().
@@ -251,6 +253,21 @@ static void rebuild_list(rec_app *app)
     }
     if (sel >= 0) tk_listview_select(app->list, sel);
     tk_widget_invalidate(app->list);
+    /* int14 (round 5, photos 26/27): an empty list showed the
+     * state line only - add how-to guidance, worded per view. */
+    if (app->empty_label) {
+        size_t cnt = tk_listview_count(app->list);
+        tk_set_visible(app->empty_label, cnt == 0);
+        if (cnt == 0) {
+            /* short lines: the WinUI list column is 145px wide
+             * at the 480x272 floor (matrix labelclip) */
+            set_text(app->empty_e1, app->deleted_view
+                         ? "最近削除は空です" : "録音がありません");
+            set_text(app->empty_e2, app->deleted_view
+                         ? "削除した録音がここに並びます"
+                         : "「録音」を押すと始まります");
+        }
+    }
 }
 
 /* Android page swap (proportion pass): the takes list and
@@ -656,8 +673,22 @@ rec_app *rec_app_new(const char *data_root,
     app->list = tk_listview_new();
     tk_listview_set_on_select(app->list, on_list, app);
     tk_set_flex(app->list, 1);
+    /* int14: empty-state guidance, two caption lines. WinUI:
+     * the pkg form - under the split, spanning the main
+     * column (the list column itself is 145px wide at the
+     * 480px floor and 269px at full size; a 336px sentence
+     * clipped there, C10). Android: under the list. */
+    app->empty_label = tk_box_new(TK_DIR_VERTICAL, 2, 0);
+    app->empty_e1 = tk_label_new("");
+    tk_widget_set_text_style(app->empty_e1, TK_TEXT_CAPTION);
+    tk_add_child(app->empty_label, app->empty_e1);
+    app->empty_e2 = tk_label_new("");
+    tk_widget_set_text_style(app->empty_e2, TK_TEXT_CAPTION);
+    tk_add_child(app->empty_label, app->empty_e2);
+    tk_set_visible(app->empty_label, false);
     if (app->winui) {
         tk_add_child(left, app->list);
+        tk_add_child(top, app->empty_label);
     } else {
         /* Android pages: the list (with the record area under
          * it) and the detail swap in the same slot of the
@@ -667,6 +698,7 @@ rec_app *rec_app_new(const char *data_root,
         tk_set_flex(app->list_page, 1);
         tk_add_child(top, app->list_page);
         tk_add_child(app->list_page, app->list);
+        tk_add_child(app->list_page, app->empty_label);
         app->detail_page = tk_box_new(TK_DIR_VERTICAL, 4, 0);
         tk_set_flex(app->detail_page, 1);
         tk_set_visible(app->detail_page, false);
@@ -763,6 +795,12 @@ rec_app *rec_app_new(const char *data_root,
     tk_widget *rrow = hbox(det);
     app->rename_field = field(rrow, "名前");
     tk_set_flex(app->rename_field, 1);
+    /* int14 (round 5, photo 27): the detail column's scrollview
+     * crushed this field to 42px while every sibling control
+     * kept control_h; pin the field's minimum to control_h so
+     * the crush lands on the scrollable slack instead. */
+    tk_widget_set_min_size(app->rename_field, 0,
+                           tk_theme_default()->control_h);
     app->btn_rename = ibtn(app, rrow, "名前変更",
                            "drive_file_rename_outline", "rename",
                            on_rename);

@@ -1501,7 +1501,7 @@ files_app *files_app_new(const char *start_dir, const char *data_root,
     draw_row_icons(app);
 
     /* search row: opened by the header / command-bar search icon */
-    app->search_row = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+    app->search_row = tk_box_new(TK_DIR_HORIZONTAL, 9, 0); /* int14: field+button = C2-A 9px */
     app->search_field = tk_textfield_new("");
     tk_textfield_set_placeholder(app->search_field, "このフォルダを検索");
     tk_set_flex(app->search_field, 1);
@@ -1514,7 +1514,7 @@ files_app *files_app_new(const char *start_dir, const char *data_root,
     /* path entry row: opened from the overflow menu (Ctrl+L
      * pattern - the raw path is shown once, in the header
      * caption / breadcrumbs, until editing is requested) */
-    app->path_row = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+    app->path_row = tk_box_new(TK_DIR_HORIZONTAL, 9, 0); /* int14: field+button = C2-A 9px */
     app->path_field = tk_textfield_new("");
     tk_set_flex(app->path_field, 1);
     tk_add_child(app->path_row, app->path_field);
@@ -1531,9 +1531,20 @@ files_app *files_app_new(const char *start_dir, const char *data_root,
     tk_listview_set_on_activate(app->list, on_list_activate, app);
     tk_set_flex(app->list, 1);
     tk_add_child(app->content_box, app->list);
-    app->empty_label = tk_label_new(
-        "このフォルダは空です");
-    tk_widget_set_text_style(app->empty_label, TK_TEXT_CAPTION);
+    /* int14: empty-state guidance in the calc two-line form -
+     * a single long caption clipped in the WinUI right column
+     * (C10); state line + how-to line, each short enough for
+     * the narrowest pane. */
+    app->empty_label = tk_box_new(TK_DIR_VERTICAL, 2, 0);
+    {
+        tk_widget *e1 = tk_label_new("このフォルダは空です");
+        tk_widget_set_text_style(e1, TK_TEXT_CAPTION);
+        tk_add_child(app->empty_label, e1);
+        tk_widget *e2 = tk_label_new(
+            "「その他」メニューから新規フォルダを作成できます");
+        tk_widget_set_text_style(e2, TK_TEXT_CAPTION);
+        tk_add_child(app->empty_label, e2);
+    }
     tk_set_visible(app->empty_label, false);
     tk_add_child(app->content_box, app->empty_label);
 
@@ -1599,7 +1610,12 @@ files_app *files_app_new(const char *start_dir, const char *data_root,
          * column. No drill-down header. */
         top = tk_box_new(TK_DIR_HORIZONTAL, 4, 6);
         tk_widget *pane = tk_box_new(TK_DIR_VERTICAL, 2, 4);
-        tk_box_set_pad_x(pane, 9); /* int13 C7: nav content at 18px */
+        tk_box_set_pad_x(pane, 11); /* int14 C7: nav face 18px from
+                                     * the window content edge and
+                                     * (with LV_PAD_X) its icons 18px
+                                     * inside the face - int13's 9 put
+                                     * them at 16px/17px (round 5,
+                                     * photo 21) */
         tk_widget_set_min_size(pane, 208, 0);
         tk_widget *cap = tk_label_new("場所");
         tk_widget_set_text_style(cap, TK_TEXT_CAPTION);

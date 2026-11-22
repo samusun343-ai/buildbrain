@@ -856,7 +856,7 @@ clock_app *clock_app_new(ck_store *store, int local_offset_min,
     app->timer_list = tk_listview_new();
     tk_set_flex(app->timer_list, 1);
     tk_add_child(tp, app->timer_list);
-    tk_widget *trow = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+    tk_widget *trow = tk_box_new(TK_DIR_HORIZONTAL, 9, 0); /* int14: the row ends in a field+button pair (作成) = C2-A 9px */
     app->t_h = tk_textfield_new("0");
     app->t_m = tk_textfield_new("5");
     app->t_s = tk_textfield_new("0");
