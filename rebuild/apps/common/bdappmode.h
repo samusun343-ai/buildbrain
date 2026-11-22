@@ -36,4 +36,18 @@ static inline bool bd_app_winui(const tk_theme *t)
     return t != NULL && t->style == 2;
 }
 
+/* Page margin (integration phase 11): every app's root box gets
+ * this horizontal padding, so page content never starts closer
+ * than 18px to the window's side edges (evaluation CHECKLIST
+ * C7; Material's 16dp screen-edge margin at this panel's
+ * ~179ppi is 18px).  Before this, each app invented its own
+ * root padding (0/4/6/8px) and blind round 3 counted ~29 C7
+ * findings per evaluator.  Vertical padding stays each app's
+ * own rhythm - the rule is horizontal. */
+#define BD_PAGE_PAD_X 18
+static inline void bd_page_pad_x(tk_widget *root_box)
+{
+    tk_box_set_pad_x(root_box, BD_PAGE_PAD_X);
+}
+
 #endif /* BD_APPMODE_H */

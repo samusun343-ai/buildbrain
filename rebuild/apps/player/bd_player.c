@@ -1570,6 +1570,11 @@ player_app *player_app_new(const char *data_root,
     app->top = tk_box_new(app->winui ? TK_DIR_HORIZONTAL
                                      : TK_DIR_VERTICAL,
                           0, 0);
+    /* int12: single-column form gets the page margin on the
+     * root; the WinUI split keeps its navigation pane
+     * edge-attached and margins the library column instead
+     * (lib_parent, below). */
+    if (!app->winui) bd_page_pad_x(app->top);
 
     /* ---------- library screen (Android) / right pane (WinUI)
      * The shared library widgets (tabs, drill row, search,
@@ -1627,6 +1632,14 @@ player_app *player_app_new(const char *data_root,
         tk_set_flex(win_main, 1);
         tk_add_child(app->top, win_main);
         lib_parent = tk_box_new(TK_DIR_VERTICAL, 0, 12);
+        /* int12: the page margin lives on the library column,
+         * not on win_main: the resident transport bar under it
+         * is a bar surface (full-bleed like the shell's bar),
+         * and its title button is the flex remainder of a
+         * fixed cluster - margining the whole column starved
+         * it to 0px at 700px-wide windows (test_matrix
+         * floor24). */
+        tk_box_set_pad_x(lib_parent, BD_PAGE_PAD_X);
         tk_set_flex(lib_parent, 1);
         tk_add_child(win_main, lib_parent);
         tk_widget *hdr = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);

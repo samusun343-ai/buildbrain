@@ -838,7 +838,13 @@ int main(void)
             tk_canvas *c2 = tk_canvas_new(200, 40);
             tk_canvas_clear(c1, t->surface);
             tk_canvas_clear(c2, t->surface);
-            tk_paint(h1, c1, t);
+            /* int12: a stray pre-arrange paint of h1 used to
+             * live here; it only stayed harmless while labels
+             * were top-pinned (the arranged repaint overdrew
+             * the same pixels).  Labels now center vertically
+             * in a taller rect, so the stray paint double-
+             * counted h1's ink.  Removed - the comparison
+             * below is one arranged paint per canvas. */
             tk_arrange(h2, (tk_rect){0, 0, 200, 40});
             tk_arrange(h1, (tk_rect){0, 0, 200, 40});
             tk_paint(h1, c1, t);

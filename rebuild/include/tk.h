@@ -719,6 +719,11 @@ typedef enum { TK_DIR_VERTICAL, TK_DIR_HORIZONTAL } tk_dir;
 typedef enum { TK_ALIGN_START, TK_ALIGN_CENTER, TK_ALIGN_END, TK_ALIGN_STRETCH } tk_align;
 tk_widget *tk_box_new(tk_dir dir, int spacing, int padding);
 void tk_box_set_align(tk_widget *box, tk_align cross_align);
+/* Per-axis padding override (box-family containers).  Padding is
+ * symmetric by default; these widen one axis only - the page
+ * margin rule is horizontal, the vertical rhythm is not. */
+void tk_box_set_pad_x(tk_widget *box, int px);
+void tk_box_set_pad_y(tk_widget *box, int py);
 tk_widget *tk_fixed_new(void);
 
 /* OverflowBar: a horizontal bar (children added with tk_add_child,

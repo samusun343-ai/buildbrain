@@ -60,6 +60,11 @@ struct tk_widget {
     /* container state */
     tk_dir dir;
     int spacing, padding;
+    int pad_x, pad_y;        /* box-family per-axis padding;
+                              * invariant: == padding unless a
+                              * tk_box_set_pad_x/y call overrode
+                              * one axis (int12: page margins are
+                              * horizontal-only) */
     int vspacing;            /* grid: row spacing (spacing = column) */
     tk_align cross_align;
     bool wrap;               /* box: wrap children (horizontal only) */

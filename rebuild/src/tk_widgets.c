@@ -2461,7 +2461,16 @@ void tk_leaf_paint(tk_widget *w, tk_canvas *c, const tk_theme *t)
                 lx = w->label_align == 2 ? r.x + (r.w - tw)
                                          : r.x + (r.w - tw) / 2;
         }
-        tk_w_draw_text(c, w, t, lx, r.y, w->text, fg);
+        /* int12: a label stretched taller than its text (a box
+         * row stretched by a taller sibling) used to pin the
+         * glyphs to the rect's top edge, reading as vertical
+         * misalignment against the sibling (blind round 3:
+         * package "更新: 0件" vs the search field).  Center the
+         * single text block vertically, like the M7 parts do. */
+        int ly = r.y;
+        int lh = tk_w_text_lh(w, t);
+        if (lh > 0 && r.h > lh) ly = r.y + (r.h - lh) / 2;
+        tk_w_draw_text(c, w, t, lx, ly, w->text, fg);
         break;
     }
     case TK_W_BUTTON: {
@@ -4682,6 +4691,7 @@ tk_widget *tk_dialog_new(const char *title)
     w->dir = TK_DIR_VERTICAL;
     w->spacing = 8;
     w->padding = 16;
+    w->pad_x = 16; w->pad_y = 16;
     w->can_focus = true;
     return w;
 }

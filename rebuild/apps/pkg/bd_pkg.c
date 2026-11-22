@@ -383,7 +383,9 @@ static tk_widget *lbl(tk_widget *parent, const char *s)
 }
 static tk_widget *hbox(tk_widget *parent)
 {
-    tk_widget *b = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+    /* int12: same-kind control rows (view pills, action rows)
+     * use the 9px group spacing (CHECKLIST C2 tier A). */
+    tk_widget *b = tk_box_new(TK_DIR_HORIZONTAL, 9, 0);
     tk_add_child(parent, b);
     return b;
 }
@@ -445,7 +447,9 @@ pkg_app *pkg_app_new(const char *catalog_dir,
     if (app->winui) {
         top = tk_box_new(TK_DIR_HORIZONTAL, 4, 4);
         app->top = top;
-        tk_widget *nav = tk_box_new(TK_DIR_VERTICAL, 4, 0);
+        bd_page_pad_x(top);
+        /* int12: nav stack group spacing 9px (C2 tier A). */
+        tk_widget *nav = tk_box_new(TK_DIR_VERTICAL, 9, 0);
         tk_add_child(top, nav);
         tk_widget_set_min_size(nav, 208, 0);
         app->view_btns[0] = ibtn(app, nav, "インストール済み",
@@ -472,6 +476,7 @@ pkg_app *pkg_app_new(const char *catalog_dir,
     } else {
         top = tk_box_new(TK_DIR_VERTICAL, 4, 4);
         app->top = top;
+        bd_page_pad_x(top);
         main_col = top;
         tk_widget *vrow = hbox(top);
         app->view_btns[0] = ibtn(app, vrow, "インストール済み",

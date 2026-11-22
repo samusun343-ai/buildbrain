@@ -865,11 +865,27 @@ tk_widget *tk_box_new(tk_dir dir, int spacing, int padding)
 {
     tk_widget *w = tk_widget_new(TK_W_BOX);
     if (w) { w->dir = dir; w->spacing = spacing; w->padding = padding;
+             w->pad_x = padding; w->pad_y = padding;
              w->cross_align = TK_ALIGN_STRETCH; }
     return w;
 }
 
 void tk_box_set_align(tk_widget *box, tk_align a) { box->cross_align = a; }
+
+/* Per-axis padding override for box-family containers.  The
+ * page-margin rule (Material 16dp screen edge, C7) is a
+ * horizontal requirement; the vertical rhythm of a 368px-tall
+ * window cannot pay the same 18px at both ends, so the apps'
+ * root boxes widen only pad_x (integration phase 11). */
+void tk_box_set_pad_x(tk_widget *box, int px)
+{
+    if (box) box->pad_x = px < 0 ? 0 : px;
+}
+
+void tk_box_set_pad_y(tk_widget *box, int py)
+{
+    if (box) box->pad_y = py < 0 ? 0 : py;
+}
 
 void tk_box_set_wrap(tk_widget *box, bool wrap) { box->wrap = wrap; }
 
@@ -973,7 +989,7 @@ tk_size tk_measure(tk_widget *w, tk_constraints c)
     w->avail_w = c.max_w;
     if (w->kind == TK_W_DIALOG) {
         int p = dialog_theme_pad(tk_theme_default());
-        if (p > 0) w->padding = p;
+        if (p > 0) { w->padding = p; w->pad_x = p; w->pad_y = p; }
     }
     tk_size s;
     if (w->kind == TK_W_BOX || w->kind == TK_W_DIALOG ||
@@ -984,8 +1000,8 @@ tk_size tk_measure(tk_widget *w, tk_constraints c)
         for (size_t i = 0; i < w->n_children; i++) {
             tk_widget *ch = w->children[i];
             if (!ch->visible) continue;
-            tk_constraints cc = {0, vert ? c.max_w - 2 * w->padding : TK_UNLIMITED,
-                                 0, vert ? TK_UNLIMITED : c.max_h - 2 * w->padding};
+            tk_constraints cc = {0, vert ? c.max_w - 2 * w->pad_x : TK_UNLIMITED,
+                                 0, vert ? TK_UNLIMITED : c.max_h - 2 * w->pad_y};
             if (cc.max_w < 0) cc.max_w = 0;
             if (cc.max_h < 0) cc.max_h = 0;
             tk_size cs = tk_measure(ch, cc);
@@ -995,12 +1011,12 @@ tk_size tk_measure(tk_widget *w, tk_constraints c)
             n++;
         }
         if (n > 1) main += w->spacing * (n - 1);
-        main += 2 * w->padding;
-        cross += 2 * w->padding;
+        main += 2 * (vert ? w->pad_y : w->pad_x);
+        cross += 2 * (vert ? w->pad_x : w->pad_y);
         s = vert ? (tk_size){cross, main} : (tk_size){main, cross};
         if (!vert && w->wrap && c.max_w < TK_UNLIMITED / 2) {
             /* horizontal wrap: simulate rows at the offered width */
-            int inner_w = c.max_w - 2 * w->padding;
+            int inner_w = c.max_w - 2 * w->pad_x;
             int cur_w = 0, row_h = 0, total_h = 0, max_row_w = 0;
             for (size_t i = 0; i < w->n_children; i++) {
                 tk_widget *ch = w->children[i];
@@ -1016,8 +1032,8 @@ tk_size tk_measure(tk_widget *w, tk_constraints c)
             }
             total_h += row_h;
             if (cur_w > max_row_w) max_row_w = cur_w;
-            s = (tk_size){ max_row_w + 2 * w->padding,
-                           total_h + 2 * w->padding };
+            s = (tk_size){ max_row_w + 2 * w->pad_x,
+                           total_h + 2 * w->pad_y };
             if (s.w > c.max_w) s.w = c.max_w;
         }
         if (w->kind == TK_W_DIALOG)
@@ -1364,9 +1380,9 @@ void tk_arrange(tk_widget *w, tk_rect r)
 {
     w->rect = r;
     if (w->kind == TK_W_BOX && w->wrap && w->dir == TK_DIR_HORIZONTAL) {
-        int inner_w = r.w - 2 * w->padding;
-        int x = r.x + w->padding;
-        int y = r.y + w->padding;
+        int inner_w = r.w - 2 * w->pad_x;
+        int x = r.x + w->pad_x;
+        int y = r.y + w->pad_y;
         size_t i = 0;
         while (i < w->n_children) {
             /* find this row's members and height */
@@ -1395,7 +1411,7 @@ void tk_arrange(tk_widget *w, tk_rect r)
                 x += ch->desired.w + w->spacing;
             }
             i = j;
-            x = r.x + w->padding;
+            x = r.x + w->pad_x;
             y += row_h + w->spacing;
         }
     } else if (w->kind == TK_W_GRID) {
@@ -1460,8 +1476,8 @@ void tk_arrange(tk_widget *w, tk_rect r)
                       ? tk_dialog_title_h(w, tk_theme_default()) : 0;
         if (w->kind == TK_W_SHEET && vert)
             title_h = 30; /* M7: drag-handle zone */
-        int inner_main = (vert ? r.h : r.w) - 2 * w->padding - title_h;
-        int inner_cross = (vert ? r.w : r.h) - 2 * w->padding;
+        int inner_main = (vert ? r.h : r.w) - 2 * (vert ? w->pad_y : w->pad_x) - title_h;
+        int inner_cross = (vert ? r.w : r.h) - 2 * (vert ? w->pad_x : w->pad_y);
         if (inner_main < 0) inner_main = 0;
         if (inner_cross < 0) inner_cross = 0;
         int nvis = 0, fixed_main = 0, flex_total = 0;
@@ -1494,8 +1510,8 @@ void tk_arrange(tk_widget *w, tk_rect r)
         int spacing_total = nvis > 1 ? w->spacing * (nvis - 1) : 0;
         int free_main = inner_main - fixed_main - spacing_total;
         if (free_main < 0) free_main = 0;
-        int pos = (vert ? r.y : r.x) + w->padding + title_h;
-        int cross0 = (vert ? r.x : r.y) + w->padding;
+        int pos = (vert ? r.y : r.x) + (vert ? w->pad_y : w->pad_x) + title_h;
+        int cross0 = (vert ? r.x : r.y) + (vert ? w->pad_x : w->pad_y);
         int distributed = 0;
         int flex_seen = 0;
         for (size_t i = 0; i < w->n_children; i++) {
@@ -1545,6 +1561,17 @@ void tk_arrange(tk_widget *w, tk_rect r)
     } else if (w->kind == TK_W_SCROLLVIEW) {
         if (w->n_children) {
             tk_widget *ch = w->children[0];
+            /* int12: re-measure the content at the arranged
+             * width before trusting its desired height.  A
+             * wrapping child measures one row tall at the
+             * unlimited width a horizontal parent offers
+             * during the measure pass, then wraps to two rows
+             * at the real width (recorder's transport row in
+             * its detail scrollview): sizing the child by the
+             * stale desired height clipped its last rows to
+             * zero height at the content's bottom edge. */
+            (void)tk_measure(ch, (tk_constraints){
+                0, r.w, 0, TK_UNLIMITED});
             int content_h = ch->desired.h;
             int max_off = content_h - r.h;
             if (max_off < 0) max_off = 0;

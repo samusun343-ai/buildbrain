@@ -803,6 +803,12 @@ tasks_app *tasks_app_new(tm_store *store, const char *today, int w, int h)
     tk_add_child(main_col, app->task_list);
 
     tk_widget *arow = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+    /* int12: the three actions' desired widths (348px) exceed
+     * the editor column at 480px-wide windows; the box used to
+     * clip the last button (詳細) to 14px.  Per the layout
+     * contract (no crushed controls), the row wraps instead -
+     * the vertical parent re-measures it at its real width. */
+    tk_box_set_wrap(arow, true);
     tk_widget *tog = btn("完了/未完了", on_toggle, app);
     {
         const uint32_t *cic = mode_icon(app, "check_circle",
@@ -911,6 +917,7 @@ tasks_app *tasks_app_new(tm_store *store, const char *today, int w, int h)
     app->status = tk_label_new("");
     tk_add_child(main_col, app->status);
 
+    bd_page_pad_x(top);
     app->top = top;
     app->root = tk_root_new(top);
     tk_root_layout(app->root, w, h);

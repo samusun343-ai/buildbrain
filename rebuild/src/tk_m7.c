@@ -1866,6 +1866,7 @@ tk_widget *tk_card_new(tk_card_variant v)
     if (!w) return NULL;
     w->dir = TK_DIR_VERTICAL;
     w->padding = 19; /* 16dp */
+    w->pad_x = 19; w->pad_y = 19;
     w->spacing = 8;
     w->card_variant = (int)v;
     return w;
@@ -2538,6 +2539,7 @@ tk_widget *tk_sheet_new(void)
     if (!w) return NULL;
     w->dir = TK_DIR_VERTICAL;
     w->padding = 19;
+    w->pad_x = 19; w->pad_y = 19;
     w->spacing = 8;
     /* M15: the sheet surface itself can hold the focus - the
      * fallback stop of the modal form (see tk_sheet_show),
@@ -2830,6 +2832,7 @@ tk_widget *tk_fabmenu_new(void)
     w->dir = TK_DIR_VERTICAL;
     w->spacing = 5; /* 4dp */
     w->padding = 8;
+    w->pad_x = 8; w->pad_y = 8;
     w->backdrop = true;
     w->backdrop_shadow = true;
     tk_widget_set_event_hook(w, fab_box_hook, w);

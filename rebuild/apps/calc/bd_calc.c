@@ -1270,6 +1270,7 @@ calc_app *calc_app_new(const char *dir, int w, int h)
      * window (see calc_key_hook) */
     tk_widget_set_event_hook(app->top, calc_key_hook, app);
     tk_widget_set_event_hook(app->expr_field, calc_key_hook, app);
+    bd_page_pad_x(app->top);
     app->root = tk_root_new(app->top);
     tk_root_layout(app->root, w, h);
     return app;

@@ -144,7 +144,15 @@ static void refresh_detail(rec_app *app)
         set_text(app->detail_name, "（未選択）");
         set_text(app->detail_info, "");
         set_text(app->pos_label, "0:00 / 0:00");
+        /* int12: an empty info line and an empty waveform
+         * still reserved their full height (25px + 56px) and
+         * pushed the transport rows out of the visible part
+         * of the detail scrollview.  Empty means hidden. */
+        tk_set_visible(app->detail_info, false);
+        tk_set_visible(app->wave, false);
     } else {
+        tk_set_visible(app->detail_info, true);
+        tk_set_visible(app->wave, true);
         char buf[256], t1[32];
         fmt_time(t1, sizeof(t1), e->duration_ms);
         set_text(app->detail_name, e->name);
@@ -558,7 +566,9 @@ static tk_widget *field(tk_widget *parent, const char *ph)
 }
 static tk_widget *hbox(tk_widget *parent)
 {
-    tk_widget *b = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+    /* int12: same-kind control rows (tabs, transport) use the
+     * 9px group spacing (CHECKLIST C2 tier A). */
+    tk_widget *b = tk_box_new(TK_DIR_HORIZONTAL, 9, 0);
     tk_add_child(parent, b);
     return b;
 }
@@ -610,6 +620,7 @@ rec_app *rec_app_new(const char *data_root,
     app->winui = bd_app_winui(tk_theme_default());
 
     tk_widget *top = tk_box_new(TK_DIR_VERTICAL, 4, 4);
+    bd_page_pad_x(top);
     app->top = top;
 
     /* Structure branch:
@@ -682,10 +693,24 @@ rec_app *rec_app_new(const char *data_root,
     }
     app->detail_name = lbl(det, "（未選択）");
     app->detail_info = lbl(det, "");
+    /* int12 (blind round 3, photo 31): the transport rows move
+     * ABOVE the waveform.  The detail column lives in a
+     * scrollview whose visible height is ~190px in the WinUI
+     * split; with name+info+wave (56px) first, the speed row
+     * started at y~234 and straddled the viewport's bottom
+     * edge, half-clipped and unreadable.  Name, info, play row
+     * and speed row together are ~142px and always fit; the
+     * waveform (decorative next to the transport) scrolls. */
     app->wave = tk_imageview_new();
-    tk_add_child(det, app->wave);
 
     tk_widget *prow = hbox(det);
+    /* int12: in the narrow WinUI detail column (312px) the
+     * transport's desired width (~360px with a selection)
+     * clipped +15秒 to single digits.  Per the layout
+     * contract (no crushed controls) the row wraps; the
+     * detail column is a scrollview, so the wrapped row just
+     * takes its second line. */
+    tk_box_set_wrap(prow, true);
     app->btn_play = ibtn(app, prow, "再生/一時停止", "play_arrow",
                          "play", on_play);
     app->btn_back = btn(prow, "-15秒", on_seek, app);
@@ -723,6 +748,9 @@ rec_app *rec_app_new(const char *data_root,
         tk_widget_set_min_size(sp, 16, 1);
         tk_add_child(srow, sp);
     }
+    /* int12: the waveform joins the column here, below the
+     * transport rows (see the note at its creation). */
+    tk_add_child(det, app->wave);
 
     /* detail rows are sized for the narrowest detail pane
      * (312px in the WinUI split at a 480px window): the

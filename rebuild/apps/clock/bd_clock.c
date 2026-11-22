@@ -748,6 +748,10 @@ clock_app *clock_app_new(ck_store *store, int local_offset_min,
      * it is the whole window with a bottom bar under it; in
      * WinUI mode it sits right of the navigation rail. */
     tk_widget *content = tk_box_new(TK_DIR_VERTICAL, 4, 6);
+    /* int12: the nav rail / bottom bar stay edge-attached (they
+     * are navigation surfaces, not page content); the page
+     * margin applies to the content column. */
+    tk_box_set_pad_x(content, BD_PAGE_PAD_X);
     app->now_label = tk_label_new("");
     tk_add_child(content, app->now_label);
 

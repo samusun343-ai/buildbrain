@@ -915,6 +915,7 @@ notes_app *notes_app_new(nm_store *store, int w, int h, bool with_osk)
     app->winui = tk_theme_default()->style == 2;
 
     tk_widget *top = tk_box_new(TK_DIR_VERTICAL, 0, 0);
+    bd_page_pad_x(top);
     const tk_theme *theme = tk_theme_default();
 
     if (app->winui) {

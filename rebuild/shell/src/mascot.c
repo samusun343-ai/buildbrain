@@ -90,6 +90,8 @@ struct bd_mascot {
     bool tick_full;                /* a FULL frame landed this tick */
     /* simulation */
     tk_rect floor_area;
+    tk_rect bounds;              /* int12: content bounds */
+    bool has_bounds;
     bool visible;
     int state;
     int clip, pose;
@@ -560,6 +562,13 @@ void bd_mascot_set_floor(bd_mascot *m, tk_rect floor_area)
     }
 }
 
+void bd_mascot_set_bounds(bd_mascot *m, tk_rect bounds)
+{
+    if (!m) return;
+    m->bounds = bounds;
+    m->has_bounds = bounds.w > 0 && bounds.h > 0;
+}
+
 void bd_mascot_set_visible(bd_mascot *m, bool visible)
 {
     if (!m || m->visible == visible) return;
@@ -913,6 +922,48 @@ int bd_mascot_tick(bd_mascot *m, long now_ms, tk_rect *dmg, int max)
         steps++;
     }
     if (m->acc_ms > 200) m->acc_ms = 200;
+    /* int12: content bounds.  The floor clamps the ANCHOR, but
+     * the sprite's pixels extend past the anchor by a
+     * pose-dependent amount; standing at the desktop floor's
+     * right end, the overhang reached the screen's last
+     * column and was clipped there (blind round 3, photos
+     * 16/17: non-background pixels in column x=853 for ~243
+     * rows).  Clamp on the composed content rect instead:
+     * shift the anchor by the overflow, turn a walk that ran
+     * into the bound around, and stop a fall's sideways
+     * velocity (mirroring the floor's own clamps).  Dragging
+     * is exempt - the pointer owns the sprite; the clamp
+     * re-applies on release. */
+    if (m->has_bounds && m->state != BD_MASCOT_DRAG) {
+        tk_rect sr = sprite_rect(m);
+        if (sr.w > 0 && sr.w > m->bounds.w) {
+            /* Sprite wider than the bounds themselves: pin
+             * its left edge to the bounds' left.  The session's
+             * bounds put grid clearance first (a covered icon
+             * is unusable; a wide sprite's right overhang is
+             * the documented remainder). */
+            if (sr.x != m->bounds.x)
+                m->ax_q8 += (m->bounds.x - sr.x) * 256;
+        } else if (sr.w > 0) {
+            int over_r = (sr.x + sr.w) - (m->bounds.x + m->bounds.w);
+            int over_l = m->bounds.x - sr.x;
+            if (over_r > 0) {
+                m->ax_q8 -= over_r * 256;
+                if (m->state == BD_MASCOT_WALK && m->dir > 0) {
+                    m->dir = -1;
+                    m->look_right = false;
+                }
+                if (m->state == BD_MASCOT_FALL) m->vx_q8 = 0;
+            } else if (over_l > 0) {
+                m->ax_q8 += over_l * 256;
+                if (m->state == BD_MASCOT_WALK && m->dir < 0) {
+                    m->dir = 1;
+                    m->look_right = true;
+                }
+                if (m->state == BD_MASCOT_FALL) m->vx_q8 = 0;
+            }
+        }
+    }
     /* damage */
     if (m->version >= 2) comp_sync(m);
     tk_rect cur = sprite_rect(m);

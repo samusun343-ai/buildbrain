@@ -267,6 +267,36 @@ static tk_rect session_mascot_floor(bd_session *s)
     return mr;
 }
 
+/* The mascot's content bounds (int12): the floor constrains
+ * the anchor, but the sprite's pixels extend past the anchor
+ * by a pose-dependent amount.  On the WinUI desktop the
+ * floor's right edge is the main rect's right edge, so the
+ * sprite's right overhang touched the screen's last column
+ * and was clipped there (blind round 3, photos 16/17:
+ * non-background pixels in column x=853 for ~243 rows, while
+ * the Android form kept 17-18px of clearance).  The bounds
+ * are the content-space counterpart of the floor: on the
+ * desktop, from 12px right of the icon grid (the floor's own
+ * clearance) to 18px short of the main rect's right edge;
+ * in every other view, the main rect with the same 18px
+ * right margin. */
+static tk_rect session_mascot_bounds(bd_session *s)
+{
+    tk_rect mr = bd_shell_main_rect(s->shell);
+    int x0 = mr.x;
+    if (bd_shell_view(s->shell) == BD_VIEW_DESKTOP) {
+        tk_rect gr;
+        if (bd_shell_desktop_grid_rect(s->shell, &gr))
+            x0 = gr.x + gr.w + 12;
+    }
+    int x1 = mr.x + mr.w - 18;
+    if (x1 - x0 < 24) x0 = mr.x;          /* grid nearly full
+                                          * width: the right
+                                          * margin wins */
+    if (x1 - x0 < 24) x1 = mr.x + mr.w;  /* degenerate width */
+    return (tk_rect){ x0, mr.y, x1 - x0, mr.h };
+}
+
 bd_session *bd_session_new(const bd_session_config *cfg)
 {
     bd_session *s = calloc(1, sizeof(*s));
@@ -350,9 +380,12 @@ bd_session *bd_session_new(const bd_session_config *cfg)
              * that the real sprite size is known; set_floor also
              * pulls the spawn anchor inside the corrected floor
              * (integration phase 10). */
-            if (s->mascot)
+            if (s->mascot) {
                 bd_mascot_set_floor(s->mascot,
                                     session_mascot_floor(s));
+                bd_mascot_set_bounds(s->mascot,
+                                     session_mascot_bounds(s));
+            }
             free(pack);
         }
     }
@@ -792,6 +825,7 @@ size_t bd_session_step(bd_session *s, int timeout_ms)
             }
         }
         bd_mascot_set_floor(s->mascot, session_mascot_floor(s));
+        bd_mascot_set_bounds(s->mascot, session_mascot_bounds(s));
         bd_mascot_set_visible(s->mascot, vis);
         s->mascot_ndmg = bd_mascot_tick(s->mascot, now,
                                         s->mascot_dmg, 8);

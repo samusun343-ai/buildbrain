@@ -1323,12 +1323,72 @@ static void rebuild_crumbs(files_app *app)
         lens[nseg] = (int)(p - s);
         nseg++;
     }
-    add_crumb(app, "ルート", "/");
+    /* Width-based collapse (int12): the count rule above is
+     * not enough - four segments with a long middle name
+     * (a temp-dir path is the everyday case) still overflowed
+     * the command bar's flex allotment, and the box clipped
+     * the last segment to ~10px (test_matrix floor24, WinUI
+     * 850/854).  Measure the segment buttons and drop middle
+     * segments into the ellipsis until the row fits the
+     * crumb box's allotment (its last arranged width, or,
+     * before the first layout, an estimate from the window
+     * width calibrated to the host probe, which measured a
+     * 322px allotment at an 854px window).  Root and the
+     * current folder are never dropped. */
     int first = 0;
+    bool ellipsis = false;
     if (nseg + 1 > 5) {
-        tk_add_child(app->crumb_box, tk_label_new("…"));
+        ellipsis = true;
         first = nseg - 2;
     }
+    {
+        tk_rect cr = tk_widget_rect(app->crumb_box);
+        int avail = cr.w > 0 ? cr.w : app->win_w - 532;
+        if (avail < 120) avail = 120;
+        /* segment label texts (root first) */
+        char lbl[40][80];
+        int nlbl = 0;
+        snprintf(lbl[nlbl++], 80, "ルート");
+        for (int i = 0; i < nseg; i++) {
+            int llen = lens[i] < 79 ? lens[i] : 79;
+            memcpy(lbl[nlbl], app->cur + offs[i], (size_t)llen);
+            lbl[nlbl][llen] = '\0';
+            nlbl++;
+        }
+        for (;;) {
+            int total = 0;
+            tk_widget *tmp = tk_button_new(lbl[0]);
+            if (tmp) {
+                total += tk_measure(tmp, (tk_constraints){
+                    0, TK_UNLIMITED, 0, TK_UNLIMITED}).w;
+                tk_widget_free(tmp);
+            }
+            if (ellipsis) {
+                tk_widget *el = tk_label_new("…");
+                if (el) {
+                    total += tk_measure(el, (tk_constraints){
+                        0, TK_UNLIMITED, 0, TK_UNLIMITED}).w;
+                    tk_widget_free(el);
+                }
+                total += 2; /* crumb_box spacing */
+            }
+            for (int i = first; i < nseg; i++) {
+                tk_widget *tb = tk_button_new(lbl[i + 1]);
+                if (tb) {
+                    total += tk_measure(tb, (tk_constraints){
+                        0, TK_UNLIMITED, 0, TK_UNLIMITED}).w;
+                    tk_widget_free(tb);
+                }
+                total += 2;
+            }
+            if (total <= avail || first >= nseg - 1) break;
+            ellipsis = true;
+            first++;
+        }
+    }
+    add_crumb(app, "ルート", "/");
+    if (ellipsis)
+        tk_add_child(app->crumb_box, tk_label_new("…"));
     for (int i = first; i < nseg; i++) {
         char path[FM_PATH_MAX], label[80];
         int plen = offs[i] + lens[i];
@@ -1567,6 +1627,7 @@ files_app *files_app_new(const char *start_dir, const char *data_root,
         tk_add_child(top, pane);
 
         tk_widget *right = tk_box_new(TK_DIR_VERTICAL, 4, 6);
+        tk_box_set_pad_x(right, BD_PAGE_PAD_X);
         tk_set_flex(right, 1);
         tk_widget *cmdbar = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
         tk_widget_set_min_size(cmdbar, 0, 56);
@@ -1597,6 +1658,7 @@ files_app *files_app_new(const char *start_dir, const char *data_root,
         tk_add_child(top, right);
     } else {
         top = tk_box_new(TK_DIR_VERTICAL, 4, 6);
+        bd_page_pad_x(top);
 
         /* Header (DESIGN-apps-envfit SS7.1): back icon, folder
          * name + path caption, then search / places / overflow

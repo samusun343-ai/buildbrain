@@ -1227,6 +1227,7 @@ settings_app *settings_app_new(bd_backend *backend, bd_wifi *wifi,
         tk_drawer_attach(nav_scroll, app->nav);
 
         tk_widget *main_ = tk_box_new(TK_DIR_VERTICAL, 8, 16);
+        tk_box_set_pad_x(main_, BD_PAGE_PAD_X);
         tk_add_child(outer, main_);
         tk_set_flex(main_, 1);
         app->crumb = lbl(main_, "");
@@ -1247,6 +1248,7 @@ settings_app *settings_app_new(bd_backend *backend, bd_wifi *wifi,
     } else {
         outer = tk_box_new(TK_DIR_VERTICAL, app->compact ? 4 : 8,
                            app->compact ? 8 : 16);
+        bd_page_pad_x(outer);
         app->top = outer;
         app->hdr_home = tk_box_new(TK_DIR_VERTICAL,
                                    app->compact ? 4 : 8, 0);

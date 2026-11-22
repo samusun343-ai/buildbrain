@@ -140,11 +140,14 @@ static void greeter_place(int W, int H)
                                      card_w, lh });
     }
     tk_set_visible(user_list, n_users > 1 && !osk_open);
-    tk_set_fixed_rect(kbd_btn, (tk_rect){ W - 16 - 176, 16, 176, 48 });
+    /* int12: corner buttons use the 18px page margin and a
+     * 10px pair gap (blind round 3 counted 14-16px margins
+     * and an 8px gap as C7/C2 findings). */
+    tk_set_fixed_rect(kbd_btn, (tk_rect){ W - 18 - 176, 18, 176, 48 });
     tk_set_fixed_rect(reboot_btn_w,
-                      (tk_rect){ W - 16 - 104 - 8 - 104, H - 64, 104, 48 });
+                      (tk_rect){ W - 18 - 104 - 10 - 104, H - 66, 104, 48 });
     tk_set_fixed_rect(power_btn_w,
-                      (tk_rect){ W - 16 - 104, H - 64, 104, 48 });
+                      (tk_rect){ W - 18 - 104, H - 66, 104, 48 });
     tk_set_visible(reboot_btn_w, !osk_open);
     tk_set_visible(power_btn_w, !osk_open);
     tk_set_fixed_rect(osk_widget, (tk_rect){ 0, H - sheet_h, W, sheet_h });

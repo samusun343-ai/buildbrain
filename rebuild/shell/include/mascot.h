@@ -63,6 +63,13 @@ void bd_mascot_stats(const bd_mascot *m, size_t *map_bytes,
 /* Update the floor geometry (panel position / resize). */
 void bd_mascot_set_floor(bd_mascot *m, tk_rect floor_area);
 
+/* Hard bounds for the sprite's CONTENT rect (int12).  The
+ * floor constrains the anchor; the content extends past the
+ * anchor and touched the screen's right edge on the WinUI
+ * desktop.  The session sets bounds that keep the pixels off
+ * the icon grid and 18px short of the screen's right edge. */
+void bd_mascot_set_bounds(bd_mascot *m, tk_rect bounds);
+
 /* Visibility gate from the session's policy. Hiding reports the
  * last sprite rect as damage on the next tick so the area is
  * repainted clean. */

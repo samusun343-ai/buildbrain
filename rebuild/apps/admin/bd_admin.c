@@ -247,7 +247,9 @@ static tk_widget *lbl(tk_widget *parent, const char *s)
 }
 static tk_widget *hbox(tk_widget *parent)
 {
-    tk_widget *b = tk_box_new(TK_DIR_HORIZONTAL, 4, 0);
+    /* int12: same-kind control rows (tab pills, action rows)
+     * use the 9px group spacing (CHECKLIST C2 tier A). */
+    tk_widget *b = tk_box_new(TK_DIR_HORIZONTAL, 9, 0);
     tk_add_child(parent, b);
     return b;
 }
@@ -299,7 +301,11 @@ admin_app *admin_app_new(sy_sys *sys, int w, int h)
     if (app->winui) {
         top = tk_box_new(TK_DIR_HORIZONTAL, 4, 4);
         app->top = top;
-        tk_widget *nav = tk_box_new(TK_DIR_VERTICAL, 4, 0);
+        bd_page_pad_x(top);
+        /* int12: nav stack of same-kind buttons - 9px group
+         * spacing (CHECKLIST C2 tier A; was 4px, blind round 3
+         * counted it under the pass line). */
+        tk_widget *nav = tk_box_new(TK_DIR_VERTICAL, 9, 0);
         tk_add_child(top, nav);
         tk_widget_set_min_size(nav, 208, 0);
         app->tab_btns[0] = ibtn(app, nav, "プロセス", "monitoring",
@@ -318,6 +324,7 @@ admin_app *admin_app_new(sy_sys *sys, int w, int h)
     } else {
         top = tk_box_new(TK_DIR_VERTICAL, 4, 4);
         app->top = top;
+        bd_page_pad_x(top);
         content = top;
         tk_widget *trow = hbox(top);
         app->tab_btns[0] = ibtn(app, trow, "プロセス", "monitoring",
