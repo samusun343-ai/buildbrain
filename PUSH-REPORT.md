@@ -395,3 +395,38 @@ push した。これで u-boot-brain の push 未完は解消。
   値は記録しない）に切り替えた。
 - 同期方法と除外方針は第8弾までと同一（rsync --delete
   なし、ビルド生成物は収蔵対象外）。
+
+## 第10弾（2026-11-23、WinCE 互換レイヤー M1（ローダ＋最小 coredll）＋ M0 分類）
+
+- コミット: `15fcc99a1`（wince-layer 新規一式 21 ファイル＋
+  REPORT-wince-m1.md。push 後に本 PUSH-REPORT 更新コミットが続く）。
+- 内容: 設計 DESIGN-wince-layer.md §9.1 の M1。PE32/ARM ローダ
+  （再配置・序数／名前 import の IAT 直接束縛・WinMain/DllMain
+  呼び出し）、coredll シム最小集合 34 件（ファイル系・メモリ系・
+  GetTickCount/Sleep/Get/SetLastError/OutputDebugStringW・
+  CRT/文字列最小集合）、FS ブリッジ v0、ログ付きスタブプール。
+  M0 としてアプリ直接呼び 874 件のうち序数のみ 437 件へ ordmap を
+  適用し、全件解決・名前形式の集合と完全一致（相異なる関数は
+  437 件）を確認、機能群分類を確定（CRT/文字列 119、ウィンドウ/
+  メッセージ 96、GDI 65、実行/同期 33、ファイル 25、レジストリ
+  10、メモリ 8、その他 81）。
+- 合格証拠: ホスト（qemu-arm ユーザモード）HOST-TEST PASS、
+  ゲスト（sd-v15-ce1.img、md5 `a0fa1dc66fedbd23d75120dbd5ab9d7f`、
+  PARTUUID `c332a1e5-02`）GUEST-TEST PASS。両環境とも result.txt /
+  pattern.bin が期待値と md5 一致、スタブ呼び出し 0 件。
+  資源実測（ゲストネイティブ）: ローダ＋シム常駐 VmRSS 608 kB
+  （HOLD 時・PSS も 608 kB）で §5.5 予算（固定費 ≤4MB）内。
+- eMMC: 復旧済みベースライン emmc-int9.img は未アタッチで前後
+  md5 `612e8a0307436b59852bb39ede358fa8` 不変。モデルは index 0
+  なしでは起動できない（ファームが index 0 内）ため、作業コピー
+  emmc-int9-wince.img を snapshot=on でアタッチし、同ファイルも
+  前後 md5 `a17320d94cb1e4eebe8c02149a7c9479` 不変を確認。
+- 副次的な発見: テストバイナリ生成ツール pe-link47.py の .reloc
+  詰め物エントリが型 3（HIGHLOW）で出力され、希望ベース以外に
+  載せると .text 先頭ワードを破壊するバグを特定し、brain-tools-git
+  側の作業ツリーで修正した（同 repo は QEMU 側ライン管轄のため
+  未コミット。取り込みは申し送り）。詳細は REPORT-wince-m1.md。
+- 認証は第9弾と同一（保存済み PAT を credential helper 経由。
+  値は記録しない）。同期は rsync --delete なし、実行バイナリ
+  （ce-loader / cetest.exe）と *.o 等の生成物は収蔵対象外。
+  master とサブモジュールポインタは無変更。
