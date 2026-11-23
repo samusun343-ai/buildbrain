@@ -9,13 +9,16 @@
 set -e
 cd "$(dirname "$0")/.."
 QEMU_ARM=${QEMU_ARM:-$HOME/workspace/buildbrain-work/hosttools/root/usr/bin/qemu-arm-static}
+# Since M2 the loader is dynamically linked (libbrainui2 + WM
+# client), so qemu-arm needs the userland sysroot as its -L prefix.
+SYSROOT=$HOME/workspace/buildbrain-work/rebuild/browser-engine/.sysroot-arm
 SCRATCH=${1:-/tmp/braince-host-test}
 rm -rf "$SCRATCH"
 # FS bridge v0 maps CE absolute paths under the fs root; the first
 # component is a volume directory that must exist (mounted volume).
 mkdir -p "$SCRATCH/fs/CE-TEST"
 
-"$QEMU_ARM" ./ce-loader --fs-root "$SCRATCH/fs" \
+"$QEMU_ARM" -L "$SYSROOT" ./ce-loader --fs-root "$SCRATCH/fs" \
     ./test/cetest.exe >"$SCRATCH/run.log" 2>&1 || {
     echo "HOST-TEST FAIL: loader exit != 0"; cat "$SCRATCH/run.log"; exit 1; }
 

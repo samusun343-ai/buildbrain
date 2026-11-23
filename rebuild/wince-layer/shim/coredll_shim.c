@@ -25,6 +25,7 @@
 #include <dirent.h>
 #include <fnmatch.h>
 #include <malloc.h>
+#include <stdarg.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <limits.h>
@@ -745,8 +746,166 @@ int ce_wcscmp(const CE_WCHAR *a, const CE_WCHAR *b)
     return (int)*a - (int)*b;
 }
 
+/* ================= module identity (M2) =================
+ * The loader registers the main image so GetModuleHandleW(NULL) and
+ * GetModuleFileNameW behave the way CE apps expect. No other module
+ * exists in the M2 process model, so a named lookup fails honestly. */
+
+static void *g_main_image_base;
+static CE_WCHAR g_main_image_path[260];
+
+void ce_set_main_image(void *base, const CE_WCHAR *path)
+{
+    g_main_image_base = base;
+    if (path) {
+        size_t i = 0;
+        while (path[i] && i < 259) {
+            g_main_image_path[i] = path[i];
+            i++;
+        }
+        g_main_image_path[i] = 0;
+    }
+}
+
+CE_HANDLE ce_GetModuleHandleW(const CE_WCHAR *name)
+{
+    if (!name)
+        return (CE_HANDLE)g_main_image_base;
+    ce_set_lasterror(CE_ERROR_MOD_NOT_FOUND);
+    return NULL;
+}
+
+CE_DWORD ce_GetModuleFileNameW(CE_HANDLE hmod, CE_WCHAR *buf, CE_DWORD max)
+{
+    if (hmod && hmod != (CE_HANDLE)g_main_image_base) {
+        ce_set_lasterror(CE_ERROR_INVALID_PARAMETER);
+        return 0;
+    }
+    if (!buf || max == 0)
+        return 0;
+    size_t n = ce_wcslen(g_main_image_path);
+    size_t c = n < (size_t)max - 1 ? n : (size_t)max - 1;
+    memcpy(buf, g_main_image_path, c * sizeof(CE_WCHAR));
+    buf[c] = 0;
+    return (CE_DWORD)c;
+}
+
+int ce_lstrcmpW(const CE_WCHAR *a, const CE_WCHAR *b)
+{
+    return ce_wcscmp(a, b);
+}
+
+int ce_lstrcmpiW(const CE_WCHAR *a, const CE_WCHAR *b)
+{
+    while (*a && *b) {
+        CE_WCHAR ca = *a, cb = *b;
+        if (ca >= 'A' && ca <= 'Z') ca = (CE_WCHAR)(ca + 32);
+        if (cb >= 'A' && cb <= 'Z') cb = (CE_WCHAR)(cb + 32);
+        if (ca != cb)
+            return (int)ca - (int)cb;
+        a++;
+        b++;
+    }
+    return (int)*a - (int)*b;
+}
+
+/* Minimal wsprintfW: %s (wide and narrow via %S distinction not
+ * supported; %s takes CE_WCHAR*), %d/%i, %u, %x/%X, %c, %%. No width
+ * or precision support; unsupported specifiers are copied literally.
+ * This covers the formatting CE utilities and test apps use. */
+int ce_wsprintfW(CE_WCHAR *out, const CE_WCHAR *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    CE_WCHAR *o = out;
+    for (const CE_WCHAR *f = fmt; *f; f++) {
+        if (*f != '%') {
+            *o++ = *f;
+            continue;
+        }
+        f++;
+        if (*f == '%') {
+            *o++ = '%';
+            continue;
+        }
+        char num[32];
+        const char *digits = "0123456789abcdef";
+        switch (*f) {
+        case 'd':
+        case 'i': {
+            int v = va_arg(ap, int);
+            unsigned u = v < 0 ? (unsigned)(-(v + 1)) + 1u : (unsigned)v;
+            int n = 0;
+            if (u == 0)
+                num[n++] = '0';
+            while (u) {
+                num[n++] = (char)('0' + (u % 10));
+                u /= 10;
+            }
+            if (v < 0)
+                *o++ = '-';
+            while (n)
+                *o++ = (CE_WCHAR)num[--n];
+            break;
+        }
+        case 'u': {
+            unsigned u = va_arg(ap, unsigned);
+            int n = 0;
+            if (u == 0)
+                num[n++] = '0';
+            while (u) {
+                num[n++] = (char)('0' + (u % 10));
+                u /= 10;
+            }
+            while (n)
+                *o++ = (CE_WCHAR)num[--n];
+            break;
+        }
+        case 'x':
+        case 'X': {
+            unsigned u = va_arg(ap, unsigned);
+            const char *dg = *f == 'X' ? "0123456789ABCDEF" : digits;
+            int n = 0;
+            if (u == 0)
+                num[n++] = '0';
+            while (u) {
+                num[n++] = dg[u & 0xF];
+                u >>= 4;
+            }
+            while (n)
+                *o++ = (CE_WCHAR)num[--n];
+            break;
+        }
+        case 's': {
+            static const CE_WCHAR nullstr[] = { '(', 'n', 'u', 'l', 'l',
+                                                ')', 0 };
+            const CE_WCHAR *s = va_arg(ap, const CE_WCHAR *);
+            if (!s)
+                s = nullstr;
+            while (*s)
+                *o++ = *s++;
+            break;
+        }
+        case 'c': {
+            int c = va_arg(ap, int);
+            *o++ = (CE_WCHAR)c;
+            break;
+        }
+        default:
+            *o++ = '%';
+            if (*f)
+                *o++ = *f;
+            break;
+        }
+    }
+    *o = 0;
+    va_end(ap);
+    return (int)(o - out);
+}
+
 /* ================= import resolution =================
- * (placed last: shim_fns.h needs the ce_* definitions above) */
+ * shim_fns.h is declaration-only since M2; the table itself is
+ * defined in shim_table_glue.c (see tools/gen_shim_table.py). */
 
 #include "shim_fns.h"
 

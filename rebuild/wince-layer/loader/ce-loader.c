@@ -38,6 +38,9 @@ extern void *ce_resolve_import(const char *dll, int ordinal,
 extern void ce_stub_report(FILE *f);
 extern unsigned ce_stub_total(void);
 extern void ce_stub_set_log(FILE *f);
+extern void ce_gwe_init(void);
+extern void ce_gwe_shutdown(void);
+extern void ce_set_main_image(void *base, const CE_WCHAR *path);
 
 static void die(const char *msg)
 {
@@ -346,6 +349,22 @@ int main(int argc, char **argv)
 
     run_tls_callbacks(&im);
 
+    /* Register the main image for GetModuleHandleW/GetModuleFileNameW
+     * and bring up the GWE layer (window/message/GDI state; the WM
+     * connection itself is lazy, opened by the first top-level
+     * window). The CE-visible module path is the path as given. */
+    {
+        static CE_WCHAR wpath[260];
+        size_t pn = strlen(prog);
+        if (pn > 259)
+            pn = 259;
+        for (size_t i = 0; i < pn; i++)
+            wpath[i] = (CE_WCHAR)(unsigned char)prog[i];
+        wpath[pn] = 0;
+        ce_set_main_image(im.base, wpath);
+    }
+    ce_gwe_init();
+
     void *entry = im.base + entry_rva;
     int rc;
     if (is_dll) {
@@ -359,6 +378,7 @@ int main(int argc, char **argv)
         rc = ((winmain_t)entry)(im.base, NULL, empty_cmdline, 0);
     }
     fprintf(stderr, "[braince] guest returned %d\n", rc);
+    ce_gwe_shutdown();
     ce_stub_report(stderr);
     print_mem("at exit");
     if (stub_log)
