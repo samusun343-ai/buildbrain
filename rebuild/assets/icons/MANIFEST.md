@@ -1,5 +1,10 @@
 # MANIFEST — icon sources (fetched 2026-11-21)
 
+> **このファイルの位置づけ**: 本ファイルは、作業の過程で積み上げ最中の観測・解析・実装の記録であり、確立した知識ではない。
+> 文中の「確定」「実証」等の断定表現は、記録時点での記録者の判断を示すにすぎず、内容が正確である保証はない（誤りを含む可能性がある）。
+> 参照する場合は、前提として扱わず、一次資料と照合して独立に検証すること。
+
+
 | set | name | upstream | source path | license |
 |---|---|---|---|---|
 | material | arrow_back | google/material-design-icons | symbols/web/arrow_back/materialsymbolsrounded/arrow_back_fill1_24px.svg | Apache-2.0 |

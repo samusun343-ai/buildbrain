@@ -1,5 +1,10 @@
 # ブラウザ・エンジン選定と端末特化魔改造計画（bd-web v2）
 
+> **このファイルの位置づけ**: 本ファイルは、作業の過程で積み上げ最中の観測・解析・実装の記録であり、確立した知識ではない。
+> 文中の「確定」「実証」等の断定表現は、記録時点での記録者の判断を示すにすぎず、内容が正確である保証はない（誤りを含む可能性がある）。
+> 参照する場合は、前提として扱わず、一次資料と照合して独立に検証すること。
+
+
 - 日付: 2026-11-20
 - 前提（ユーザー決定）: 「既存エンジンを使用してもいいが、既存エンジンにも超魔改造のメスを本気で入れる。端末特化で」。**素のエンジンをそのまま入れるのは不可。**
 - 対象端末: SHARP Brain PW-SH6（i.MX283 / ARMv5 単コア / RAM 128MB / 480×272 級・抵抗膜タッチ（1本指）/ Linux fbdev。X は動くが重い）
@@ -125,96 +130,6 @@ bd-web v1（2,973 行）との比較で言えば、エンジンだけで約 160 
 
 ---
 
-## 5. 魔改造計画（端末特化）
-
-各項目: 対象モジュール → 変更内容 → 期待効果 → リスク。順序は §6 の着手順に従う。
-
-### M0. libnsfb「brain」サーフェスの新規実装（fbdev 直結）
-
-- 対象: `libnsfb/src/surface/` に `brain.c` を新規追加し `surface.c` の登録へ接続。参照実装は同梱の `ram.c`（メモリ上サーフェス）と `x.c`。入力は監査で「残す」判定の **bui_input（evdev）** を再利用し、描画先は **bui_fb**（fbdev、RGB565 変換・ダメージフラッシュ実績あり）に合わせる
-- 変更内容: (1) /dev/fb0 を mmap し、ページ反転または部分更新（`update` の bbox）で転送 (2) 形式は RGB565 を既定にし `fb_depth` 既定を 16 へ (3) 入力コールバックは evdev（タッチ＋キーボード）を libnsfb イベントへ変換 (4) `frontends/framebuffer/framebuffer.c` の `framebuffer_initialise()` で "brain" を選択可能にする
-- 期待効果: X / Wayland / SDL を一切介さない最短経路。16bpp 化でフレーム転送帯域が 32bpp の半分
-- リスク: サーフェス API は小さいが、損傷領域（damage）の扱いを誤ると画面全体転送になって遅くなる。bui_fb 側の既存ダメージフラッシュと意味論を揃えること
-
-### M1. メモリ予算の端末プロファイル化（予算化の中核）
-
-- 対象: `netsurf/desktop/netsurf.c` の `netsurf_init()`（予算配分の起点、§3.4）、`netsurf/content/hlcache.c`（定期クリーン `hlcache_clean` のスケジュール）、`netsurf/desktop/options.h`（既定値）
-- 変更内容: (1) 新オプション `brain_budget_mb`（仮称）を追加し、起動時に `/proc/meminfo` の総量と brainreg の値から llcache / 画像 / フォントの配分を **割合ベース** で導出する（固定 12MB の撤廃） (2) `disc_cache_size` 既定を 32MB、`disc_cache_age` を 7 日に (3) `/proc/pressure/memory`（PSI、カーネル側は run 19 で有効化済み）を監視し、圧力上昇時に `hlcache_clean(true)` 相当の強制回収を前倒しするフックを追加 (4) 予算超過時の縮退順序を固定する: 画像キャッシュ → llcache → 背景タブの内容解放（M10 と連携）
-- 期待効果: 「ブラウザが DE ごと道連れに OOM で死ぬ」を構造的に防ぐ。予算は §4 の表が正
-- リスク: キャッシュが小さすぎると遅い回線で再取得が増える。割合と下限は実サイト集合での実測で詰める（推測で固定しない）
-
-### M2. 画像デコードの表示サイズ化と上限
-
-- 対象: `netsurf/content/handlers/image/image_cache.c`（変換・キャッシュの中心）、`jpeg.c`（libjpeg）、`png.c`、`gif.c`＋`libnsgif`、`netsurf/content/handlers/image/image.c`（再描画時のスケール）
-- 変更内容: (1) JPEG は libjpeg の **DCT スケーリング（scale_num/scale_denom = 1/2, 1/4, 1/8）** を使い、レイアウトで確定した表示サイズに対して十分な最小段でデコードする (2) デコード後ビットマップの上限を設ける: 原画像が約 2MP 超、またはデコード後が予算（§4）を超える場合は表示サイズ×1.5 へ縮小してからキャッシュする (3) アニメーション GIF はフレーム総量に上限を設け、超過分は先頭フレーム静止画に落とす (4) ズームイン時は必要なら高段で再デコードする（キャッシュキーはスケール段を含む）
-- 期待効果: 画像中心ページのメモリと CPU の最大の浪費源を潰す。フル解像度写真（数千×数千 px）を 480×272 表示のために全デコードする現行方式は、本端末ではこれだけで OOM 級
-- リスク: レイアウト確定前に変換が走る経路（投機的変換 `speculative_small`）との整合。段階的に: まず上限（キャップ）だけ入れ、次に JPEG スケールデコード、の順で入れる
-
-### M3. ディスクキャッシュの SD 配置と寿命配慮
-
-- 対象: `netsurf/content/fs_backing_store.c`（エントリ単位のファイル書き出し）、`netsurf/content/llcache.c`（ストア方針）、`netsurf/desktop/netsurf.c` の `LLCACHE_STORE_*_BANDWIDTH` 定数
-- 変更内容: (1) `disc_cache_path` の Brain 既定を SD 上のアプリデータ領域に固定 (2) 帯域前提（128KB/s–1MB/s）を SD の実測書込み速度に合わせて再設定し、低帯域時の書き出し抑制（llcache の帯域制御は既存機構）が効くようにする (3) 小さいリソース（目安 4KB 未満）はディスクに書かずメモリのみにする閾値を追加 (4) 終了時の未フラッシュ分を捨てる方針（クラッシュ耐性より書込み回数削減を優先）
-- 期待効果: SD の書込み増幅と、それによる表示の引っ掛かりを減らす
-- リスク: キャッシュヒット率の低下。M1 の実測フェーズでヒット率を測ってから閾値を確定する
-
-### M4. フォント／テキスト整形と IME・OSK v2 の接続
-
-- 対象: `netsurf/frontends/framebuffer/font_freetype.c`（FreeType 直結のフォント実装）、`frontends/framebuffer/options.h` の `fb_face_*` / `fb_font_cachesize`、入力経路は `netsurf/include/netsurf/keypress.h`、`netsurf/desktop/textinput.c`、`netsurf/desktop/textarea.c`、フォーム側は `netsurf/content/handlers/html/` のテキスト入力処理、`frontends/framebuffer/gui.c` の `fb_osk` 接続点と `frontends/framebuffer/fbtk/osk.c`
-- 変更内容: (1) 同梱フォントを DE と同じ **単一の日本語フォント** に統一し、DejaVu 一式を外す。グリフキャッシュは `fb_font_cachesize` を予算連動（M1）にし、未使用グリフの追い出しを入れる (2) **コアに IM（入力メソッド）フックを追加する**: 現行のキー入力 API（`keypress.h`）には preedit / composition の概念が無いため、gui_window テーブルに任意の IM コールバック（確定文字列の注入＋preedit の前端側描画）を追加し、デスクトップ層の textinput / textarea が確定文字列を受け取れるようにする。既定は NULL（他フロント無影響） (3) fbtk 付属 OSK は廃棄し、`fb_osk` の表示要求を **OSK v2（libbrainime 接続済み）** への橋渡しに差し替える
-- 期待効果: Web フォームで、DE の他アプリと **同じ IME・同じ OSK・同じ辞書** で日本語入力できる。これが無いとブラウザだけ日本語入力が別物になる
-- リスク: コア API の追加は全フロントに影響し得る。追加は「任意フック＋既定 NULL」に限定し、上流追随時の差分を最小化する。preedit の描画位置（インライン表示か前端オーバーレイか）は OSK v2 側の設計確定後に決める
-
-### M5. 1本指タッチ操作（スクロール／ズーム／タップ）
-
-- 対象: `netsurf/frontends/framebuffer/gui.c`（既存のパン機構 `widget_scroll_x/y`、`bwidget->panx/pany`）、`netsurf/desktop/options.h` の `scale`、`netsurf/desktop/browser_window.c` のスケール設定、ヒット判定は前端のポインタ座標変換
-- 変更内容: (1) 既存のドラッグパンを土台に **慣性スクロール** を前端に追加する（速度減衰とフレーム上限を持ち、再描画は損傷領域のみ） (2) 初期スケールを「横幅 480px に収まる倍率」で自動設定し、ダブルタップで フィット⇔100% をトグルする (3) 長押しをコンテキストメニュー（リンクを開く／画像保存／コピー）に割り当てる (4) タップ判定に前端側で最小ヒット寸法（目安 32px 四方へ拡張）を持たせる。ホバー前提の UI は使わない
-- 期待効果: 抵抗膜・1本指でも誤タップと格闘せずに読める。スクロールバードラッグ前提の現行 fb フロントからの脱却
-- リスク: 慣性スクロールは ARMv5 単コアで再描画が追いつかないと逆に重くなる。減衰パラメータと再描画上限は実機（QEMU ゲスト）で測って決める
-
-### M6. 不要サブシステムの切除
-
-- 対象: `netsurf/Makefile.defaults` / `Makefile.config` の `NETSURF_USE_*` 群、`netsurf/desktop/print.c`、`save_pdf.c`
-- 変更内容: 既に切れているもの（`NETSURF_USE_VIDEO=NO`、`NETSURF_USE_HARU_PDF=NO`）に加え、(1) `NETSURF_USE_JPEGXL` を NO（libjxl は重い。対応サイトも限定的） (2) librsvg 経由の SVG を切り、libsvgtiny のみに (3) RISC OS 専用部品（librosprite / librufl / libpencil）は fb ビルドから除外（現行でも fb ターゲットには含まれないことをビルドで確認済み） (4) 印刷経路は §7 の通り **要ユーザー承認** のため、本計画では切除せず「ページ保存への代替」を提示するに留める
-- 期待効果: バイナリサイズと常駐コードの削減、起動時の初期化短縮
-- リスク: 形式対応の削減は M2 の実測（対象サイト集合での出現率）とセットで判断する。黙って切らない
-
-### M7. ネットワーク並列度とタイムアウトの回線事情適応
-
-- 対象: `netsurf/desktop/options.h` の fetcher 系オプション、`netsurf/content/fetchers/curl.c`
-- 変更内容: (1) 既定値を Brain プロファイルにする: `max_fetchers 24→6`、`max_fetchers_per_host 5→2`、`max_cached_fetch_handles 6→4`、`curl_fetch_timeout 30→20`、`script_timeout 10→5` (2) libcurl の低速検出（LOW_SPEED_LIMIT / LOW_SPEED_TIME）を有効化し、ぶら下がった接続がフェッチャ枠を占有し続けないようにする (3) 同梱の `adblock.css` 方式（リソース内のフィルタ CSS）を活かし、広告・トラッカ系の取得自体を減らす curated なブロックリストを前端リソースとして同梱する (4) User-Agent は brainreg で切替可能にし、軽量版ページを返すサイト向けの値を選べるようにする
-- 期待効果: 単コアでのデコード競合と、遅い回線での待ち時間の偏りを抑える。取得総量の削減は電池にも効く
-- リスク: 並列度を下げると高速回線では表示完了が遅くなる。値は全て brainreg から変更可能にし、固定値で縛らない
-
-### M8. 起動高速化
-
-- 対象: `netsurf/desktop/netsurf.c`（初期化順序）、`netsurf/content/urldb.c`（履歴 DB の同期ロード）、`netsurf/desktop/hotlist.c` / `global_history.c`（初期化）、`netsurf/utils/messages.c`（ロケール辞書）、`netsurf/frontends/framebuffer/findfile.c`（リソース探索）
-- 変更内容: (1) 履歴・ブックマークの読み込みを **遅延化**（初回表示時に読む）し、起動経路から外す (2) urldb の保持件数に上限を設ける（`expire_url` の短縮と件数キャップ） (3) メッセージ辞書は使用ロケールのみ読む (4) ホームページはリモートでなく同梱のローカル開始ページ（検索＋ブックマーク＋履歴への入口）にし、起動直後のネットワーク待ちを無くす
-- 期待効果: SD＋低速 CPU でのコールドスタート短縮。起動してすぐ固まる体験を消す
-- リスク: 遅延化した機能の初回表示が遅くなる。当たり前だがトレードオフとして記録する
-
-### M9. リーダービューのエンジン側基盤
-
-- 対象: `netsurf/desktop/knockout.c`（既存のテキスト抽出）、`save_text.c`
-- 変更内容: knockout の抽出結果を前端でローカルページとして再レンダリングする経路を作り、リーダービューとする。新規パーサは作らない
-- 期待効果: Must-not-omit のリーダーを、既存部品の転用で満たす
-- リスク: 抽出品質はサイト依存。対象サイト集合で可否を判定し、効かないサイトでは無効表示にする
-
-### M10. タブとセッションのメモリ回収
-
-- 対象: 前端のタブ管理（新規フロント側）、`netsurf/content/hlcache.c`（保持コンテンツの解放）、`netsurf/desktop/browser_window.c`（履歴遷移）
-- 変更内容: (1) 背景タブは **保持するレンダリング済み内容を最大 2 タブ** とし、それ以外は llcache のディスクストアから復元可能な状態にしてメモリ上の内容を解放する (2) 戻る/進むの保持も同様に上限を設ける (3) M1 の予算超過時縮退と連動させる
-- 期待効果: タブを複数開いても §4 の予算内に収まる
-- リスク: タブ切替・履歴遷移で再レンダリング（遅い）。「速い切替」と「予算」のトレードオフであり、上限数は実測で決める
-
-### M11. プライベートモードのエンジン側実装
-
-- 対象: `netsurf/content/llcache.c`（ストア書き出しの可否）、`netsurf/content/urldb.c`（履歴への記録）、`netsurf/desktop/browser_window.c`（ウィンドウ単位のフラグ伝播）
-- 変更内容: ブラウザウィンドウ単位の「プライベート」フラグを新設し、(1) ディスクストアへ書かない (2) urldb / グローバル履歴へ記録しない (3) 終了時にメモリキャッシュからも除去する、をコア側で保証する。前端は見た目（色調変更とラベル）だけを持つ
-- 期待効果: Must-not-omit のプライベートを「履歴を消すだけの見せかけ」でなくエンジン側の性質として実装する
-- リスク: フラグの伝播漏れが 1 箇所でもあると記録が残る。受け入れテスト（プライベートで開いた URL が再起動後の履歴・キャッシュに無いこと）を必須とする
-
----
-
 ## 6. 最初の改造 1 件: M1 の前半「予算プロファイル導入」の当たり
 
 改造コードはまだ書かない。対象ファイルと差分の形をここまで特定した。
@@ -226,37 +141,6 @@ bd-web v1（2,973 行）との比較で言えば、エンジンだけで約 160 
 | `netsurf/desktop/options.h` | 新オプション追加: `NSOPTION_INTEGER(brain_budget_mb, 0)`（0 = 無効＝従来動作）、および Brain 既定値の変更: `disc_cache_size` 1GB → 32MB、`disc_cache_age` 28 → 7、`max_fetchers` 24 → 6、`max_fetchers_per_host` 5 → 2、`curl_fetch_timeout` 30 → 20、`script_timeout` 10 → 5 |
 | `netsurf/desktop/netsurf.c` | `netsurf_init()` 内、現在 147–176 行付近の予算配分ブロック（`memory_cache_size` → llcache.limit → 画像 1/4 → disc store）。ここに予算プロファイルの導出を差し込む |
 | `netsurf/frontends/framebuffer/options.h` | `fb_depth` 既定 32 → 16（M0 とセット。プロッタは `libnsfb/src/plot/16bpp.c` が既存） |
-
-### 差分の形（疑似 diff、未実施）
-
-```c
- /* netsurf/desktop/netsurf.c : netsurf_init() */
- 
--	/* set up cache limits based on the memory cache size option */
--	hlcache_parameters.llcache.limit = nsoption_int(memory_cache_size);
-+	/* set up cache limits: on Brain, derive from the device budget
-+	 * profile (brain_budget_mb, fed from brainreg) so the browser
-+	 * stays inside its share of the 128MB total. 0 = legacy fixed
-+	 * memory_cache_size behaviour. */
-+	if (nsoption_int(brain_budget_mb) > 0) {
-+		size_t budget = (size_t)nsoption_int(brain_budget_mb)
-+				* 1024 * 1024;
-+		hlcache_parameters.llcache.limit = budget * 1 / 4;
-+		/* llcache share: 25% of the browser budget (§4) */
-+	} else {
-+		hlcache_parameters.llcache.limit =
-+			nsoption_int(memory_cache_size);
-+	}
- 
- 	if (hlcache_parameters.llcache.limit < MINIMUM_MEMORY_CACHE_SIZE) {
- 		... (既存の下限処理はそのまま)
-```
-
-- 画像キャッシュ = llcache の 1/4 という既存配分（同関数内）は維持する。変えるのは「総枠の決め方」だけに限定し、1 件目の改造の観測可能性を保つ
-- 検証方法（この改造の受け入れ）: ゲスト上で (1) オプション未指定で従来通り起動すること (2) `brain_budget_mb=56` 指定時に llcache 上限がログ（NSLOG）で 14MB になること (3) 実サイト集合を開いてプロセス PSS が §4 の予算内に収まること、を bdtest で確認する
-- PSI 連動の強制回収（M1 後半）と縮退順序は、この 1 件が入ってから別コミットにする
-
----
 
 ## 7. 自前フロント「bd-web v2」の要求
 

@@ -1,5 +1,10 @@
 # UBSan 指摘 (engine.c:1892) の判定と修正 — REPORT-m4.md へ転記する記録
 
+> **このファイルの位置づけ**: 本ファイルは、作業の過程で積み上げ最中の観測・解析・実装の記録であり、確立した知識ではない。
+> 文中の「確定」「実証」等の断定表現は、記録時点での記録者の判断を示すにすぎず、内容が正確である保証はない（誤りを含む可能性がある）。
+> 参照する場合は、前提として扱わず、一次資料と照合して独立に検証すること。
+
+
 - 指摘: UBSan ビルドの OSK テストで `src/engine.c:1892`「nonnull 属性の引数への NULL 渡し」1件（テスト自体は全 PASS）。
 - 再現: libbrainime 単体を `-fsanitize=undefined` でビルドし session_test を v3 辞書で実行
   → `src/engine.c:1892:2: runtime error: null pointer passed as argument 1, which is declared to never be null` を同一行で再現。

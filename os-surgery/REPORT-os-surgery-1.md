@@ -1,5 +1,10 @@
 # OS 魔改造 第1弾 — Brainux 本体へのメス入れ（実測棚卸しと最初の実施）
 
+> **このファイルの位置づけ**: 本ファイルは、作業の過程で積み上げ最中の観測・解析・実装の記録であり、確立した知識ではない。
+> 文中の「確定」「実証」等の断定表現は、記録時点での記録者の判断を示すにすぎず、内容が正確である保証はない（誤りを含む可能性がある）。
+> 参照する場合は、前提として扱わず、一次資料と照合して独立に検証すること。
+
+
 日付: 2026-11-21 開始
 範囲: Brainux OS そのもの（カーネル・ベースシステム・現行イメージの中身）。
 作り直しスタック（rebuild/）と統合フェーズ準備（image-work/）には書き込まない。
@@ -465,67 +470,6 @@ config-trimmed.txt とバイト単位で一致することを後継ラインが
   その一部が「必要時にロードするモジュール」へ移った。
   機能は保存され、RAM 常駐分が減り、SD 容量は増える、
   という設計どおりのトレードオフ。
-
-## 7. zram A/B 測定計画（実施はメモリ実測可能な環境で）
-
-### 7.1 現状（実測）
-
-- CONFIG_ZRAM=m、CONFIG_ZSMALLOC=m、CONFIG_ZRAM_DEF_COMP_LZO_RLE=y
-  （既定アルゴリズムは lzo-rle）。CRYPTO_LZ4 は未選択（=m 化には
-  追加が必要）。CRYPTO_ZSTD=y（ライブラリとしては存在）。
-- 現行イメージに zram を有効化する仕組みは無い（swap 自体が無い。
-  fstab はプレースホルダのまま、§3.2）。つまり現行 Brainux は
-  128MB を素で使い、溢れたら OOM kill が答えになっている。
-
-### 7.2 なぜ zram が本機の第一候補か
-
-- 本拠が microSD のため、ディスク swap は遅さ以前に書込み寿命を
-  削る。zram は SD への書込みゼロで圧力逃がしができる
-  （https://www.hvr.biz/articles/topic.php?slug=zram-compressed-swap-vs-a-swap-partition-when-to-use-each
-  2026-11-21 取得 — SD/フラッシュ摩耗の観点）。
-- カーネル文書の目安: 圧縮率 2:1 を見込むなら zram サイズは
-  RAM の2倍を超えて作る意味は薄く、実 RAM 消費は mem_limit で
-  頭打ちにできる（https://mustafaerbay.com.tr/en/blog/technology/sikistirilmis-swap-zram-mi-zswap-mi/
-  2026-11-21 取得、カーネル文書 zram の要約）。
-- 低スペック機では圧縮アルゴリズムは速度優先で lz4 が定番
-  （https://github.com/foundobjects/zram-swap/ 2026-11-21 取得。
-  Armbian の <4GB 向け既定は サイズ50% / mem_limit 50% /
-  swappiness 100: https://docs.armbian.com/config/storage/
-  2026-11-21 取得）。ARM926EJ-S 単コアの本機では、zstd の
-  圧縮率優位より CPU コストが勝つ可能性が高く、A/B で実測する。
-
-### 7.3 A/B 設計
-
-固定条件: 同一イメージ・同一アプリ集合・同一操作手順
-（ログイン → 標準アプリ群を順に起動 → 辞書検索 → ブラウザ相当
-の負荷 → 全終了）。メモリ圧力の再現性を取るため、最後に
-固定サイズの匿名メモリ確保プログラムで段階的に圧力を上げる。
-
-| 条件 | zram | disksize | mem_limit | アルゴリズム | swappiness |
-|---|---|---|---|---|---|
-| A（対照） | なし | — | — | — | 60（既定） |
-| B | swap | 64MB | 32MB | lzo-rle（現行既定） | 100 |
-| C | swap | 64MB | 32MB | lz4 | 100 |
-| D | swap | 128MB | 48MB | 優勝アルゴリズム | 100 |
-
-page-cluster は全条件 0 に固定（zram では readahead が無駄、
-カーネル vm 文書の推奨系）。
-
-### 7.4 判定指標（全てゲスト内実測）
-
-1. OOM kill 発生回数と、圧力プログラムが確保できた上限
-   （A で死ぬ負荷を B/C/D が捌けるか）。
-2. `/sys/block/zram0/mm_stat`: orig_data_size / mem_used_total
-   の実効圧縮率、huge_pages（圧縮不能ページ）の割合。
-3. `/proc/vmstat` の pswpin / pswpout 増分と、操作手順全体の
-   所要時間（体感遅延の代理指標）。
-4. 手順中の最大 MemAvailable 最小値（/proc/meminfo サンプリング）。
-5. 副作用チェック: 圧縮に使う CPU が描画・入力応答を
-   目に見えて悪化させていないか（手順所要時間と主観確認の併記）。
-
-採用条件: OOM 回数が A より減り、手順所要時間の悪化が
-10% 以内、実効圧縮率 1.8 以上。満たさなければ zram は
-入れない（128MB での CPU 税が勝つなら、それも実測の結論）。
 
 ## 付記（2026-11-21）: §6 削減の実機安全性監査（DTS × config 照合）
 

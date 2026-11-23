@@ -1,5 +1,10 @@
 # OS 内部フェーズ 第2弾 レポート
 
+> **このファイルの位置づけ**: 本ファイルは、作業の過程で積み上げ最中の観測・解析・実装の記録であり、確立した知識ではない。
+> 文中の「確定」「実証」等の断定表現は、記録時点での記録者の判断を示すにすぎず、内容が正確である保証はない（誤りを含む可能性がある）。
+> 参照する場合は、前提として扱わず、一次資料と照合して独立に検証すること。
+
+
 日付: 2026-11-21
 範囲: 実装3件（通知 IPC / アラーム常駐評価 / マスコット設定の通し確認）
 ＋測定1件（ライブラリ統廃合の測定パス）。commit / push はしていない。
@@ -175,67 +180,6 @@ x86-64 ビルドでの参考値、§6）と小さく、常駐コストが読み�
 - ライブ反映は対象外（設定ページ自身が「次回起動時から反映」と
   表示する仕様どおり）。
 
-## 4. ライブラリ統廃合の測定パス（削除・置換は未実施）
-
-### 4.0 方法と一次資料
-
-- 容量は Debian trixie **armel** main の Packages インデックス
-  （deb.debian.org から取得。対象機 ARM926 は armel が正）の
-  Installed-Size を用い、setup_brainux.sh の明示 apt リストを種に
-  **Depends 閉包**を計算した（Recommends は 90-norecommend で無効。
-  brain-config のトランザクションのみ --install-recommends のため
-  その Depends/Recommends を種に加えた）。代替依存は apt と同じく
-  先頭候補で解決。閉包は 643 パッケージ / Installed-Size 合計
-  約 1,322 MiB。
-- 「排他的容量」は「全種の閉包 − 当該領域の種を除いた閉包」で、
-  その領域を外したときに実際に消える量。
-- brain-config のメタデータは packagecloud の一次インデックス
-  （dists/any/main/binary-armhf/Packages.gz、arch all のため armel
-  でも同一）から取得した。
-- **PSS は本弾では未実測**。この VM には対象 rootfs が無く、実測は
-  実機/ゲストイメージ上で `brain-measure`（os-brainux/override 同梱）
-  を置換前後に回す手順のみを提示する。ホストビルドの rebuild
-  バイナリ実サイズは参考値として記す（braindesk2 2,702,352 B、
-  bd-files 2,338,520 B、bd-clock 2,195,968 B。いずれもホスト
-  アーキテクチャ・デバッグ情報込みで、目標値ではない）。
-
-### 4.1 「要再確認」2件の決着（一次資料で確定）
-
-1. **端末3種目 = rxvt-unicode**。jwm の Depends が
-   `rxvt-unicode | gnome-terminal | konsole | x-terminal-emulator`
-   で、先頭候補の rxvt-unicode（3,124 kB）が依存で入る。明示
-   インストールの lxterminal（X 用）+ fbterm（fb コンソール）と
-   合わせて、現行イメージの端末は **3種が実在**する。
-2. **uim は現行イメージに存在しない**。apt リストに無く、
-   brain-config の Depends（whiptail, parted, lua5.1, alsa-utils,
-   psmisc, initramfs-tools）/ Recommends（triggerhappy, iw）にも
-   無く、Depends 閉包にも現れない。`uim*` の文字列は
-   brain-measure のプロセス名パターン（比較対象スタック向けの
-   監視名）にのみ存在する。旧監査の「fcitx＋uim 重複」は現行
-   構成では不成立で、IME の重複は無い（fcitx-anthy のみ）。
-
-### 4.2 領域ごとの測定と判定案
-
-| # | 領域 | 実測（Installed-Size） | 互換ゲート（依存者） | 判定案 |
-|---|---|---|---|---|
-| 1 | DE/WM（jwm+Xorg） | jwm 直接 489kB、jwm 排他 4.21MiB（rxvt-unicode 3.1MB を含む）。Xorg スタックは全 X アプリと共有され排他化できない | 既存 X アプリが新セッションで無変更で動くこと（未証明） | **残置**（統合フェーズで X 共存を証明してから） |
-| 2 | グリーター（ly / braingreeter） | 両者ともソースビルドで dpkg 対象外 | セッション決定とセット。setup のコメントどおり ly が現行既定 | **要移行**（セッション切替の判断と同時に） |
-| 3 | ファイル管理（pcmanfm） | 直接 1.55MiB、排他 7.40MiB（libfm 系） | bd-files にネットワーク/ゴミ箱等の機能差（第1弾 §4） | **要移行**（機能差の一覧化と解消が先） |
-| 4 | 端末（lxterminal/fbterm/rxvt-unicode） | 直接合計 1.70MiB（tmux 込み）。lxterminal+fbterm 排他 37.59MiB の大半は libvte 経由の libicu76（36.5MB） | rebuild に端末アプリが無い。fbterm は X 無しコンソールの受け皿。rxvt-unicode は jwm 依存で jwm と運命共同体 | **残置**（rebuild 端末ができるまで）。rxvt-unicode は #1 と同時に消える |
-| 5 | ブラウザ（netsurf-gtk/fb） | 直接 gtk 4.93MB / fb 3.77MB。gtk 排他は自パッケージのみ 4.82MiB（GTK3 は pcmanfm/lxterminal と共有） | gtk は X 用、fb は非 X 用の受け皿。rebuild の brain フロントエンドが後継 | **要移行**（fb 版から rebuild FE へ。gtk は X が残る間は残置） |
-| 6 | IME（fcitx-anthy） | fcitx-anthy 直接 459kB、排他 23 パッケージ 77.0MiB | X アプリの入力は fcitx 経由のみ。libbrainime の fcitx アドオンが無くゲート不成立（第1弾 §4 のとおり） | **残置**（アドオン作成が前提条件） |
-| 7 | DHCP（dhcpcd / isc-dhcp-client） | dhcpcd 直接 38kB（本体は dhcpcd-base）。isc 排他 7.76MiB だが iproute2（4.08MB）は brain-gadget / nmcli シムが `ip` を使うため残す → 実効削減は isc 本体＋libtirpc 系の約 3MiB | **dhclient の実使用者が存在**: override の enable_ethernet_gadget と brain-gadget が `dhclient usb0` を呼ぶ。dhcpcd サービス自体は有効化済み | **要移行**（上記2スクリプトを dhcpcd 呼び出しへ書き換えてから isc-dhcp-client を削除） |
-| 8 | SSH（ssh メタ + openssh-client） | openssh-client 直接 4.93MB。`ssh` メタ排他 9 パッケージ 4.07MiB（openssh-server 3.36MB を含む） | `ssh` メタの Depends が openssh-server を引き込む。sshd は setup の有効化リストに無く、常駐させる運用も repo 内に無い | **削除可能**（リストから `ssh` を外し openssh-client のみ残す。約 4.07MiB 削減＋不要なサーバの除去） |
-| 9 | 開発ツール一式 | 直接合計 93.4MiB、**排他 185 パッケージ 413.5MiB**（最大） | 実行時依存は repo 内に確認できず（numpy/ipython の利用者なし、git は ly の clone 用）。ただし setup 自身がイメージ構築中に ly と braindesk を **内部でビルド**するため構築時には必要 | **要移行**（ランタイムイメージから分離: 構築ステージで使い、最終イメージでは purge する構成へ） |
-| 10 | メディア CLI（mpg123 / vorbis-tools） | 直接合計 2.77MiB、排他 6.64MiB | **旧 braindesk の bd-player が mpg123 / ogg123 を execlp で呼ぶ**（braindesk/src/apps/bd-player.c） | **残置**（旧 braindesk の置換完了まで） |
-| 11 | 時刻（fake-hwclock / timesyncd） | 第1弾の判断どおり測定対象外 | 役割分担あり | 対象外（現状維持） |
-| 12 | エディタ（vim） | 直接 3.49MiB、排他 43.28MiB（vim-runtime 38.4MB が大半） | GUI の無い唯一のエディタ。bd-notes はテキストファイル編集の代替ではない | **残置**（重複ではない） |
-
-補足: rebuild 内部の共有は第1弾の結論どおり健全（brainreg は
-libbdshell.a 経由の単一実装）。旧 braindesk（repo `braindesk/`）は
-rebuild と完全な二重実装だが、その削除は #1/#3/#10 の置換完了が
-前提で、本表の各行に内包される。
-
 ## 5. コピー/オーバーヘッド削減
 
 - 通知 IPC: 固定長ヘッダ＋固定レイアウト構造体で、パース・
@@ -276,22 +220,6 @@ rebuild と完全な二重実装だが、その削除は #1/#3/#10 の置換完�
 - 突然のリセット: デーモンは再起動後に永続化状態から再アーム
   する（期限切れタイマーの即時発火、発火済み一度きりアラームの
   無効化の保持をテストで確認）。
-
-## 8. 未検証・残件
-
-- **RTC wakealarm の実機可否**（§2）: インターフェースのみ。
-  i.MX28 RTC でサスペンド復帰できるかは実機/ゲスト検証が前提。
-- **bd-alarmd のセッション組み込み**: デーモン単体では動作するが、
-  セッション起動時に誰が bd-alarmd を起動するか（セッションの
-  子プロセス管理 / systemd ユニット）は統合フェーズの配線項目。
-  現時点では「セッションから自動ではまだ起動しない」。
-- 通知シートでのアプリ名/緊急度の表示区別（値はモデルまで
-  届いている）。
-- 統廃合（§4）は測定と判定案まで。削除・置換の実施は次弾以降
-  （#8 の `ssh` メタ除去が最も小さい一手）。
-- §4 の PSS は対象イメージでの brain-measure 実測が未実施
-  （手順のみ提示）。
-- 本弾の変更は全て作業ツリーのみで、**commit / push はしていない**。
 
 ## 変更範囲（他ラインとの衝突回避）
 

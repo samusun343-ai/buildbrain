@@ -1,5 +1,10 @@
 # REPORT-apps-dual-mode-notes-tasks — bd-notes / bd-tasks 両モード対応
 
+> **このファイルの位置づけ**: 本ファイルは、作業の過程で積み上げ最中の観測・解析・実装の記録であり、確立した知識ではない。
+> 文中の「確定」「実証」等の断定表現は、記録時点での記録者の判断を示すにすぎず、内容が正確である保証はない（誤りを含む可能性がある）。
+> 参照する場合は、前提として扱わず、一次資料と照合して独立に検証すること。
+
+
 範囲: `apps/notes/`、`apps/tasks/` のみ（+ アイコン素材追加分は §4）。
 `shell/`、ライブラリ本体（`../include`・`../src`）、`apps/settings/`、
 `apps/files/`、`screenshots/` は編集しない。repo へ commit / push なし。
@@ -128,11 +133,3 @@ radio_button_unchecked / check_circle）。
   fluent/*.png}（追加2点＋全点再レンダリングで既存 PNG も再生成）。
   shell/、ライブラリ本体、settings/、files/、screenshots/ は未編集。
   commit / push なし。
-
-## 6. 申し送り
-
-- notes の WinUI 左ペイン幅は 264px 固定（最小サイズ指定）。
-  実機 480px 幅では右ペインが狭くなるため、撮影時に要確認。
-- 検証ハーネスは /tmp の一時ファイル（恒久テストには未追加）。
-  恒久化する場合は test_notes / test_tasks_ui への WinUI
-  テーマケース追加が妥当（本ラインではテストファイル未編集）。

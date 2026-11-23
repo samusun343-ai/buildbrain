@@ -1,5 +1,10 @@
 # 統合フェーズ第7段（image-work 番号）レポート: アプリを WM クライアント化し、バー常時表示＋バーからの切替を成立させる
 
+> **このファイルの位置づけ**: 本ファイルは、作業の過程で積み上げ最中の観測・解析・実装の記録であり、確立した知識ではない。
+> 文中の「確定」「実証」等の断定表現は、記録時点での記録者の判断を示すにすぎず、内容が正確である保証はない（誤りを含む可能性がある）。
+> 参照する場合は、前提として扱わず、一次資料と照合して独立に検証すること。
+
+
 - 日付: 2026-11-22
 - 対象イメージ: **sd-v7.img**（3,221,225,472 B、md5 `1d1fae0bc1fd21aaa1f52cffe81d9313`）
 - 土台: sd-v6.img（md5 `1afc39f089a3321c371591ba83c65635`、rootfs-v6）。v6 の変更（U-Boot の `vt.global_cursor_default=0` による fbcon カーソル抑止＋セッションの `stty -echo`）はそのまま継承し、本段の差分はユーザーランドのみ。
@@ -154,10 +159,3 @@ apps/tests/test_matrix.c を新設し、アプリ make check の先頭で常時�
 
 - ファイルのパス表示バーは極端に狭い幅では最後の区切りがクランプで切れる（はみ出しはしない）。専用の溢れバー（TK_W_OVERFLOWBAR）への移行は今後の課題として残す。
 - ツールキット単体テスト群（test_tk5〜tk18）の終了時リーク計数はテスト側の後始末不足として AUDIT に計数済み。実運用形スイートとライブラリのサイクルは無欠陥。
-
-## 8. v6 との統合点（親への申し送り）
-
-- 土台は rootfs-v6 / sd-v6.img。v6 ラインの変更は (1) U-Boot の bootargs への `vt.global_cursor_default=0` 追加（clock1/edsh6exe-v6.bin、assemble_image7.sh が md5 アサート付きでそのまま継承）、(2) brainux-session.sh の `stty -echo`（payload 経由で v7 にも収蔵され、update-rootfs7.sh が正本一致をアサート）。
-- REPORT-integration-7.md は本段の開始時点で未発行だったため、v6 側の記録はそちらの発行を待つ。本段の変更は全てソース＋構築スクリプト（update-rootfs7.sh / assemble_image7.sh / verify_image7.sh）の形で残してあり、再生成可能。
-- 土台立て直し後の最終イメージは **sd-v8.img**（rootfs-v8、update-rootfs8.sh / assemble_image8.sh / verify_image8.sh で再生成可能）。sd-v7.img は第7段時点の証拠としてそのまま残してある。作業用コピーは sd-v9-work.img（int9 ハーネスの既定名。p1 に音声スモーク用 tone.wav を追加したもの）。
-- repo への commit/push はしていない（親の担当）。

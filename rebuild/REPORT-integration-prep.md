@@ -1,5 +1,10 @@
 # 統合フェーズ準備 — ARM クロスビルドと SD イメージ組立て
 
+> **このファイルの位置づけ**: 本ファイルは、作業の過程で積み上げ最中の観測・解析・実装の記録であり、確立した知識ではない。
+> 文中の「確定」「実証」等の断定表現は、記録時点での記録者の判断を示すにすぎず、内容が正確である保証はない（誤りを含む可能性がある）。
+> 参照する場合は、前提として扱わず、一次資料と照合して独立に検証すること。
+
+
 作成: 2026-11-21（作業の区切りごとに追記する）
 
 ## 0. 本書の位置づけ・合格範囲
@@ -306,52 +311,3 @@ imx28-pwsh6.dtb をデコンパイルし、キー割当てセル
   なし。原木側の変更は §2 の session.c/h・braindesk2.c・test_session.c・
   brainux-session.sh のみで、その影響は test_session の +15 件（全通過）
   として切り分け済み。
-
-## 8. 未検証・残件
-
-- ゲスト実起動（次段）。
-- **本 VM の loop デバイス不在**: /dev/loop-control が無く losetup が
-  使えないため、build_image.sh の kpartx 経路はそのままでは使えない。
-  イメージ組立てはレイアウト（パーティション配置・内容）を
-  build_image.sh に一致させ、充填方法のみ代替する（FAT は mkfs.fat +
-  mtools 系、ext4 は mke2fs -d、dd でオフセット配置、sfdisk で
-  テーブル作成）。差分は §6 に明記する。
-- **chown 問題の真因は setgid 継承だった**（実測で確定。当初「exec
-  セッションごとに idmap の flavour が違う」と誤認し、tmpfs 方式や
-  良セッション抽選に時間を費やした — その経緯も含めて正直に記す）:
-  ホームツリー全体が mode 2770（setgid、group 65534）であり、その下で
-  作成したファイルは group 65534（未マップ overflow）を継承し、
-  以後どのプロセスからも chown できなくなる。これが dpkg postinst を
-  壊した（base-files の /var/mail chown が EPERM で失敗し debootstrap
-  第2段階が停止）。「良セッション」に見えたのは、setgid でない
-  ディレクトリ（debootstrap が作った rootfs/tmp、/tmp 等）で作った
-  ファイルが 0:0 になっていただけだった。決定的な切り分け:
-  同一セッション内で setgid ディレクトリ配下の新規ファイルは
-  0:65534 で chown 不可、`chmod g-s` したディレクトリ配下では
-  0:0 で chown 可。**対策: rootfs ディレクトリを事前に chmod g-s
-  する**（中のファイルは作成者の egid=0 か tar/dpkg の明示所有になり
-  全て chown 可能）。rootfs ルート inode 自体の group 65534 は
-  組立て時に debugfs で 0 へ修正する。mmap_min_addr は読み取り専用で
-  0 にできない（Makefile の前提と違う点。qemu 8.2 のフォールバックで
-  実害は出なかった）。
-- **curl シム案は不採用**: packagecloud 鍵の取得失敗への対策として
-  /usr/local/bin/curl にシムを置く案を試したが、シムとステージした
-  鍵ファイルが stage 2 実行区間で消失し（消失の最終的な機序は
-  特定できていない）、setup 側で事前配置済み鍵を検証する形（§5.1）
-  に置き換えた。シムは出荷ツリーに残っていない（finish で除去を
-  確認する手順も残してある）。
-- **本 VM の egress proxy と guest ネットワーク**（実測で判明）:
-  chroot 内（qemu）の apt/curl は不安定で使えない。exec セッションの
-  proxy トークンは短命で、長時間の chroot 実行中に失効すると全ての
-  取得が Connection failed / Ign になり、setup が locales の install で
-  停止した（1回目の tmpfs 実行はここで終了）。ホスト側の取得は高速・
-  安定（無認証の `hatch-egress-proxy:3128` でも可、ホスト apt の
-  80hatch-egress-proxy 設定がそれ）。対策: **必要 .deb を全てホストで
-  先行取得**する。guest と同じ base status（debootstrap 直後の dpkg
-  status）＋完全な lists でホスト apt シミュレーション
-  （`image-work/apt-sim/`）を回し、`--print-uris` の閉包 523 件
-  （325MB）を aptcache へ取得（失敗0）。sim の検証済み lists を
-  rootfs へ先行配置し、chroot の proxy 環境変数は無認証 proxy に
-  固定、apt には proxy 設定とリトライ設定を conf で入れる。
-  packagecloud の index は apt の https メソッドだと proxy で
-  詰まるため curl で直接取得して lists に配置した。

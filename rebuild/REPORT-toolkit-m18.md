@@ -1,56 +1,16 @@
 # GUI ライブラリ同等化 第11弾（M18）レポート — 残り67セルの処理
 
+> **このファイルの位置づけ**: 本ファイルは、作業の過程で積み上げ最中の観測・解析・実装の記録であり、確立した知識ではない。
+> 文中の「確定」「実証」等の断定表現は、記録時点での記録者の判断を示すにすぎず、内容が正確である保証はない（誤りを含む可能性がある）。
+> 参照する場合は、前提として扱わず、一次資料と照合して独立に検証すること。
+
+
 状態: **完了**（本弾の範囲）。最終実数は「結果」節。
 開始時点の実数（AUDIT-toolkit.md §2 が正本、前任の実測）:
 ● 387/454（85.2%）、◐ 53、○ 14、△ 0、✕ 0。
 モード別 ●: Android 193/227、WinUI 194/227。
 ツールキット 3,411 tests 全 PASS、消費者（アプリ 1,048 /
 シェル 683 / OSK 319）回帰ゼロ。**完成ではない。**
-
-## 作業計画
-
-1. **A (c) 44件の寸法テスト完遂**（M17 分類で「逸脱の記録
-   なし・寸法テスト未網羅」が ◐ の理由）:
-   - Android 21件: #2 Button(elevated/トグル), #4 FAB menu,
-     #5 Split, #6 Checkbox, #7 Radio, #9 Slider(単一),
-     #10 Slider(Range), #12 Progress(circular),
-     #14 TextView, #15 SearchBar, #18 Card, #20 TreeView,
-     #23 Dialog(modeless), #24 Dialog(full-screen),
-     #25 Date/Time picker, #26 Snackbar, #28 TabBar,
-     #32 Bottom sheet, #33 Segmented, #34 Carousel,
-     #35 ColorPicker。
-   - WinUI 23件: #2, #3 IconButton/FAB, #4, #5, #10,
-     #12 ProgressRing, #13 TextBox, #14 TextView, #15
-     AutoSuggestBox, #16 Chip, #17 InfoBadge, #18 Card,
-     #20 TreeView, #23, #24, #25, #28 TabView, #29
-     BottomBar, #30 NavRail, #31 Drawer, #32, #33, #34。
-   - 部品ごとに仕様値（一次ソース）と実装寸法を実測で
-     突き合わせるテストを書く。一致 → ●。逸脱があれば
-     (i) 正当化できない逸脱は仕様値へ修正して ●、
-     (ii) 実機適合として意図された適応なら根拠を文書化
-     して (a) 分類へ移す（● 化しない）。
-   - 留保付き (c): Android #14 / WinUI #13 はタイポ
-     グラフィ type scale の一次照合が未了（§2.4）。
-     Android #34 は仕様側に固定寸法が無い（レイアウト
-     由来）。これらは寸法テストで扱える範囲を明確化する。
-2. **残り D の詰め**:
-   - WinUI #19 ItemContainerTransitions の実値を
-     microsoft-ui-xaml のコントロールソース/XAML から
-     確定を試みる。確定できれば実装＋検証、できなければ
-     理由記録を維持。
-   - #21 scale 成分: 描画側のアフィン近似が仕様の見た目
-     と等価になる場合のみ実装。等価にならないなら終端
-     理由として AUDIT に確定記録。
-   - その他の D ○（AUDIT §15.3）: 理由ごとに再挑戦
-     可否を判断する（#15 両モード、#25 両モード、
-     Android #13/#20/#35、WinUI #16/#18/#33）。
-3. **○ 3件の再検討**: #27 両モード（Toast の公開形状
-   仕様なし）、WinUI #35（形の相違）。新しい出典・解釈が
-   得られれば処理し、無ければ据え置きを明記。
-4. 実在バグを見つけたら直し、AUDIT に記録する。
-
-据え置き確定（触らない）: A (a) 7件、Android Slider の
-形、ListView 行高 Δ1、Toast の M3 フェード値、FAB 無効形。
 
 ## 進捗ログ
 

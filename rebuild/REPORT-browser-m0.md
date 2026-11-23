@@ -1,5 +1,10 @@
 # REPORT — ブラウザ実装フェーズ M0（NetSurf 3.11 魔改造・第1弾）
 
+> **このファイルの位置づけ**: 本ファイルは、作業の過程で積み上げ最中の観測・解析・実装の記録であり、確立した知識ではない。
+> 文中の「確定」「実証」等の断定表現は、記録時点での記録者の判断を示すにすぎず、内容が正確である保証はない（誤りを含む可能性がある）。
+> 参照する場合は、前提として扱わず、一次資料と照合して独立に検証すること。
+
+
 - 日付: 2026-11-20
 - 対象: `browser-engine/netsurf-all-3.11/`（git 管理、後述）。buildbrain repo へは未統合・push なし。
 - 位置づけ: 選定文書 `browser-engine-selection.md` の魔改造リスト M0〜M11 のうち **M0（brain サーフェス）＋予算組み込み（M1〜M3 の核）** を実装し、ホストで実証した段階。**「完成」ではない。** 動く UI は framebuffer フロントエンド＋brain サーフェス（検証車両）であり、ツールキット v2 上の製品 UI（frontends/brain）は設計のみ（`DESIGN-brain-frontend.md`）。
@@ -129,12 +134,3 @@
 
 - VM 差し替えで apt の開発パッケージ（bison、flex、gperf、libcurl4-openssl-dev、libpsl-dev、check、libpng/libjpeg/libssl/libexpat/libwebp/libidn2 の dev 系）が消えていた。選定文書 §8.2 の手順で再インストールして復旧済み。VM 差し替えのたびに同じ復旧が要る。
 - ビルド手順: `cd netsurf-all-3.11 && rm -f inst-framebuffer/build-stamp && make TARGET=framebuffer -j2`（スタンプ駆動。ログは `../build-brain-m0.log`）。所要はホストで約10分（並行 QEMU 作業と CPU を共有する環境では変動）。
-
-## 10. 次フェーズへの引き継ぎ
-
-1. ディスクキャッシュ欠陥の修正（§5 の1+2をペアで。3のブロックファイル・スケーリングも同時に）。修正後は本レポート §5 の再現手順で上限収束を再測定すること。
-2. frontends/brain の実装（DESIGN-brain-frontend.md の F1〜F5）。前提として brain サーフェスへの `target=shm` 追加と、M4 の IM フック（コア側、既定 NULL）。
-3. JS 実行タイムアウトを `script_timeout` オプション参照に統一。
-4. 他形式（PNG 等）の表示サイズデコード、または最低限「上限超過でもプレースホルダ表示」への改善。
-5. ARM sysroot の調達方法を決め、本体クロスビルドを通す（§8）。
-6. 統合フェーズ: SD イメージ＋QEMU ゲストで RSS 実測、書込み中リセット試験、実キー/タッチでの操作確認。

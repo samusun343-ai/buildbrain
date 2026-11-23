@@ -1,5 +1,10 @@
 # GUI ライブラリ同等化 第8弾（M15）レポート — 残り134セルの格上げ
 
+> **このファイルの位置づけ**: 本ファイルは、作業の過程で積み上げ最中の観測・解析・実装の記録であり、確立した知識ではない。
+> 文中の「確定」「実証」等の断定表現は、記録時点での記録者の判断を示すにすぎず、内容が正確である保証はない（誤りを含む可能性がある）。
+> 参照する場合は、前提として扱わず、一次資料と照合して独立に検証すること。
+
+
 状態: **このラインの作業は完了**（下記「結果」が最終実数。
 未検証事項は「未検証の明記」に列挙）。
 開始時点の実数（AUDIT-toolkit.md §2 が正本、自分の再実行で確認済み）:
@@ -7,93 +12,6 @@
 モード別 ●: Android 164/228、WinUI 158/228。
 ツールキット 2,910 tests 全 PASS、消費者（アプリ 1,048 /
 シェル 683 / OSK 319）回帰ゼロ。
-
-## 作業計画と仕様出典（2026-11-20、Web 一次ソースで取得）
-
-### F ○ の解消方針（優先順位1）
-
-- **#32 Sheet（モーダルトラップ）**: M3 のモーダルシートは
-  フォーカスを受けキー（Back）で閉じるのが参照形。
-  出典: developer.android.com の ModalBottomSheetProperties
-  — `isFocusable` 既定 true（「シートが IME イベントと
-  キー押下を受ける」）、`shouldDismissOnBackPress` 既定
-  true → onDismissRequest。ModalBottomSheet 解説「ダイアログ
-  と同様、アプリの他の機能を全て無効化して前面に出る」。
-  WinUI 形（Flyout）の light dismiss は Esc を含む
-  （Microsoft Learn、Flyout クラス）。
-  → 実装: モーダル表示時に focus_return 保存＋最初の
-  フォーカス可能子孫へフォーカス（無ければシート自身）、
-  Esc で閉じる。復帰は tk_root_remove_overlay の汎用
-  focus_return 機構（M14）に任せる。非モーダル形は現行維持。
-- **#31 Drawer（フォーカス不可）**: 項目は両参照とも
-  フォーカス可能な項目コントロール。
-  出典: Microsoft Learn NavigationView（項目は
-  NavigationViewItem コントロール）＋「Focus navigation
-  without a mouse」（対話要素はフォーカス移動に対応、
-  方向キーは領域内移動）。Android 側は developer.android.com
-  の Compose ModalNavigationDrawer 公式サンプルが
-  「ドロワーが閉じたらキーボードフォーカスは呼び出し元へ
-  戻るべき」と明記。
-  → 実装: ドロワーをフォーカス可能化し項目カーソル
-  （Up/Down で区切り・無効を飛ばし端で停止、Enter/Space
-  で選択、モーダル形は Esc で閉じる）。モーダル表示時は
-  フォーカスを中へ移し focus_return で復帰。標準形は
-  Tab 到達可能な1ストップ。
-- **#4 FAB menu（キー経路なし）**: ポップアップ面のキー
-  模型は Menu（#21、F ● で検証済み）と Flyout の
-  Esc light-dismiss（Microsoft Learn、Flyout クラス）に
-  従う。→ 表示時に最初の項目ボタンへフォーカス、
-  Up/Down で項目間移動（循環）、Tab は面内で循環、
-  Esc で閉じてフォーカス復帰（remove_floating は
-  remove_overlay 経由のため汎用復元が効く）。
-- **#26 Snackbar（キー経路なし）**: アクションは実ボタン
-  であり Tab 走査に入る。表示でフォーカスは奪わない。
-  出典: m3.material.io Snackbar ガイドライン（「They
-  shouldn't interrupt the user experience」）＋ Android
-  Developers の Snackbar API 参照（「moving the keyboard
-  focus indicator to navigate through interactive elements
-  in a page is not considered an action」— アクションは
-  ページ内の対話要素としてフォーカス移動で到達する前提）。
-  → 実装: snack_widget をフォーカス可能化し、アクション
-  矩形をその rect に同期。focus_step に「モーダル無し・
-  アクション有り・表示中」のとき末尾の Tab ストップとして
-  追加。Enter/Space でポインタ経路と同じ発火。Esc は
-  付けない（両参照とも定義なし）。
-- **#40 DnD（キーボード DnD なし）**: 両参照とも DnD を
-  ポインタジェスチャとしてのみ定義し、キー操作の定義が
-  存在しない。出典: Microsoft Learn「Drag and drop -
-  Windows apps」（"a standard gesture (press-hold-and-pan
-  with the finger or press-and-pan with a mouse or a
-  stylus)"）、Android Developers「Implement drag and drop
-  with views」（"The user starts a drag with a gesture,
-  usually by touching or clicking and holding"）。
-  キーボード代替は切取/貼付（#41 で ● 検証済み）であり
-  別機能。→ F は両モードとも「—」（部品の性質上存在
-  しない、M14 の #12 F 訂正と同型）として AUDIT に
-  根拠を記録する。分母 456 → 454。
-
-### 観察（未修正・本ラインの範囲外）
-
-- Android Developers の Snackbar API 参照は「アクション
-  付きスナックバーはユーザーが他の操作をするまで
-  timeout / self-dismiss すべきでない」とするが、本実装は
-  duration 指定時にアクション有無によらず自動消去する
-  （TK_SNACKBAR_INDEFINITE が永続形）。消費者の契約に
-  触れるため本ラインでは変更せず、記録のみとする。
-  C セルの格付けは変更しない。
-
-### E/B/D の対象（優先順位2・3）
-
-- E: WinUI #3、#6/#7/#8（ラベル画素）、#19、#28、#33、
-  両モード #5、#25、#30、#34。
-- B: #4 両（FAB menu 面の状態）、#26 Android、#35
-  Android、#34 WinUI、#36 WinUI、#40 WinUI（ドラッグ
-  シャドウ画素）、#38 WinUI。
-- D: #11 WinUI（indeterminate の位相駆動画素 — 実装は
-  prog_phase 駆動のセグメント掃引で画素検証可能）、
-  #21 WinUI（出現スライドの画素変位＋退出即時。Android は
-  Compose の退出アニメーションが存在し本実装は即時の
-  ため ◐ 据え置き見込み）。
 
 ## 進捗ログ
 
