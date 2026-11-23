@@ -1284,6 +1284,19 @@ settings_app *settings_app_new(bd_backend *backend, bd_wifi *wifi,
         app->page = SETTINGS_PAGE_HOME;
     }
     app->rows_box = tk_box_new(TK_DIR_VERTICAL, 12, 0);
+    /* int16 C7 (blind round 7, photos 43/44): the scrollview
+     * paints its surface across the whole detail column, so
+     * the column's content sits ON that face - and the group
+     * headings sat at the face's left edge (ink 1-2px from
+     * it), because rows_box had no inset of its own and the
+     * main column's BD_PAGE_PAD_X only distances the FACE
+     * from the window edge. The detail column's content
+     * takes the same standard inset from the surface edge,
+     * for every page and both modes, via the one shared
+     * constant - the headings and the group cards move
+     * together, so the heading still aligns with the card
+     * edge it introduces. */
+    tk_box_set_pad_x(app->rows_box, BD_PAGE_PAD_X);
     tk_scrollview_set_child(app->rows_scroll, app->rows_box);
 
     app->root = tk_root_new(outer);
