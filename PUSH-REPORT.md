@@ -335,3 +335,27 @@ push した。これで u-boot-brain の push 未完は解消。
   - 申し送り（未解消項目）: REPORT-integration-13.md §8 のとおり、(1) OSK 文字キー高さ 30px は構造的限界として未解消（候補欄48＋下段バー56 を確保した残りを3行で割る fit 機構上、窓内容約205px ではキー行約33px が上限。推奨54px 未達、下限24px は充足）、(2) スライダーつまみ直径 約26px（下限充足・推奨54px 未達、本フェーズ対象外として残置）、(3) レコーダーの最近削除ビューの空状態文面と名前欄54px はホスト側でのみ確認しゲスト撮影では未検証、(4) ファイルの空状態2行文はホスト matrix で確認しゲスト撮影では未写、(5) プレイヤー WinUI トランスポート行（spacing 8 の混成行）の C2-A 適用可否は継続検討事項で未変更。
   - （本レポート） rebuild: push report update (integration phase 13, sd-v13 sync)
 - buildbrain `master` は無変更。サブモジュールポインタも不変更。linux-brain / u-boot-brain は今回の push 対象外。eMMC イメージには一切触れていない（REPORT-integration-13.md §2 のとおり、フェーズ13の回帰前後とも emmc-int9.img の md5 は `2af360a02f452979b4de84ba3b1845f5` で不変、WinCE 確認は作業コピーのみ）。
+
+## 第8弾（2026-11-23、統合フェーズ14 / sd-v14 同期）
+
+- コミット: `90d15cf02`（フェーズ14の是正一式＋ REPORT-integration-14.md。
+  内訳: bd_calc / bd_clock / bd_files / bd_notes / bd_pkg /
+  bd_recorder / bd_tasks、tk_widgets、ゴールデン4件
+  （calc 850x368・854x480 android、notes 850x368・854x480 winui））。
+  push 後に PUSH-REPORT 更新コミットが続く。
+- 内容: 盲検第6ラウンド残件の是正（録音詳細パネルの余白 18px 化、
+  コマンドボタン縦積み間隔 9px 化、電卓ピル形「=」の配色による
+  コントラスト 4.5:1 以上化、ブラウザ開始ページの最初のリンクの
+  内側化（CSS padding-left 30px）、CHECKLIST-v14 の適用範囲明文化）。
+  最終イメージ sd-v14.img md5 `336ad31f9f98cc8a74b4c22c08502bc6`、
+  PARTUUID `e0c6bdb3-02`。ゲスト全面回帰 PASS。盲検第7ラウンドは
+  評価者の結論が割れ（M: 不合格0「合格と言える」/ N: 不合格2
+  「言えない」）、不合格側の実測（設定 WinUI 詳細見出しが面左端
+  から 1〜2px）を再測で確認したため盲検合格とはしない
+  （詳細は REPORT-integration-14.md §5・§7、フェーズ15送り）。
+  あわせてフェーズ12の eMMC 事故の復旧を記録: 新ベースライン
+  md5 `612e8a0307436b59852bb39ede358fa8`（pristine と同一。
+  事故前のバイト列は復旧できず）。
+- 同期方法と除外方針は第7弾までと同一（rsync --delete なし、
+  *.o/*.a/*.so と browser-engine 作業領域・libbrainime/m4work を除外、
+  実行バイナリは収蔵対象外）。
