@@ -903,6 +903,27 @@ CE_BOOL ce_UnionRect(CE_RECT *dst, const CE_RECT *a, const CE_RECT *b)
 
 /* ---------------- fills and shapes ---------------- */
 
+/* Pattern-brush fill (M3): tile the pattern bitmap, aligned to
+ * the DC origin shifted by the brush origin. */
+static void fill_rect_pattern(ce_dc *dc, CE_RECT r, ce_gdobj *pat)
+{
+    if (!pat || !pat->bmp_px || pat->bmp_w <= 0 || pat->bmp_h <= 0)
+        return;
+    for (int y = r.top; y < r.bottom; y++) {
+        int py = (y - dc->brush_org.y) % pat->bmp_h;
+        if (py < 0)
+            py += pat->bmp_h;
+        for (int x = r.left; x < r.right; x++) {
+            int pxx = (x - dc->brush_org.x) % pat->bmp_w;
+            if (pxx < 0)
+                pxx += pat->bmp_w;
+            plot_px(dc, x, y,
+                    pat->bmp_px[(size_t)py * pat->bmp_w + pxx]);
+        }
+    }
+    dc_damage(dc, r);
+}
+
 /* Fill with a brush handle, which may also be an encoded system
  * color handle (HBRUSH)(COLOR_x + 1). Returns 1 on success. */
 int gdi_fill_rect_handle(CE_HANDLE hdc, const CE_RECT *r, CE_HANDLE hbrush)
@@ -919,6 +940,10 @@ int gdi_fill_rect_handle(CE_HANDLE hdc, const CE_RECT *r, CE_HANDLE hbrush)
             return 0;
         if (b->brush_style == CE_BS_NULL)
             return 1; /* hollow: nothing to paint */
+        if (b->brush_style == 3 /* BS_PATTERN */ && b->brush_pattern) {
+            fill_rect_pattern(dc, *r, b->brush_pattern);
+            return 1;
+        }
         px = gdi_cref_to_px(b->brush_color);
     }
     gdi_fill_rect_px(dc, *r, px);
@@ -932,8 +957,14 @@ int ce_FillRect(CE_HANDLE hdc, const CE_RECT *r, CE_HANDLE hbrush)
 
 static void fill_with_brush(ce_dc *dc, CE_RECT r)
 {
-    if (dc->brush && dc->brush->brush_style != CE_BS_NULL)
-        gdi_fill_rect_px(dc, r, gdi_cref_to_px(dc->brush->brush_color));
+    if (!dc->brush || dc->brush->brush_style == CE_BS_NULL)
+        return;
+    if (dc->brush->brush_style == 3 /* BS_PATTERN */
+        && dc->brush->brush_pattern) {
+        fill_rect_pattern(dc, r, dc->brush->brush_pattern);
+        return;
+    }
+    gdi_fill_rect_px(dc, r, gdi_cref_to_px(dc->brush->brush_color));
 }
 
 static void stroke_rect_pen(ce_dc *dc, CE_RECT r)
@@ -1720,6 +1751,28 @@ CE_BOOL ce_TextOutW(CE_HANDLE hdc, int x, int y, const CE_WCHAR *str,
     int px = dc_font_px(dc);
     int w = text_width_logical(dc, buf);
     int lh = tk_line_height_px(tk_theme_default(), px);
+    /* SetTextAlign handling (M3): horizontal TA_RIGHT(2) /
+     * TA_CENTER(6); vertical TA_BOTTOM(8) / TA_BASELINE(24,
+     * approximated from the line height); TA_UPDATECP(1) takes
+     * the point from the current position and advances it. */
+    if (dc->text_align & 1) {   /* TA_UPDATECP */
+        x = dc->pos.x;
+        y = dc->pos.y;
+    }
+    int ta_h = dc->text_align & 6;
+    if (ta_h == 2)
+        x -= w;
+    else if (ta_h == 6)
+        x -= w / 2;
+    int ta_v = dc->text_align & 24;
+    if (ta_v == 8)
+        y -= lh;
+    else if (ta_v == 24)
+        y -= lh - lh / 4;
+    if (dc->text_align & 1) {
+        dc->pos.x = x + w;
+        dc->pos.y = y;
+    }
     if (dc->bk_mode == CE_OPAQUE) {
         CE_RECT bg = { x, y, x + w, y + lh };
         gdi_fill_rect_px(dc, bg, gdi_cref_to_px(dc->bk_color));
@@ -1984,4 +2037,827 @@ CE_BOOL ce_GetTextMetricsW(CE_HANDLE hdc, CE_TEXTMETRICW *tm)
     tm->tmPitchAndFamily = 0x22; /* VARIABLE_PITCH | FF_SWISS approx */
     tm->tmCharSet = 0;           /* ANSI_CHARSET */
     return CE_TRUE;
+}
+
+/* ================= M3: GDI additions for hosted DLLs ====== */
+
+static uint32_t rd32(const uint8_t *p)
+{
+    return (uint32_t)p[0] | ((uint32_t)p[1] << 8)
+           | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+}
+
+CE_HANDLE ce_FindResourceW(CE_HANDLE hmod, const CE_WCHAR *name,
+                           const CE_WCHAR *type);
+CE_HANDLE ce_LoadResource(CE_HANDLE hmod, CE_HANDLE hrsrc);
+CE_DWORD ce_SizeofResource(CE_HANDLE hmod, CE_HANDLE hrsrc);
+
+/* ---- DC state ---- */
+
+CE_DWORD ce_SetTextAlign(CE_HANDLE hdc, CE_DWORD align)
+{
+    ce_dc *dc = gdi_dc_from_handle(hdc);
+    if (!dc)
+        return 0xFFFFFFFFu;
+    CE_DWORD old = (CE_DWORD)dc->text_align;
+    dc->text_align = (int)align;
+    return old;
+}
+
+CE_DWORD ce_GetTextAlign(CE_HANDLE hdc)
+{
+    ce_dc *dc = gdi_dc_from_handle(hdc);
+    return dc ? (CE_DWORD)dc->text_align : 0xFFFFFFFFu;
+}
+
+int ce_GetBkMode(CE_HANDLE hdc)
+{
+    ce_dc *dc = gdi_dc_from_handle(hdc);
+    return dc ? dc->bk_mode : 0;
+}
+
+CE_DWORD ce_GetNearestColor(CE_HANDLE hdc, CE_DWORD color)
+{
+    (void)hdc;
+    return color;   /* direct-colour pipeline: exact match */
+}
+
+CE_BOOL ce_SetBrushOrgEx(CE_HANDLE hdc, int x, int y, CE_POINT *prev)
+{
+    ce_dc *dc = gdi_dc_from_handle(hdc);
+    if (!dc)
+        return CE_FALSE;
+    if (prev)
+        *prev = dc->brush_org;
+    dc->brush_org.x = x;
+    dc->brush_org.y = y;
+    return CE_TRUE;
+}
+
+CE_BOOL ce_SetViewportOrgEx(CE_HANDLE hdc, int x, int y,
+                            CE_POINT *prev)
+{
+    ce_dc *dc = gdi_dc_from_handle(hdc);
+    if (!dc)
+        return CE_FALSE;
+    if (prev)
+        *prev = dc->vport_org;
+    if (dc->is_memory) {
+        /* shift the mapping origin, as the real call does */
+        dc->origin.x += x - dc->vport_org.x;
+        dc->origin.y += y - dc->vport_org.y;
+    }
+    dc->vport_org.x = x;
+    dc->vport_org.y = y;
+    return CE_TRUE;
+}
+
+CE_DWORD ce_SetLayout(CE_HANDLE hdc, CE_DWORD layout)
+{
+    ce_dc *dc = gdi_dc_from_handle(hdc);
+    if (!dc)
+        return 0xFFFFFFFFu;
+    CE_DWORD old = dc->layout;
+    dc->layout = layout;   /* stored; rendering stays LTR */
+    return old;
+}
+
+CE_DWORD ce_GetLayout(CE_HANDLE hdc)
+{
+    ce_dc *dc = gdi_dc_from_handle(hdc);
+    return dc ? dc->layout : 0xFFFFFFFFu;
+}
+
+CE_HANDLE ce_GetCurrentObject(CE_HANDLE hdc, CE_DWORD type)
+{
+    ce_dc *dc = gdi_dc_from_handle(hdc);
+    if (!dc)
+        return NULL;
+    switch (type) {
+    case 1: return (CE_HANDLE)dc->pen;        /* OBJ_PEN */
+    case 2: return (CE_HANDLE)dc->brush;      /* OBJ_BRUSH */
+    case 6: return (CE_HANDLE)dc->font;       /* OBJ_FONT */
+    case 7: return (CE_HANDLE)dc->bitmap;     /* OBJ_BITMAP */
+    default: return NULL;
+    }
+}
+
+typedef struct {
+    CE_DWORD lopnStyle;
+    CE_POINT lopnWidth;
+    CE_DWORD lopnColor;
+} ce_logpen;
+
+CE_HANDLE ce_CreatePen(int style, int width, CE_DWORD color);
+
+CE_HANDLE ce_CreatePenIndirect(const ce_logpen *lp)
+{
+    if (!lp)
+        return NULL;
+    return ce_CreatePen((int)lp->lopnStyle, lp->lopnWidth.x,
+                        lp->lopnColor);
+}
+
+/* ---- clipping ---- */
+
+static int clip_complexity(ce_dc *dc)
+{
+    if (dc->nclip == 0)
+        return 1;         /* NULLREGION semantics for callers */
+    return dc->nclip == 1 ? 2 : 3;
+}
+
+int ce_IntersectClipRect(CE_HANDLE hdc, int l, int t, int r, int b)
+{
+    ce_dc *dc = gdi_dc_from_handle(hdc);
+    if (!dc)
+        return 0;
+    CE_RECT rc = { l, t, r, b };
+    if (dc->nclip == 0) {
+        dc->clip[0] = rc;
+        dc->nclip = 1;
+        return clip_complexity(dc);
+    }
+    int n = 0;
+    for (int i = 0; i < dc->nclip; i++) {
+        CE_RECT x = ce_rect_intersect(dc->clip[i], rc);
+        if (!ce_rect_empty(&x))
+            dc->clip[n++] = x;
+    }
+    dc->nclip = n;
+    return n == 0 ? 1 : clip_complexity(dc);
+}
+
+int ce_ExcludeClipRect(CE_HANDLE hdc, int l, int t, int r, int b)
+{
+    ce_dc *dc = gdi_dc_from_handle(hdc);
+    if (!dc || !dc->canvas)
+        return 0;
+    CE_RECT ex = { l, t, r, b };
+    CE_RECT base[CE_MAX_RECTS];
+    int nb = 0;
+    if (dc->nclip == 0) {
+        base[0].left = -dc->origin.x;
+        base[0].top = -dc->origin.y;
+        base[0].right = base[0].left + tk_canvas_width(dc->canvas);
+        base[0].bottom = base[0].top + tk_canvas_height(dc->canvas);
+        nb = 1;
+    } else {
+        for (int i = 0; i < dc->nclip; i++)
+            base[nb++] = dc->clip[i];
+    }
+    CE_RECT out[CE_MAX_RECTS];
+    int no = 0;
+    for (int i = 0; i < nb; i++) {
+        CE_RECT s = base[i];
+        if (ex.left >= s.right || ex.right <= s.left
+            || ex.top >= s.bottom || ex.bottom <= s.top) {
+            if (no < CE_MAX_RECTS)
+                out[no++] = s;
+            continue;
+        }
+        CE_RECT parts[4] = {
+            { s.left, s.top, s.right, ex.top },
+            { s.left, ex.bottom, s.right, s.bottom },
+            { s.left, ex.top, ex.left, ex.bottom },
+            { ex.right, ex.top, s.right, ex.bottom },
+        };
+        for (int k = 0; k < 4; k++) {
+            CE_RECT p = ce_rect_intersect(parts[k], s);
+            if (!ce_rect_empty(&p) && no < CE_MAX_RECTS)
+                out[no++] = p;
+        }
+    }
+    for (int i = 0; i < no; i++)
+        dc->clip[i] = out[i];
+    dc->nclip = no;
+    return no == 0 ? 1 : clip_complexity(dc);
+}
+
+int ce_GetClipRgn(CE_HANDLE hdc, CE_HANDLE hrgn)
+{
+    ce_dc *dc = gdi_dc_from_handle(hdc);
+    ce_gdobj *r = gdi_obj_from_handle(hrgn);
+    if (!dc || !r || r->type != CE_OBJ_RGN)
+        return -1;
+    if (dc->nclip == 0)
+        return 0;         /* no explicit clip region */
+    r->nrgn = 0;
+    for (int i = 0; i < dc->nclip && i < 32; i++)
+        r->rgn[r->nrgn++] = dc->clip[i];
+    return 1;
+}
+
+/* ---- lines and polygons ---- */
+
+static void line_plot(ce_dc *dc, int x0, int y0, int x1, int y1,
+                      uint32_t px, int wdt)
+{
+    int dx = abs(x1 - x0), dy = -abs(y1 - y0);
+    int sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+    int err = dx + dy;
+    for (;;) {
+        for (int ox = 0; ox < wdt; ox++)
+            for (int oy = 0; oy < wdt; oy++)
+                plot_px(dc, x0 + ox, y0 + oy, px);
+        if (x0 == x1 && y0 == y1)
+            break;
+        int e2 = 2 * err;
+        if (e2 >= dy) { err += dy; x0 += sx; }
+        if (e2 <= dx) { err += dx; y0 += sy; }
+    }
+}
+
+CE_BOOL ce_Polyline(CE_HANDLE hdc, const CE_POINT *pts, int count)
+{
+    ce_dc *dc = gdi_dc_from_handle(hdc);
+    if (!dc || !pts || count < 2 || !dc->pen
+        || dc->pen->pen_style == CE_PS_NULL)
+        return CE_FALSE;
+    uint32_t px = gdi_cref_to_px(dc->pen->pen_color);
+    int wdt = (int)dc->pen->pen_width;
+    if (wdt < 1)
+        wdt = 1;
+    for (int i = 1; i < count; i++)
+        line_plot(dc, pts[i - 1].x, pts[i - 1].y, pts[i].x,
+                  pts[i].y, px, wdt);
+    CE_RECT dmg = { pts[0].x, pts[0].y, pts[0].x + 1, pts[0].y + 1 };
+    for (int i = 0; i < count; i++) {
+        if (pts[i].x < dmg.left) dmg.left = pts[i].x;
+        if (pts[i].y < dmg.top) dmg.top = pts[i].y;
+        if (pts[i].x + 1 > dmg.right) dmg.right = pts[i].x + 1;
+        if (pts[i].y + 1 > dmg.bottom) dmg.bottom = pts[i].y + 1;
+    }
+    dc_damage(dc, dmg);
+    return CE_TRUE;
+}
+
+CE_BOOL ce_Polygon(CE_HANDLE hdc, const CE_POINT *pts, int count)
+{
+    ce_dc *dc = gdi_dc_from_handle(hdc);
+    if (!dc || !pts || count < 3)
+        return CE_FALSE;
+    int miny = pts[0].y, maxy = pts[0].y;
+    for (int i = 0; i < count; i++) {
+        if (pts[i].y < miny) miny = pts[i].y;
+        if (pts[i].y > maxy) maxy = pts[i].y;
+    }
+    if (dc->brush && dc->brush->brush_style != CE_BS_NULL) {
+        uint32_t fill = gdi_cref_to_px(dc->brush->brush_color);
+        /* even-odd scanline fill */
+        for (int y = miny; y < maxy; y++) {
+            int nodes[64], nn = 0;
+            for (int i = 0, j = count - 1; i < count; j = i++) {
+                int xi = pts[i].x, yi = pts[i].y;
+                int xj = pts[j].x, yj = pts[j].y;
+                if ((yi <= y && yj > y) || (yj <= y && yi > y)) {
+                    int x = xi + (y - yi) * (xj - xi)
+                                 / (yj - yi ? yj - yi : 1);
+                    if (nn < 64)
+                        nodes[nn++] = x;
+                }
+            }
+            for (int a = 0; a < nn; a++)
+                for (int b2 = a + 1; b2 < nn; b2++)
+                    if (nodes[b2] < nodes[a]) {
+                        int t = nodes[a];
+                        nodes[a] = nodes[b2];
+                        nodes[b2] = t;
+                    }
+            for (int k = 0; k + 1 < nn; k += 2)
+                for (int x = nodes[k]; x < nodes[k + 1]; x++)
+                    plot_px(dc, x, y, fill);
+        }
+    }
+    if (dc->pen && dc->pen->pen_style != CE_PS_NULL) {
+        uint32_t px = gdi_cref_to_px(dc->pen->pen_color);
+        int wdt = (int)dc->pen->pen_width;
+        if (wdt < 1)
+            wdt = 1;
+        for (int i = 1; i <= count; i++)
+            line_plot(dc, pts[i - 1].x, pts[i - 1].y,
+                      pts[i % count].x, pts[i % count].y, px, wdt);
+    }
+    CE_RECT dmg = { pts[0].x, miny, pts[0].x + 1, maxy };
+    for (int i = 0; i < count; i++) {
+        if (pts[i].x < dmg.left) dmg.left = pts[i].x;
+        if (pts[i].x + 1 > dmg.right) dmg.right = pts[i].x + 1;
+    }
+    dc_damage(dc, dmg);
+    return CE_TRUE;
+}
+
+/* ---- gradient ---- */
+
+typedef struct {
+    CE_LONG x, y;
+    unsigned short Red, Green, Blue, Alpha;
+} ce_trivertex;
+
+typedef struct {
+    CE_DWORD UpperLeft, LowerRight;
+} ce_gradient_rect;
+
+CE_BOOL ce_GradientFill(CE_HANDLE hdc, ce_trivertex *vert,
+                        CE_DWORD nvert, void *mesh, CE_DWORD nmesh,
+                        CE_DWORD mode)
+{
+    ce_dc *dc = gdi_dc_from_handle(hdc);
+    if (!dc || !vert || nvert < 2 || !mesh || nmesh < 1)
+        return CE_FALSE;
+    if (mode == 2)   /* GRADIENT_FILL_TRIANGLE: not implemented */
+        return CE_FALSE;
+    ce_gradient_rect *gr = mesh;
+    ce_trivertex *a = &vert[gr[0].UpperLeft];
+    ce_trivertex *b = &vert[gr[0].LowerRight];
+    int x0 = a->x, y0 = a->y, x1 = b->x, y1 = b->y;
+    if (mode == 0) {         /* RECT_H: left -> right */
+        int span = x1 - x0;
+        if (span <= 0)
+            return CE_FALSE;
+        for (int x = x0; x < x1; x++) {
+            int t = x - x0;
+            unsigned r = ((unsigned)a->Red * (span - t)
+                          + (unsigned)b->Red * t) / (unsigned)span;
+            unsigned g = ((unsigned)a->Green * (span - t)
+                          + (unsigned)b->Green * t) / (unsigned)span;
+            unsigned bl = ((unsigned)a->Blue * (span - t)
+                           + (unsigned)b->Blue * t) / (unsigned)span;
+            CE_RECT col = { x, y0, x + 1, y1 };
+            gdi_fill_rect_px(dc, col, 0xFF000000u
+                             | ((r >> 8) << 16) | ((g >> 8) << 8)
+                             | (bl >> 8));
+        }
+    } else if (mode == 1) {  /* RECT_V: top -> bottom */
+        int span = y1 - y0;
+        if (span <= 0)
+            return CE_FALSE;
+        for (int y = y0; y < y1; y++) {
+            int t = y - y0;
+            unsigned r = ((unsigned)a->Red * (span - t)
+                          + (unsigned)b->Red * t) / (unsigned)span;
+            unsigned g = ((unsigned)a->Green * (span - t)
+                          + (unsigned)b->Green * t) / (unsigned)span;
+            unsigned bl = ((unsigned)a->Blue * (span - t)
+                           + (unsigned)b->Blue * t) / (unsigned)span;
+            CE_RECT row = { x0, y, x1, y + 1 };
+            gdi_fill_rect_px(dc, row, 0xFF000000u
+                             | ((r >> 8) << 16) | ((g >> 8) << 8)
+                             | (bl >> 8));
+        }
+    } else {
+        return CE_FALSE;
+    }
+    CE_RECT dmg = { x0, y0, x1, y1 };
+    dc_damage(dc, dmg);
+    return CE_TRUE;
+}
+
+/* ---- 3D edge / frame controls / focus rect ---- */
+
+static uint32_t sys_px(int idx)
+{
+    return gdi_cref_to_px(gwe_sys_color(idx));
+}
+
+static void edge_line(ce_dc *dc, int x0, int y0, int x1, int y1,
+                      uint32_t px)
+{
+    CE_RECT r;
+    if (x0 == x1) {
+        r.left = x0; r.right = x0 + 1;
+        r.top = y0 < y1 ? y0 : y1;
+        r.bottom = (y0 < y1 ? y1 : y0) + 1;
+    } else {
+        r.top = y0; r.bottom = y0 + 1;
+        r.left = x0 < x1 ? x0 : x1;
+        r.right = (x0 < x1 ? x1 : x0) + 1;
+    }
+    gdi_fill_rect_px(dc, r, px);
+}
+
+CE_BOOL ce_DrawEdge(CE_HANDLE hdc, CE_RECT *rc, CE_DWORD edge,
+                    CE_DWORD flags)
+{
+    ce_dc *dc = gdi_dc_from_handle(hdc);
+    if (!dc || !rc)
+        return CE_FALSE;
+    /* colors: BTNHIGHLIGHT=20, BTNSHADOW=16, 3DDKSHADOW=21,
+     * 3DLIGHT=22, BTNFACE=15 */
+    uint32_t hi = sys_px(20), sh = sys_px(16);
+    uint32_t dk = sys_px(21), li = sys_px(22);
+    int l = rc->left, t = rc->top, r = rc->right - 1, b = rc->bottom - 1;
+    int raised = (edge & 0x0001u /* BDR_RAISEDOUTER */)
+                 || (edge & 0x0004u /* BDR_RAISEDINNER */);
+    int sunken = (edge & 0x0002u /* BDR_SUNKENOUTER */)
+                 || (edge & 0x0008u /* BDR_SUNKENINNER */);
+    if (raised && !sunken) {
+        edge_line(dc, l, b, l, t, hi);
+        edge_line(dc, l, t, r, t, hi);
+        edge_line(dc, r, t, r, b, dk);
+        edge_line(dc, l, b, r, b, dk);
+        if (edge & 0x0004u) {
+            edge_line(dc, l + 1, b - 1, l + 1, t + 1, li);
+            edge_line(dc, l + 1, t + 1, r - 1, t + 1, li);
+            edge_line(dc, r - 1, t + 1, r - 1, b - 1, sh);
+            edge_line(dc, l + 1, b - 1, r - 1, b - 1, sh);
+        }
+    } else if (sunken) {
+        edge_line(dc, l, b, l, t, sh);
+        edge_line(dc, l, t, r, t, sh);
+        edge_line(dc, r, t, r, b, hi);
+        edge_line(dc, l, b, r, b, hi);
+        if (edge & 0x0008u) {
+            edge_line(dc, l + 1, b - 1, l + 1, t + 1, dk);
+            edge_line(dc, l + 1, t + 1, r - 1, t + 1, dk);
+            edge_line(dc, r - 1, t + 1, r - 1, b - 1, li);
+            edge_line(dc, l + 1, b - 1, r - 1, b - 1, li);
+        }
+    }
+    if (flags & 0x0800u /* BF_MIDDLE */) {
+        CE_RECT mid = { l + 1, t + 1, r, b };
+        gdi_fill_rect_px(dc, mid, sys_px(15));
+    }
+    if (flags & 0x2000u /* BF_ADJUST */) {
+        int adj = (edge & 0x000Fu) ? 1 : 0;
+        if (edge & 0x0005u)
+            adj = 2;
+        rc->left += adj;
+        rc->top += adj;
+        rc->right -= adj;
+        rc->bottom -= adj;
+    }
+    CE_RECT dmg = { l, t, r + 1, b + 1 };
+    dc_damage(dc, dmg);
+    return CE_TRUE;
+}
+
+CE_BOOL ce_DrawFocusRect(CE_HANDLE hdc, const CE_RECT *rc)
+{
+    ce_dc *dc = gdi_dc_from_handle(hdc);
+    if (!dc || !rc)
+        return CE_FALSE;
+    /* dotted border, alternating pixels (the classic pattern) */
+    uint32_t px = gdi_cref_to_px(dc->text_color);
+    for (int x = rc->left; x < rc->right; x++) {
+        if (((x - rc->left) & 1) == 0) {
+            plot_px(dc, x, rc->top, px);
+            plot_px(dc, x, rc->bottom - 1, px);
+        }
+    }
+    for (int y = rc->top; y < rc->bottom; y++) {
+        if (((y - rc->top) & 1) == 0) {
+            plot_px(dc, rc->left, y, px);
+            plot_px(dc, rc->right - 1, y, px);
+        }
+    }
+    dc_damage(dc, *rc);
+    return CE_TRUE;
+}
+
+CE_BOOL ce_DrawFrameControl(CE_HANDLE hdc, CE_RECT *rc,
+                            CE_DWORD type, CE_DWORD state)
+{
+    ce_dc *dc = gdi_dc_from_handle(hdc);
+    if (!dc || !rc)
+        return CE_FALSE;
+    CE_DWORD utype = state & 0x0003u;
+    CE_DWORD ustate = state & 0xFFFCu;
+    int pushed = (ustate & 0x0200u /* DFCS_PUSHED */) != 0;
+    int checked = (ustate & 0x0400u /* DFCS_CHECKED */) != 0;
+    if (type == 4 /* DFC_BUTTON */) {
+        CE_RECT face = *rc;
+        gdi_fill_rect_px(dc, face, sys_px(15));
+        CE_RECT e = *rc;
+        ce_DrawEdge(hdc, &e,
+                    (pushed || checked)
+                        ? 0x0002u | 0x0008u    /* sunken */
+                        : 0x0001u | 0x0004u,   /* raised */
+                    0x0100u /* BF_RECT */);
+        if (utype == 5 /* DFCS_BUTTONCHECK */ && checked) {
+            uint32_t px = sys_px(8);   /* WINDOWTEXT */
+            int cx = (rc->left + rc->right) / 2;
+            int cy = (rc->top + rc->bottom) / 2;
+            CE_POINT tick[4] = {
+                { cx - 4, cy }, { cx - 1, cy + 3 },
+                { cx + 5, cy - 3 }, { cx + 5, cy - 1 }
+            };
+            /* simple two-segment tick via thick points */
+            for (int i = 0; i < 3; i++)
+                line_plot(dc, tick[i].x, tick[i].y,
+                          tick[i + 1].x, tick[i + 1].y, px, 2);
+        }
+        if (utype == 4 /* DFCS_BUTTONRADIO */ && checked) {
+            uint32_t px = sys_px(8);
+            int cx = (rc->left + rc->right) / 2;
+            int cy = (rc->top + rc->bottom) / 2;
+            for (int yy = -2; yy <= 2; yy++)
+                for (int xx = -2; xx <= 2; xx++)
+                    if (xx * xx + yy * yy <= 5)
+                        plot_px(dc, cx + xx, cy + yy, px);
+        }
+        dc_damage(dc, *rc);
+        return CE_TRUE;
+    }
+    if (type == 3 /* DFC_SCROLL */) {
+        CE_RECT e = *rc;
+        gdi_fill_rect_px(dc, *rc, sys_px(15));
+        ce_DrawEdge(hdc, &e, pushed ? 0x000Au : 0x0005u,
+                    0x0100u);
+        uint32_t px = sys_px(8);
+        int cx = (rc->left + rc->right) / 2;
+        int cy = (rc->top + rc->bottom) / 2;
+        CE_POINT tri[3];
+        switch (utype) {
+        case 0:  /* UP */
+            tri[0] = (CE_POINT){ cx, cy - 3 };
+            tri[1] = (CE_POINT){ cx - 4, cy + 2 };
+            tri[2] = (CE_POINT){ cx + 4, cy + 2 };
+            break;
+        case 1:  /* DOWN */
+            tri[0] = (CE_POINT){ cx, cy + 3 };
+            tri[1] = (CE_POINT){ cx - 4, cy - 2 };
+            tri[2] = (CE_POINT){ cx + 4, cy - 2 };
+            break;
+        case 2:  /* LEFT */
+            tri[0] = (CE_POINT){ cx - 3, cy };
+            tri[1] = (CE_POINT){ cx + 2, cy - 4 };
+            tri[2] = (CE_POINT){ cx + 2, cy + 4 };
+            break;
+        default: /* RIGHT */
+            tri[0] = (CE_POINT){ cx + 3, cy };
+            tri[1] = (CE_POINT){ cx - 2, cy - 4 };
+            tri[2] = (CE_POINT){ cx - 2, cy + 4 };
+            break;
+        }
+        ce_gdobj *save_brush = dc->brush;
+        ce_gdobj tmpbrush;
+        memset(&tmpbrush, 0, sizeof(tmpbrush));
+        tmpbrush.type = CE_OBJ_BRUSH;
+        tmpbrush.brush_color = gwe_sys_color(8);
+        dc->brush = &tmpbrush;
+        ce_Polygon(hdc, tri, 3);
+        dc->brush = save_brush;
+        (void)px;
+        dc_damage(dc, *rc);
+        return CE_TRUE;
+    }
+    /* DFC_CAPTION / DFC_MENU glyphs: later refinement */
+    return CE_FALSE;
+}
+
+/* ---- DIB -> bitmap conversion (resources and files) ------ */
+
+static ce_gdobj *bitmap_from_dib(const uint8_t *dib, uint32_t size)
+{
+    if (!dib || size < 40)
+        return NULL;
+    uint32_t hdr = rd32(dib);
+    if (hdr < 40)
+        return NULL;   /* BITMAPCOREHEADER: not handled yet */
+    int w = (int)rd32(dib + 4);
+    int hgt = (int)rd32(dib + 8);
+    int planes = (int)(dib[12] | (dib[13] << 8));
+    int bpp = (int)(dib[14] | (dib[15] << 8));
+    uint32_t comp = rd32(dib + 16);
+    uint32_t colors_used = rd32(dib + 32);
+    (void)planes;
+    if (w <= 0 || hgt == 0 || comp != 0 && comp != 3)
+        return NULL;
+    int topdown = hgt < 0;
+    int h = topdown ? -hgt : hgt;
+    if (w > 4096 || h > 4096)
+        return NULL;
+    uint32_t pal_count = 0;
+    if (bpp <= 8) {
+        pal_count = colors_used ? colors_used
+                                : (1u << bpp);
+        if (pal_count > 256)
+            return NULL;
+    }
+    const uint8_t *pal = dib + hdr;
+    uint32_t bitfields_off = (comp == 3) ? 12 : 0;
+    const uint8_t *bits = dib + hdr + pal_count * 4 + bitfields_off;
+    if ((uint32_t)(bits - dib) > size)
+        return NULL;
+    uint32_t m565[3] = { 0x7C00, 0x03E0, 0x001F };   /* 555 */
+    if (comp == 3 && size >= hdr + 12) {
+        m565[0] = rd32(dib + hdr);
+        m565[1] = rd32(dib + hdr + 4);
+        m565[2] = rd32(dib + hdr + 8);
+    }
+    ce_gdobj *o = new_bitmap_obj(w, h);
+    if (!o)
+        return NULL;
+    int stride = (int)(((uint32_t)w * (uint32_t)bpp + 31) / 32) * 4;
+    for (int y = 0; y < h; y++) {
+        int srow = topdown ? y : (h - 1 - y);
+        const uint8_t *row = bits + (size_t)srow * (size_t)stride;
+        if ((uint32_t)(row - dib) + (uint32_t)((w * bpp + 7) / 8)
+            > size)
+            break;
+        for (int x = 0; x < w; x++) {
+            uint32_t px = 0xFF000000u;
+            switch (bpp) {
+            case 32: {
+                const uint8_t *p = row + (size_t)x * 4;
+                px |= (uint32_t)p[2] << 16 | (uint32_t)p[1] << 8
+                      | p[0];
+                break;
+            }
+            case 24: {
+                const uint8_t *p = row + (size_t)x * 3;
+                px |= (uint32_t)p[2] << 16 | (uint32_t)p[1] << 8
+                      | p[0];
+                break;
+            }
+            case 16: {
+                uint32_t v = (uint32_t)row[x * 2]
+                             | ((uint32_t)row[x * 2 + 1] << 8);
+                unsigned r = (v & m565[0]) >> 10;
+                unsigned g = (v & m565[1]) >> 5;
+                unsigned b = v & m565[2];
+                px |= ((r << 3 | r >> 2) << 16)
+                      | ((g << 3 | g >> 2) << 8)
+                      | (b << 3 | b >> 2);
+                break;
+            }
+            case 8: case 4: case 1: {
+                uint32_t idx;
+                if (bpp == 8)
+                    idx = row[x];
+                else if (bpp == 4)
+                    idx = (x & 1) ? (row[x / 2] & 0x0F)
+                                  : (row[x / 2] >> 4);
+                else
+                    idx = (row[x / 8] >> (7 - (x & 7))) & 1;
+                if (idx < pal_count) {
+                    const uint8_t *pe = pal + idx * 4;
+                    px |= (uint32_t)pe[2] << 16
+                          | (uint32_t)pe[1] << 8 | pe[0];
+                }
+                break;
+            }
+            default:
+                break;
+            }
+            o->bmp_px[(size_t)y * (size_t)w + x] = px;
+        }
+    }
+    return o;
+}
+
+CE_HANDLE ce_LoadBitmapW(CE_HANDLE hinst, const CE_WCHAR *name)
+{
+    CE_HANDLE hrsrc = ce_FindResourceW(
+        hinst, name, (const CE_WCHAR *)(uintptr_t)2 /* RT_BITMAP */);
+    if (!hrsrc)
+        return NULL;
+    const uint8_t *data = ce_LoadResource(hinst, hrsrc);
+    CE_DWORD size = ce_SizeofResource(hinst, hrsrc);
+    if (!data || !size)
+        return NULL;
+    return (CE_HANDLE)bitmap_from_dib(data, size);
+}
+
+CE_HANDLE ce_LoadImageW(CE_HANDLE hinst, const CE_WCHAR *name,
+                        CE_DWORD type, int cx, int cy, CE_DWORD flags)
+{
+    (void)cx;
+    (void)cy;
+    (void)flags;
+    if (type == 0 /* IMAGE_BITMAP */)
+        return ce_LoadBitmapW(hinst, name);
+    if (type == 2 /* IMAGE_CURSOR */) {
+        extern CE_HANDLE ce_LoadCursorW(CE_HANDLE, const CE_WCHAR *);
+        return ce_LoadCursorW(hinst, name);
+    }
+    if (type == 1 /* IMAGE_ICON */) {
+        /* Icons are token objects in this layer (no pixel
+         * surface); verify the resource exists, then hand back
+         * a token. */
+        CE_HANDLE hrsrc = ce_FindResourceW(
+            hinst, name,
+            (const CE_WCHAR *)(uintptr_t)3 /* RT_ICON */);
+        if (!hrsrc)
+            hrsrc = ce_FindResourceW(
+                hinst, name,
+                (const CE_WCHAR *)(uintptr_t)14 /* RT_GROUP_ICON */);
+        if (!hrsrc)
+            return NULL;
+        ce_gdobj *o = gdi_new_obj(CE_OBJ_CURSOR);
+        return (CE_HANDLE)o;
+    }
+    return NULL;
+}
+
+CE_HANDLE ce_SHLoadDIBitmap(const CE_WCHAR *path)
+{
+    /* shell helper: load a .bmp file as a DDB */
+    char u8[512];
+    ce_w2u8(path, u8, sizeof(u8));
+    /* CE paths root at the fs bridge root, not the host fs */
+    extern const char *ce_fs_root(void);
+    char host[1024];
+    snprintf(host, sizeof(host), "%s/%s", ce_fs_root(),
+             u8[0] == '\\' ? u8 + 1 : u8);
+    for (char *p = host; *p; p++)
+        if (*p == '\\')
+            *p = '/';
+    FILE *f = fopen(host, "rb");
+    if (!f)
+        return NULL;
+    fseek(f, 0, SEEK_END);
+    long sz = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    if (sz < 54 || sz > 64 * 1024 * 1024) {
+        fclose(f);
+        return NULL;
+    }
+    uint8_t *buf = malloc((size_t)sz);
+    if (!buf || fread(buf, 1, (size_t)sz, f) != (size_t)sz) {
+        free(buf);
+        fclose(f);
+        return NULL;
+    }
+    fclose(f);
+    ce_gdobj *o = NULL;
+    if (buf[0] == 'B' && buf[1] == 'M') {
+        uint32_t off = rd32(buf + 10);
+        if (off < (uint32_t)sz)
+            o = bitmap_from_dib(buf + off, (uint32_t)sz - off);
+    }
+    free(buf);
+    return (CE_HANDLE)o;
+}
+
+/* ---- pattern brushes and icons ---- */
+
+CE_HANDLE ce_CreatePatternBrush(CE_HANDLE hbmp)
+{
+    ce_gdobj *b = gdi_obj_from_handle(hbmp);
+    if (!b || b->type != CE_OBJ_BITMAP)
+        return NULL;
+    ce_gdobj *o = gdi_new_obj(CE_OBJ_BRUSH);
+    if (!o)
+        return NULL;
+    o->brush_style = 3;   /* BS_PATTERN */
+    o->brush_pattern = b;
+    return (CE_HANDLE)o;
+}
+
+CE_HANDLE ce_CreateDIBPatternBrushPt(const void *packed,
+                                     CE_DWORD color_spec)
+{
+    (void)color_spec;
+    if (!packed)
+        return NULL;
+    /* packed DIB size is not carried by the API; the header's
+     * biSizeImage (or a computed stride total) bounds it. */
+    const uint8_t *dib = packed;
+    uint32_t hdr = rd32(dib);
+    int w = (int)rd32(dib + 4);
+    int h = (int)rd32(dib + 8);
+    int bpp = (int)(dib[14] | (dib[15] << 8));
+    uint32_t img = rd32(dib + 20);
+    if (img == 0) {
+        int stride = (int)(((uint32_t)w * (uint32_t)bpp + 31)
+                           / 32) * 4;
+        img = (uint32_t)(stride * (h < 0 ? -h : h));
+    }
+    uint32_t pal = 0;
+    if (bpp <= 8)
+        pal = (rd32(dib + 32) ? rd32(dib + 32) : (1u << bpp)) * 4;
+    ce_gdobj *bmp = bitmap_from_dib(dib, hdr + pal + img);
+    if (!bmp)
+        return NULL;
+    return ce_CreatePatternBrush((CE_HANDLE)bmp);
+}
+
+typedef struct {
+    CE_BOOL fIcon;
+    int xHotspot, yHotspot;
+    CE_HANDLE hbmMask, hbmColor;
+} ce_iconinfo;
+
+CE_HANDLE ce_CreateIconIndirect(ce_iconinfo *ii)
+{
+    if (!ii)
+        return NULL;
+    ce_gdobj *o = gdi_new_obj(CE_OBJ_CURSOR);
+    if (!o)
+        return NULL;
+    o->icon_hot_x = ii->xHotspot;
+    o->icon_hot_y = ii->yHotspot;
+    /* The layer's icon objects are tokens (the WM draws the
+     * pointer); the source bitmaps are not retained. */
+    return (CE_HANDLE)o;
+}
+
+CE_BOOL ce_DestroyIcon(CE_HANDLE hicon)
+{
+    ce_gdobj *o = gdi_obj_from_handle(hicon);
+    if (!o || o->type != CE_OBJ_CURSOR)
+        return CE_FALSE;
+    return ce_DeleteObject(hicon);
 }

@@ -31,7 +31,10 @@ TEXT_LIBS = -lharfbuzz -lfreetype
 endif
 TKLIB   := $(BW)/rebuild-arm2/libbrainui2.a
 
-OBJS = loader/ce-loader.o shim/coredll_shim.o shim/fs_bridge.o \
+OBJS = loader/ce-loader.o loader/modules.o shim/coredll_shim.o \
+       shim/fs_bridge.o shim/fatvol.o shim/dialog.o shim/crt2.o \
+       shim/dsadpa.o shim/registry.o shim/locale.o \
+       shim/cedefaults.o shim/imagelist.o \
        shim/stub_pool.o shim/gwe.o shim/gdi.o shim/wmclient.o \
        shim/shim_table_glue.o
 
@@ -40,7 +43,16 @@ all: ce-loader test/cetest.exe test/ceguitest.exe
 ce-loader: $(OBJS)
 	$(ARMCC) -o $@ $(OBJS) $(TKLIB) $(TEXT_LIBS) -lm -lpthread
 
-loader/ce-loader.o: loader/ce-loader.c loader/pe.h shim/ce_types.h shim/fs_bridge.h shim/shim_table.h
+loader/ce-loader.o: loader/ce-loader.c loader/pe.h loader/module.h shim/ce_types.h shim/fs_bridge.h shim/shim_table.h
+	$(ARMCC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
+
+loader/modules.o: loader/modules.c loader/pe.h loader/module.h shim/ce_types.h shim/fs_bridge.h
+	$(ARMCC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
+
+shim/fatvol.o: shim/fatvol.c shim/fatvol.h shim/ce_types.h
+	$(ARMCC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
+
+shim/dialog.o: shim/dialog.c shim/ce_types.h shim/fs_bridge.h shim/gwe.h
 	$(ARMCC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
 
 shim/coredll_shim.o: shim/coredll_shim.c shim/ce_types.h shim/fs_bridge.h shim/shim_table.h
@@ -86,3 +98,21 @@ clean:
 	    test/ceguitest.exe.imports.json test/ceguitest.exe.map.json
 
 .PHONY: all host-test clean
+
+shim/crt2.o: shim/crt2.c shim/ce_types.h shim/fs_bridge.h
+	$(ARMCC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
+
+shim/dsadpa.o: shim/dsadpa.c shim/ce_types.h
+	$(ARMCC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
+
+shim/registry.o: shim/registry.c shim/ce_types.h shim/fs_bridge.h
+	$(ARMCC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
+
+shim/locale.o: shim/locale.c shim/ce_types.h shim/fs_bridge.h
+	$(ARMCC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
+
+shim/cedefaults.o: shim/cedefaults.c shim/ce_types.h
+	$(ARMCC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
+
+shim/imagelist.o: shim/imagelist.c shim/ce_types.h shim/gwe.h
+	$(ARMCC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<

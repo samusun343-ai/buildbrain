@@ -218,6 +218,9 @@ void ce_gwe_init(void)
     g_desktop.proc = NULL; /* set below to DefWindowProc */
     extern CE_LONG ce_DefWindowProcW(CE_HANDLE, CE_DWORD, CE_DWORD, CE_LONG);
     g_desktop.proc = ce_DefWindowProcW;
+    /* M3: predefined control classes + the dialog class */
+    extern void ce_dialog_register_classes(void);
+    ce_dialog_register_classes();
 }
 
 void ce_gwe_shutdown(void)
@@ -1693,6 +1696,11 @@ static void pump_one_client(ce_window *top, bd_wm_client_event *ev)
         CE_LONG keylp = 1; /* repeat count 1, scan code 0 */
         if (ev->type == BD_WM_CEV_KEY_UP)
             keylp |= (CE_LONG)(3u << 30); /* previous state + transition */
+        /* M3: registered hot keys consume the event */
+        extern int ce_hotkey_notify(CE_DWORD, int);
+        if (ce_hotkey_notify((CE_DWORD)vk,
+                             ev->type == BD_WM_CEV_KEY_DOWN))
+            break;
         gwe_enqueue_ch((CE_HANDLE)target, msg, (CE_DWORD)vk, keylp, ch);
         break;
     }
@@ -2020,4 +2028,585 @@ CE_LONG ce_DefWindowProcW(CE_HANDLE hwnd, CE_DWORD msg, CE_DWORD wp,
     default:
         return 0;
     }
+}
+
+/* ================= M3: props, atoms, misc window API ====== */
+
+typedef struct ce_prop {
+    CE_HANDLE hwnd;
+    CE_WCHAR *name;           /* NULL when keyed by atom */
+    CE_DWORD atom;
+    CE_HANDLE value;
+    struct ce_prop *next;
+} ce_prop;
+
+static ce_prop *g_props;
+
+static int prop_key_match(ce_prop *p, const CE_WCHAR *name)
+{
+    if ((uintptr_t)name >= 0xC000 && (uintptr_t)name <= 0xFFFF)
+        return !p->name && p->atom == (CE_DWORD)(uintptr_t)name;
+    if (!name || !p->name)
+        return 0;
+    return ce_wcscasecmp(p->name, name) == 0;
+}
+
+CE_BOOL ce_SetProp(CE_HANDLE hwnd, const CE_WCHAR *name,
+                   CE_HANDLE value)
+{
+    if (!gwe_win_from_handle(hwnd) || !name)
+        return CE_FALSE;
+    for (ce_prop *p = g_props; p; p = p->next)
+        if (p->hwnd == hwnd && prop_key_match(p, name)) {
+            p->value = value;
+            return CE_TRUE;
+        }
+    ce_prop *p = calloc(1, sizeof(*p));
+    if (!p)
+        return CE_FALSE;
+    p->hwnd = hwnd;
+    if ((uintptr_t)name >= 0xC000 && (uintptr_t)name <= 0xFFFF)
+        p->atom = (CE_DWORD)(uintptr_t)name;
+    else
+        p->name = ce_wdup(name);
+    p->value = value;
+    p->next = g_props;
+    g_props = p;
+    return CE_TRUE;
+}
+
+CE_HANDLE ce_GetProp(CE_HANDLE hwnd, const CE_WCHAR *name)
+{
+    if (!name)
+        return NULL;
+    for (ce_prop *p = g_props; p; p = p->next)
+        if (p->hwnd == hwnd && prop_key_match(p, name))
+            return p->value;
+    return NULL;
+}
+
+CE_HANDLE ce_RemoveProp(CE_HANDLE hwnd, const CE_WCHAR *name)
+{
+    if (!name)
+        return NULL;
+    ce_prop **pp = &g_props;
+    while (*pp) {
+        ce_prop *p = *pp;
+        if (p->hwnd == hwnd && prop_key_match(p, name)) {
+            *pp = p->next;
+            CE_HANDLE v = p->value;
+            free(p->name);
+            free(p);
+            return v;
+        }
+        pp = &p->next;
+    }
+    return NULL;
+}
+
+/* ---- global atoms ---- */
+
+#define CE_MAX_ATOMS 256
+static CE_WCHAR *g_atoms[CE_MAX_ATOMS];
+static int g_natoms;
+
+CE_DWORD ce_GlobalAddAtomW(const CE_WCHAR *name)
+{
+    if (!name)
+        return 0;
+    for (int i = 0; i < g_natoms; i++)
+        if (ce_wcscasecmp(g_atoms[i], name) == 0)
+            return 0xC000 + (CE_DWORD)i;
+    if (g_natoms >= CE_MAX_ATOMS)
+        return 0;
+    g_atoms[g_natoms] = ce_wdup(name);
+    if (!g_atoms[g_natoms])
+        return 0;
+    return 0xC000 + (CE_DWORD)(g_natoms++);
+}
+
+CE_DWORD ce_GlobalFindAtomW(const CE_WCHAR *name)
+{
+    if (!name)
+        return 0;
+    for (int i = 0; i < g_natoms; i++)
+        if (ce_wcscasecmp(g_atoms[i], name) == 0)
+            return 0xC000 + (CE_DWORD)i;
+    return 0;
+}
+
+CE_DWORD ce_GetWindowThreadProcessId(CE_HANDLE hwnd, CE_DWORD *pid)
+{
+    if (!gwe_win_from_handle(hwnd))
+        return 0;
+    if (pid)
+        *pid = (CE_DWORD)getpid();
+    return (CE_DWORD)getpid();   /* one UI thread per process */
+}
+
+short ce_GetKeyState(int vk)
+{
+    return ce_key_down_state(vk) ? (short)0x8000 : 0;
+}
+
+short ce_GetAsyncKeyState(int vk)
+{
+    short v = 0;
+    if (ce_key_down_state(vk))
+        v |= (short)0x8000;
+    if (ce_key_pressed_latch(vk))
+        v |= 0x0001;
+    return v;
+}
+
+CE_DWORD ce_GetDoubleClickTime(void)
+{
+    return 500;   /* the CE default */
+}
+
+/* ---- caret visibility state (drawing is the control's) ---- */
+
+#define CE_MAX_CARETS 32
+static struct { CE_HANDLE hwnd; int count; } g_carets[CE_MAX_CARETS];
+
+CE_BOOL ce_ShowCaret(CE_HANDLE hwnd)
+{
+    for (int i = 0; i < CE_MAX_CARETS; i++)
+        if (g_carets[i].hwnd == hwnd) {
+            if (g_carets[i].count > 0)
+                g_carets[i].count--;
+            return CE_TRUE;
+        }
+    for (int i = 0; i < CE_MAX_CARETS; i++)
+        if (!g_carets[i].hwnd) {
+            g_carets[i].hwnd = hwnd;
+            g_carets[i].count = 0;
+            return CE_TRUE;
+        }
+    return CE_TRUE;
+}
+
+CE_BOOL ce_HideCaret(CE_HANDLE hwnd)
+{
+    for (int i = 0; i < CE_MAX_CARETS; i++)
+        if (g_carets[i].hwnd == hwnd) {
+            g_carets[i].count++;
+            return CE_TRUE;
+        }
+    for (int i = 0; i < CE_MAX_CARETS; i++)
+        if (!g_carets[i].hwnd) {
+            g_carets[i].hwnd = hwnd;
+            g_carets[i].count = 1;
+            return CE_TRUE;
+        }
+    return CE_TRUE;
+}
+
+/* ---- monitor (single panel) ---- */
+
+CE_HANDLE ce_MonitorFromPoint(CE_POINT pt, CE_DWORD flags)
+{
+    (void)pt;
+    (void)flags;
+    return (CE_HANDLE)(uintptr_t)1;
+}
+
+typedef struct {
+    CE_DWORD cbSize;
+    CE_RECT rcMonitor;
+    CE_RECT rcWork;
+    CE_DWORD dwFlags;
+} ce_monitorinfo;
+
+CE_BOOL ce_GetMonitorInfo(CE_HANDLE hmon, ce_monitorinfo *mi)
+{
+    if (hmon != (CE_HANDLE)(uintptr_t)1 || !mi)
+        return CE_FALSE;
+    mi->rcMonitor.left = 0;
+    mi->rcMonitor.top = 0;
+    mi->rcMonitor.right = 854;
+    mi->rcMonitor.bottom = 480;
+    mi->rcWork = mi->rcMonitor;
+    mi->dwFlags = 1;   /* MONITORINFOF_PRIMARY */
+    return CE_TRUE;
+}
+
+/* ---- parent / child relations ---- */
+
+CE_BOOL ce_IsChild(CE_HANDLE parent, CE_HANDLE hwnd)
+{
+    ce_window *p = gwe_win_from_handle(parent);
+    ce_window *w = gwe_win_from_handle(hwnd);
+    if (!p || !w)
+        return CE_FALSE;
+    for (ce_window *a = w->parent; a; a = a->parent)
+        if (a == p)
+            return CE_TRUE;
+    return CE_FALSE;
+}
+
+static void win_unlink(ce_window *w)
+{
+    if (!w->parent)
+        return;
+    ce_window **pp = &w->parent->first_child;
+    while (*pp) {
+        if (*pp == w) {
+            *pp = w->next_sibling;
+            break;
+        }
+        pp = &(*pp)->next_sibling;
+    }
+    w->parent = NULL;
+    w->next_sibling = NULL;
+}
+
+CE_HANDLE ce_SetParent(CE_HANDLE hwnd, CE_HANDLE new_parent)
+{
+    ce_window *w = gwe_win_from_handle(hwnd);
+    if (!w || w->is_desktop)
+        return NULL;
+    ce_window *np = NULL;
+    if (new_parent) {
+        np = gwe_win_from_handle(new_parent);
+        if (!np)
+            return NULL;
+    }
+    if (!np || !w->parent || w->parent->is_desktop) {
+        /* Top-level transitions need a WM surface change; not
+         * supported yet. Child<->child reparenting (what the
+         * hosted controls use) works. */
+        return NULL;
+    }
+    CE_HANDLE old = (CE_HANDLE)w->parent;
+    win_unlink(w);
+    w->parent = np;
+    w->next_sibling = np->first_child;
+    np->first_child = w;
+    return old;
+}
+
+CE_HANDLE ce_WindowFromPoint(CE_POINT pt)
+{
+    /* Top-levels are the g_windows entries parented to the
+     * desktop; later-created windows sit on top, so scan in
+     * reverse creation order. */
+    for (int i = CE_MAX_WINDOWS - 1; i >= 0; i--) {
+        ce_window *top = &g_windows[i];
+        if (!top->used || top->dead || !top->visible)
+            continue;
+        if (!top->parent || !top->parent->is_desktop)
+            continue;
+        if (pt.x < top->rect.left || pt.x >= top->rect.right
+            || pt.y < top->rect.top || pt.y >= top->rect.bottom)
+            continue;
+        CE_POINT local = { pt.x - top->rect.left,
+                           pt.y - top->rect.top };
+        ce_window *hit = hit_test(top, local.x, local.y, &local);
+        return (CE_HANDLE)(hit ? hit : top);
+    }
+    return NULL;
+}
+
+/* ---- update region queries / redraw ---- */
+
+CE_BOOL ce_GetUpdateRect(CE_HANDLE hwnd, CE_RECT *rc, CE_BOOL erase)
+{
+    ce_window *w = gwe_win_from_handle(hwnd);
+    if (!w)
+        return CE_FALSE;
+    (void)erase;
+    if (w->nupd == 0)
+        return CE_FALSE;
+    if (rc) {
+        *rc = w->upd[0];
+        for (int i = 1; i < w->nupd; i++) {
+            if (w->upd[i].left < rc->left) rc->left = w->upd[i].left;
+            if (w->upd[i].top < rc->top) rc->top = w->upd[i].top;
+            if (w->upd[i].right > rc->right) rc->right = w->upd[i].right;
+            if (w->upd[i].bottom > rc->bottom) rc->bottom = w->upd[i].bottom;
+        }
+    }
+    return CE_TRUE;
+}
+
+int ce_GetUpdateRgn(CE_HANDLE hwnd, CE_HANDLE hrgn, CE_BOOL erase)
+{
+    ce_window *w = gwe_win_from_handle(hwnd);
+    ce_gdobj *r = (ce_gdobj *)hrgn;
+    if (!w || !r || r->type != CE_OBJ_RGN)
+        return -1;
+    (void)erase;
+    r->nrgn = 0;
+    for (int i = 0; i < w->nupd && i < 32; i++)
+        r->rgn[r->nrgn++] = w->upd[i];
+    if (w->nupd == 0)
+        return 0;         /* NULLREGION */
+    return 2;             /* COMPLEXREGION (conservative) */
+}
+
+CE_BOOL ce_RedrawWindow(CE_HANDLE hwnd, const CE_RECT *rc,
+                        CE_HANDLE hrgn, CE_DWORD flags)
+{
+    ce_window *w = gwe_win_from_handle(hwnd);
+    if (!w)
+        return CE_FALSE;
+    int erase = (flags & 0x0001u /* RDW_ERASE */) ? 1 : 0;
+    if (hrgn) {
+        ce_gdobj *r = (ce_gdobj *)hrgn;
+        if (r && r->type == CE_OBJ_RGN)
+            for (int i = 0; i < r->nrgn; i++)
+                gwe_invalidate(w, &r->rgn[i], erase);
+    } else {
+        gwe_invalidate(w, rc, erase);
+    }
+    if (flags & 0x0008u /* RDW_UPDATENOW */)
+        ce_UpdateWindow(hwnd);
+    return CE_TRUE;
+}
+
+int ce_ScrollWindowEx(CE_HANDLE hwnd, int dx, int dy,
+                      const CE_RECT *scroll, const CE_RECT *clip,
+                      CE_HANDLE hrgn, CE_RECT *rc_out, CE_DWORD flags)
+{
+    (void)clip;
+    (void)flags;
+    ce_window *w = gwe_win_from_handle(hwnd);
+    if (!w)
+        return -1;
+    /* A non-accelerated scroll: the exposed area is invalidated
+     * and the app repaints it (correct contents, no pixel move
+     * optimisation yet). The whole scroll rect counts as
+     * invalidated, which the return contract allows. */
+    CE_RECT r = scroll ? *scroll
+        : (CE_RECT){ 0, 0, w->rect.right - w->rect.left,
+                     w->rect.bottom - w->rect.top };
+    (void)dx;
+    (void)dy;
+    gwe_invalidate(w, &r, 0);
+    if (hrgn) {
+        ce_gdobj *g = (ce_gdobj *)hrgn;
+        if (g && g->type == CE_OBJ_RGN) {
+            g->nrgn = 1;
+            g->rgn[0] = r;
+        }
+    }
+    if (rc_out)
+        *rc_out = r;
+    return 2;   /* COMPLEXREGION */
+}
+
+/* ---- scroll state ---- */
+
+typedef struct {
+    CE_DWORD cbSize;
+    CE_DWORD fMask;
+    int nMin, nMax;
+    CE_DWORD nPage;
+    int nPos, nTrackPos;
+} ce_scrollinfo;
+
+static int sb_index(int bar)
+{
+    if (bar == 0) return 0;        /* SB_HORZ */
+    if (bar == 1) return 1;        /* SB_VERT */
+    if (bar == 2) return 2;        /* SB_CTL */
+    return -1;
+}
+
+CE_BOOL ce_SetScrollInfo(CE_HANDLE hwnd, int bar,
+                         const ce_scrollinfo *si, CE_BOOL redraw)
+{
+    ce_window *w = gwe_win_from_handle(hwnd);
+    int ix = sb_index(bar);
+    if (!w || ix < 0 || !si)
+        return CE_FALSE;
+    if (si->fMask & 0x0001u) { w->sb[ix].nmin = si->nMin; w->sb[ix].nmax = si->nMax; }
+    if (si->fMask & 0x0002u) w->sb[ix].npage = (int)si->nPage;
+    if (si->fMask & 0x0004u) w->sb[ix].npos = si->nPos;
+    if (w->sb[ix].npos < w->sb[ix].nmin) w->sb[ix].npos = w->sb[ix].nmin;
+    int maxpos = w->sb[ix].nmax - (w->sb[ix].npage > 0 ? w->sb[ix].npage - 1 : 0);
+    if (w->sb[ix].npos > maxpos) w->sb[ix].npos = maxpos;
+    if (redraw)
+        gwe_invalidate(w, NULL, 0);
+    return CE_TRUE;
+}
+
+CE_BOOL ce_GetScrollInfo(CE_HANDLE hwnd, int bar, ce_scrollinfo *si)
+{
+    ce_window *w = gwe_win_from_handle(hwnd);
+    int ix = sb_index(bar);
+    if (!w || ix < 0 || !si)
+        return CE_FALSE;
+    if (si->fMask & 0x0001u) { si->nMin = w->sb[ix].nmin; si->nMax = w->sb[ix].nmax; }
+    if (si->fMask & 0x0002u) si->nPage = (CE_DWORD)w->sb[ix].npage;
+    if (si->fMask & 0x0004u) si->nPos = w->sb[ix].npos;
+    if (si->fMask & 0x0010u) si->nTrackPos = w->sb[ix].npos;
+    return CE_TRUE;
+}
+
+int ce_SetScrollPos(CE_HANDLE hwnd, int bar, int pos, CE_BOOL redraw)
+{
+    ce_scrollinfo si;
+    memset(&si, 0, sizeof(si));
+    si.cbSize = sizeof(si);
+    si.fMask = 0x0004u;
+    si.nPos = pos;
+    ce_window *w = gwe_win_from_handle(hwnd);
+    int ix = sb_index(bar);
+    int old = (w && ix >= 0) ? w->sb[ix].npos : 0;
+    ce_SetScrollInfo(hwnd, bar, &si, redraw);
+    return old;
+}
+
+int ce_GetScrollPos(CE_HANDLE hwnd, int bar)
+{
+    ce_window *w = gwe_win_from_handle(hwnd);
+    int ix = sb_index(bar);
+    return (w && ix >= 0) ? w->sb[ix].npos : 0;
+}
+
+CE_BOOL ce_SetScrollRange(CE_HANDLE hwnd, int bar, int minv,
+                          int maxv, CE_BOOL redraw)
+{
+    ce_scrollinfo si;
+    memset(&si, 0, sizeof(si));
+    si.cbSize = sizeof(si);
+    si.fMask = 0x0001u;
+    si.nMin = minv;
+    si.nMax = maxv;
+    return ce_SetScrollInfo(hwnd, bar, &si, redraw);
+}
+
+CE_BOOL ce_GetScrollRange(CE_HANDLE hwnd, int bar, int *minv,
+                          int *maxv)
+{
+    ce_window *w = gwe_win_from_handle(hwnd);
+    int ix = sb_index(bar);
+    if (!w || ix < 0)
+        return CE_FALSE;
+    if (minv) *minv = w->sb[ix].nmin;
+    if (maxv) *maxv = w->sb[ix].nmax;
+    return CE_TRUE;
+}
+
+/* ---- menus (data side; popup display is a later phase) ---- */
+
+typedef struct {
+    CE_DWORD flags;
+    CE_DWORD id;
+    CE_WCHAR *text;
+    void *sub;
+} ce_menuitem;
+
+typedef struct ce_menu {
+    ce_menuitem *items;
+    int count, alloc;
+} ce_menu;
+
+CE_HANDLE ce_CreatePopupMenu(void)
+{
+    ce_menu *m = calloc(1, sizeof(*m));
+    return (CE_HANDLE)m;
+}
+
+CE_BOOL ce_AppendMenuW(CE_HANDLE hmenu, CE_DWORD flags,
+                       CE_DWORD id, const CE_WCHAR *text)
+{
+    ce_menu *m = (ce_menu *)hmenu;
+    if (!m)
+        return CE_FALSE;
+    if (m->count >= m->alloc) {
+        int na = m->alloc ? m->alloc * 2 : 8;
+        ce_menuitem *ni = realloc(m->items,
+                                  (size_t)na * sizeof(*ni));
+        if (!ni)
+            return CE_FALSE;
+        m->items = ni;
+        m->alloc = na;
+    }
+    ce_menuitem *it = &m->items[m->count++];
+    it->flags = flags;
+    it->id = id;
+    it->text = NULL;
+    it->sub = NULL;
+    if (flags & 0x00000010u /* MF_POPUP */)
+        it->sub = (void *)id;
+    else if (text && !(flags & 0x00000800u /* MF_SEPARATOR */))
+        it->text = ce_wdup(text);
+    return CE_TRUE;
+}
+
+CE_BOOL ce_DestroyMenu(CE_HANDLE hmenu)
+{
+    ce_menu *m = (ce_menu *)hmenu;
+    if (!m)
+        return CE_FALSE;
+    for (int i = 0; i < m->count; i++)
+        free(m->items[i].text);
+    free(m->items);
+    free(m);
+    return CE_TRUE;
+}
+
+CE_BOOL ce_CheckMenuRadioItem(CE_HANDLE hmenu, CE_DWORD first,
+                              CE_DWORD last, CE_DWORD check,
+                              CE_DWORD flags)
+{
+    ce_menu *m = (ce_menu *)hmenu;
+    if (!m)
+        return CE_FALSE;
+    (void)first;
+    (void)last;
+    (void)flags;
+    for (int i = 0; i < m->count; i++) {
+        if (m->items[i].id == check)
+            m->items[i].flags |= 0x00000008u;    /* MF_CHECKED */
+        else if (m->items[i].id >= first && m->items[i].id <= last)
+            m->items[i].flags &= ~0x00000008u;
+    }
+    return CE_TRUE;
+}
+
+CE_BOOL ce_SetAssociatedMenu(CE_HANDLE hwnd, CE_HANDLE hmenu)
+{
+    ce_window *w = gwe_win_from_handle(hwnd);
+    if (!w)
+        return CE_FALSE;
+    w->menu_or_id = hmenu;
+    return CE_TRUE;
+}
+
+CE_BOOL ce_DrawMenuBar(CE_HANDLE hwnd)
+{
+    ce_window *w = gwe_win_from_handle(hwnd);
+    if (!w)
+        return CE_FALSE;
+    gwe_invalidate(w, NULL, 0);
+    return CE_TRUE;
+}
+
+int ce_TrackPopupMenuEx(CE_HANDLE hmenu, CE_DWORD flags, int x,
+                        int y, CE_HANDLE hwnd, void *params)
+{
+    (void)hmenu;
+    (void)flags;
+    (void)x;
+    (void)y;
+    (void)hwnd;
+    (void)params;
+    /* Popup menu DISPLAY is not implemented in the layer yet;
+     * the honest outcome is "no selection" (0), which callers
+     * treat as the user dismissing the menu. */
+    fprintf(stderr, "[braince] TrackPopupMenuEx: popup display "
+            "not implemented; returning no-selection\n");
+    return 0;
+}
+
+CE_BOOL ce_SendNotifyMessageW(CE_HANDLE hwnd, CE_DWORD msg,
+                              CE_DWORD wp, CE_LONG lp)
+{
+    /* Single UI thread per process: a notify send is a post
+     * that the pump will deliver in order. */
+    return gwe_enqueue(hwnd, msg, wp, lp) ? CE_TRUE : CE_FALSE;
 }

@@ -63,6 +63,9 @@ struct ce_window {
     CE_RECT upd[CE_MAX_RECTS];
     int nupd;
     int upd_erase;
+    /* scrollbar state (SetScrollInfo family): [0]=HORZ,
+     * [1]=VERT, [2]=SB_CTL */
+    struct { int nmin, nmax, npos, npage; } sb[3];
     /* top-level only: WM connection + shadow surface */
     bd_wm_client *wm;
     uint32_t *shadow_px;
@@ -98,6 +101,9 @@ struct ce_gdobj {
     CE_DWORD pen_style, pen_width, pen_color;
     /* brush */
     CE_DWORD brush_style, brush_color;
+    struct ce_gdobj *brush_pattern;   /* pattern brush bitmap */
+    /* icon (cursor objects doubling as icons) */
+    int icon_hot_x, icon_hot_y;
     /* font */
     int font_px, font_bold, font_italic;
     CE_WCHAR font_face[32];
@@ -131,6 +137,10 @@ struct ce_dc {
     CE_DWORD text_color, bk_color;
     int bk_mode;
     CE_POINT pos;             /* current pen position, DC coords */
+    int text_align;           /* SetTextAlign flags */
+    CE_POINT brush_org;       /* SetBrushOrgEx */
+    CE_POINT vport_org;       /* SetViewportOrgEx (stored) */
+    CE_DWORD layout;          /* SetLayout (stored; LTR only) */
     CE_RECT clip[CE_MAX_RECTS]; /* DC coords; nclip==0: unclipped */
     int nclip;
     CE_RECT dmg;              /* damage bbox, top client coords */
@@ -194,3 +204,7 @@ CE_RECT ce_rect_union(CE_RECT a, CE_RECT b);
 void ce_rect_add(CE_RECT *list, int *n, CE_RECT r); /* merge/bbox cap */
 
 #endif
+
+/* dialog.c key-state table (M3) */
+int ce_key_down_state(int vk);
+int ce_key_pressed_latch(int vk);

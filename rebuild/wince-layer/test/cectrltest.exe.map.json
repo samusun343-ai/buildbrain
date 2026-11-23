@@ -1,0 +1,10 @@
+{
+ "entry": "0x11000",
+ "entry_sym": "WinMain",
+ "base": "0x10000",
+ "dll": false,
+ "exports": [],
+ "text_rva": "0x1000",
+ "size_of_image": "0x6000",
+ "reloc_sites": 54
+}

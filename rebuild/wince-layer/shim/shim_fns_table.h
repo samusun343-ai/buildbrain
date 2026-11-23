@@ -167,6 +167,221 @@ extern void ce_ValidateRect();
 extern void ce_lstrcmpW();
 extern void ce_lstrcmpiW();
 extern void ce_wsprintfW();
+extern void ce_RegisterHotKey();
+extern void ce_UnregisterHotKey();
+extern void ce_keybd_event();
+extern void ce_WaitForSingleObject();
+extern void ce_TerminateThread();
+extern void ce_TerminateProcess();
+extern void ce_CreateThread();
+extern void ce_CreateProcessW();
+extern void ce_GetExitCodeThread();
+extern void ce_GetExitCodeProcess();
+extern void ce_ExitThread();
+extern void ce_EndDialog();
+extern void ce_DialogBoxIndirectParamW();
+extern void ce_CreateDialogIndirectParamW();
+extern void ce_DefDlgProcW();
+extern void ce_GetDlgItem();
+extern void ce_SetDlgItemTextW();
+extern void ce_GetDlgItemTextW();
+extern void ce_SendDlgItemMessageW();
+extern void ce_IsDialogMessageW();
+extern void ce_GetDialogBaseUnits();
+extern void ce_MapDialogRect();
+extern void ce_LoadLibraryW();
+extern void ce_FreeLibrary();
+extern void ce_GetProcAddressW();
+extern void ce_FindResourceW();
+extern void ce_LoadResource();
+extern void ce_SizeofResource();
+extern void ce_InitializeCriticalSection();
+extern void ce_EnterCriticalSection();
+extern void ce_LeaveCriticalSection();
+extern void ce_TryEnterCriticalSection();
+extern void ce_DeleteCriticalSection();
+extern void ce_InterlockedIncrement();
+extern void ce_InterlockedDecrement();
+extern void ce_InterlockedExchange();
+extern void ce_InterlockedCompareExchange();
+extern void ce_SetEndOfFile();
+extern void ce_free();
+extern void ce__XcptFilter();
+extern void ce___C_specific_handler();
+extern void ce___security_gen_cookie2();
+extern void ce_DisableThreadLibraryCalls();
+extern void ce_GetProcessHeap();
+extern void ce_HeapAlloc();
+extern void ce_HeapFree();
+extern void ce_LocalSize();
+extern void ce_malloc();
+extern void ce_realloc();
+extern void ce__msize();
+extern void ce___report_gsfailure();
+extern void ce___addd();
+extern void ce___subd();
+extern void ce___muld();
+extern void ce___divd();
+extern void ce___rt_sdiv();
+extern void ce___rt_udiv();
+extern void ce_sqrt();
+extern void ce_MulDiv();
+extern void ce_wcsncpy();
+extern void ce_wcsncmp();
+extern void ce_wcschr();
+extern void ce__wcsicmp();
+extern void ce__wcsnicmp();
+extern void ce__wtol();
+extern void ce_iswctype();
+extern void ce_CharNextW();
+extern void ce_CharUpperW();
+extern void ce_GetProcessVersion();
+extern void ce_GetLocalTime();
+extern void ce_SystemTimeToFileTime();
+extern void ce_DSA_Create();
+extern void ce_DSA_Destroy();
+extern void ce_DSA_EnumCallback();
+extern void ce_DSA_DestroyCallback();
+extern void ce_DSA_GetItem();
+extern void ce_DSA_GetItemPtr();
+extern void ce_DSA_SetItem();
+extern void ce_DSA_InsertItem();
+extern void ce_DSA_DeleteItem();
+extern void ce_DSA_Search();
+extern void ce_DSA_Clone();
+extern void ce_DSA_DeleteAllItems();
+extern void ce_DPA_Create();
+extern void ce_DPA_Destroy();
+extern void ce_DPA_GetPtr();
+extern void ce_DPA_Grow();
+extern void ce_DPA_SetPtr();
+extern void ce_DPA_InsertPtr();
+extern void ce_DPA_DestroyCallback();
+extern void ce_DPA_Sort();
+extern void ce_DPA_EnumCallback();
+extern void ce_RegCloseKey();
+extern void ce_RegQueryValueExW();
+extern void ce_RegOpenKeyExW();
+extern void ce_RegCreateKeyExW();
+extern void ce_RegSetValueExW();
+extern void ce_RegDeleteValueW();
+extern void ce_ImageList_DrawIndirect();
+extern void ce_ImageList_SetBkColor();
+extern void ce_ImageList_AddMasked();
+extern void ce_ImageList_Create();
+extern void ce_ImageList_Destroy();
+extern void ce_ImageList_GetImageCount();
+extern void ce_ImageList_GetIconSize();
+extern void ce_ImageList_Add();
+extern void ce_ImageList_GetBkColor();
+extern void ce_ImageList_Remove();
+extern void ce_ImageList_Draw();
+extern void ce_ImageList_DrawEx();
+extern void ce_ImageList_SetImageCount();
+extern void ce_LoadBitmapW();
+extern void ce_LoadStringW();
+extern void ce_SetLayout();
+extern void ce_GetLayout();
+extern void ce_DrawEdge();
+extern void ce_DrawFrameControl();
+extern void ce_DrawFocusRect();
+extern void ce_GetNearestColor();
+extern void ce_SetTextAlign();
+extern void ce_GetTextAlign();
+extern void ce_IntersectClipRect();
+extern void ce_RedrawWindow();
+extern void ce_StringCchCopyW();
+extern void ce_StringCchPrintfW();
+extern void ce_StringCchPrintfExW();
+extern void ce_StringCchCopyExW();
+extern void ce_ScrollWindowEx();
+extern void ce_SetBrushOrgEx();
+extern void ce_SetViewportOrgEx();
+extern void ce_ExcludeClipRect();
+extern void ce_GetClipRgn();
+extern void ce_GetScrollInfo();
+extern void ce_SetScrollInfo();
+extern void ce_SetScrollRange();
+extern void ce_SetScrollPos();
+extern void ce_GetDoubleClickTime();
+extern void ce_CreatePatternBrush();
+extern void ce_CreateDIBPatternBrushPt();
+extern void ce_GetUpdateRgn();
+extern void ce_GetUpdateRect();
+extern void ce_GetKeyState();
+extern void ce_GetAsyncKeyState();
+extern void ce_LoadImageW();
+extern void ce_GetLocaleInfoW();
+extern void ce_GetNumberFormatW();
+extern void ce_LCMapStringW();
+extern void ce_GetDateFormatW();
+extern void ce_EnumCalendarInfoW();
+extern void ce_GetStringTypeExW();
+extern void ce_GetUserDefaultLCID();
+extern void ce_GetSystemDefaultLCID();
+extern void ce_GetSystemDefaultLangID();
+extern void ce_DestroyMenu();
+extern void ce_GetTimeFormatW();
+extern void ce_CreatePenIndirect();
+extern void ce_ImmSIPanelState();
+extern void ce_TrackPopupMenuEx();
+extern void ce_CheckMenuRadioItem();
+extern void ce_AppendMenuW();
+extern void ce_CreatePopupMenu();
+extern void ce_IsChild();
+extern void ce_GetMonitorInfo();
+extern void ce_MonitorFromPoint();
+extern void ce_WindowFromPoint();
+extern void ce_GetNextDlgTabItem();
+extern void ce_DestroyIcon();
+extern void ce_GradientFill();
+extern void ce_CreateIconIndirect();
+extern void ce_GetCurrentObject();
+extern void ce_Polyline();
+extern void ce_GetBkMode();
+extern void ce_Polygon();
+extern void ce_SHLoadDIBitmap();
+extern void ce_CreateMutexW();
+extern void ce_ReleaseMutex();
+extern void ce_MapViewOfFile();
+extern void ce_UnmapViewOfFile();
+extern void ce_CreateFileMappingW();
+extern void ce_SendNotifyMessageW();
+extern void ce_ShowCaret();
+extern void ce_HideCaret();
+extern void ce_SetParent();
+extern void ce_MsgWaitForMultipleObjectsEx();
+extern void ce_GetProp();
+extern void ce_SetProp();
+extern void ce_RemoveProp();
+extern void ce_GlobalAddAtomW();
+extern void ce_GlobalFindAtomW();
+extern void ce_GetWindowThreadProcessId();
+extern void ce_WideCharToMultiByte();
+extern void ce_MultiByteToWideChar();
+extern void ce_ImmAssociateContext();
+extern void ce_ImmReleaseContext();
+extern void ce_ImmGetCompositionStringW();
+extern void ce_ImmGetOpenStatus();
+extern void ce_ImmGetContext();
+extern void ce_ImmNotifyIME();
+extern void ce_OpenClipboard();
+extern void ce_CloseClipboard();
+extern void ce_GetClipboardData();
+extern void ce_EmptyClipboard();
+extern void ce_IsClipboardFormatAvailable();
+extern void ce_SetAssociatedMenu();
+extern void ce_DrawMenuBar();
+extern void ce_LoadStringW();
+extern void ce___GetUserKData();
+extern void ce_GetOwnerProcess();
+extern void ce_GetClipCursor();
+extern void ce_GetGestureInfo();
+extern void ce_CloseGestureInfoHandle();
+extern void ce_SetWindowAutoGesture();
+extern void ce_GetWindowAutoGesture();
+extern void ce_GetAnimateMessageInfo();
+extern void ce_SetWindowPosOnRotate();
 const struct ce_shim_sym ce_shim_table[] = {
 	{ "CreateFileW", 168, (void *)ce_CreateFileW },
 	{ "ReadFile", 170, (void *)ce_ReadFile },
@@ -334,4 +549,219 @@ const struct ce_shim_sym ce_shim_table[] = {
 	{ "lstrcmpW", 227, (void *)ce_lstrcmpW },
 	{ "lstrcmpiW", 228, (void *)ce_lstrcmpiW },
 	{ "wsprintfW", 56, (void *)ce_wsprintfW },
+	{ "RegisterHotKey", 835, (void *)ce_RegisterHotKey },
+	{ "UnregisterHotKey", 836, (void *)ce_UnregisterHotKey },
+	{ "keybd_event", 833, (void *)ce_keybd_event },
+	{ "WaitForSingleObject", 497, (void *)ce_WaitForSingleObject },
+	{ "TerminateThread", 491, (void *)ce_TerminateThread },
+	{ "TerminateProcess", 544, (void *)ce_TerminateProcess },
+	{ "CreateThread", 492, (void *)ce_CreateThread },
+	{ "CreateProcessW", 493, (void *)ce_CreateProcessW },
+	{ "GetExitCodeThread", 518, (void *)ce_GetExitCodeThread },
+	{ "GetExitCodeProcess", 519, (void *)ce_GetExitCodeProcess },
+	{ "ExitThread", 6, (void *)ce_ExitThread },
+	{ "EndDialog", 691, (void *)ce_EndDialog },
+	{ "DialogBoxIndirectParamW", 690, (void *)ce_DialogBoxIndirectParamW },
+	{ "CreateDialogIndirectParamW", 688, (void *)ce_CreateDialogIndirectParamW },
+	{ "DefDlgProcW", 689, (void *)ce_DefDlgProcW },
+	{ "GetDlgItem", 692, (void *)ce_GetDlgItem },
+	{ "SetDlgItemTextW", 686, (void *)ce_SetDlgItemTextW },
+	{ "GetDlgItemTextW", 687, (void *)ce_GetDlgItemTextW },
+	{ "SendDlgItemMessageW", 685, (void *)ce_SendDlgItemMessageW },
+	{ "IsDialogMessageW", 698, (void *)ce_IsDialogMessageW },
+	{ "GetDialogBaseUnits", 694, (void *)ce_GetDialogBaseUnits },
+	{ "MapDialogRect", 699, (void *)ce_MapDialogRect },
+	{ "LoadLibraryW", 528, (void *)ce_LoadLibraryW },
+	{ "FreeLibrary", 529, (void *)ce_FreeLibrary },
+	{ "GetProcAddressW", 530, (void *)ce_GetProcAddressW },
+	{ "FindResourceW", 532, (void *)ce_FindResourceW },
+	{ "LoadResource", 533, (void *)ce_LoadResource },
+	{ "SizeofResource", 534, (void *)ce_SizeofResource },
+	{ "InitializeCriticalSection", 2, (void *)ce_InitializeCriticalSection },
+	{ "EnterCriticalSection", 4, (void *)ce_EnterCriticalSection },
+	{ "LeaveCriticalSection", 5, (void *)ce_LeaveCriticalSection },
+	{ "TryEnterCriticalSection", 1233, (void *)ce_TryEnterCriticalSection },
+	{ "DeleteCriticalSection", 3, (void *)ce_DeleteCriticalSection },
+	{ "InterlockedIncrement", 10, (void *)ce_InterlockedIncrement },
+	{ "InterlockedDecrement", 11, (void *)ce_InterlockedDecrement },
+	{ "InterlockedExchange", 12, (void *)ce_InterlockedExchange },
+	{ "InterlockedCompareExchange", 1492, (void *)ce_InterlockedCompareExchange },
+	{ "SetEndOfFile", 178, (void *)ce_SetEndOfFile },
+	{ "free", 1018, (void *)ce_free },
+	{ "_XcptFilter", 1645, (void *)ce__XcptFilter },
+	{ "__C_specific_handler", 87, (void *)ce___C_specific_handler },
+	{ "__security_gen_cookie2", 2696, (void *)ce___security_gen_cookie2 },
+	{ "DisableThreadLibraryCalls", 1232, (void *)ce_DisableThreadLibraryCalls },
+	{ "GetProcessHeap", 50, (void *)ce_GetProcessHeap },
+	{ "HeapAlloc", 46, (void *)ce_HeapAlloc },
+	{ "HeapFree", 49, (void *)ce_HeapFree },
+	{ "LocalSize", 35, (void *)ce_LocalSize },
+	{ "malloc", 1041, (void *)ce_malloc },
+	{ "realloc", 1054, (void *)ce_realloc },
+	{ "_msize", 1049, (void *)ce__msize },
+	{ "__report_gsfailure", 1876, (void *)ce___report_gsfailure },
+	{ "__addd", 2053, (void *)ce___addd },
+	{ "__subd", 2016, (void *)ce___subd },
+	{ "__muld", 2027, (void *)ce___muld },
+	{ "__divd", 2048, (void *)ce___divd },
+	{ "__rt_sdiv", 2005, (void *)ce___rt_sdiv },
+	{ "__rt_udiv", 2008, (void *)ce___rt_udiv },
+	{ "sqrt", 1060, (void *)ce_sqrt },
+	{ "MulDiv", 1877, (void *)ce_MulDiv },
+	{ "wcsncpy", 66, (void *)ce_wcsncpy },
+	{ "wcsncmp", 65, (void *)ce_wcsncmp },
+	{ "wcschr", 59, (void *)ce_wcschr },
+	{ "_wcsicmp", 230, (void *)ce__wcsicmp },
+	{ "_wcsnicmp", 229, (void *)ce__wcsnicmp },
+	{ "_wtol", 78, (void *)ce__wtol },
+	{ "iswctype", 193, (void *)ce_iswctype },
+	{ "CharNextW", 226, (void *)ce_CharNextW },
+	{ "CharUpperW", 224, (void *)ce_CharUpperW },
+	{ "GetProcessVersion", 536, (void *)ce_GetProcessVersion },
+	{ "GetLocalTime", 23, (void *)ce_GetLocalTime },
+	{ "SystemTimeToFileTime", 19, (void *)ce_SystemTimeToFileTime },
+	{ "DSA_Create", 1852, (void *)ce_DSA_Create },
+	{ "DSA_Destroy", 1856, (void *)ce_DSA_Destroy },
+	{ "DSA_EnumCallback", 1858, (void *)ce_DSA_EnumCallback },
+	{ "DSA_DestroyCallback", 1857, (void *)ce_DSA_DestroyCallback },
+	{ "DSA_GetItem", 1859, (void *)ce_DSA_GetItem },
+	{ "DSA_GetItemPtr", 1860, (void *)ce_DSA_GetItemPtr },
+	{ "DSA_SetItem", 1864, (void *)ce_DSA_SetItem },
+	{ "DSA_InsertItem", 1862, (void *)ce_DSA_InsertItem },
+	{ "DSA_DeleteItem", 1855, (void *)ce_DSA_DeleteItem },
+	{ "DSA_Search", 1863, (void *)ce_DSA_Search },
+	{ "DSA_Clone", 1853, (void *)ce_DSA_Clone },
+	{ "DSA_DeleteAllItems", 1854, (void *)ce_DSA_DeleteAllItems },
+	{ "DPA_Create", 1837, (void *)ce_DPA_Create },
+	{ "DPA_Destroy", 1842, (void *)ce_DPA_Destroy },
+	{ "DPA_GetPtr", 1845, (void *)ce_DPA_GetPtr },
+	{ "DPA_Grow", 1847, (void *)ce_DPA_Grow },
+	{ "DPA_SetPtr", 1850, (void *)ce_DPA_SetPtr },
+	{ "DPA_InsertPtr", 1848, (void *)ce_DPA_InsertPtr },
+	{ "DPA_DestroyCallback", 1843, (void *)ce_DPA_DestroyCallback },
+	{ "DPA_Sort", 1851, (void *)ce_DPA_Sort },
+	{ "DPA_EnumCallback", 1844, (void *)ce_DPA_EnumCallback },
+	{ "RegCloseKey", 455, (void *)ce_RegCloseKey },
+	{ "RegQueryValueExW", 463, (void *)ce_RegQueryValueExW },
+	{ "RegOpenKeyExW", 461, (void *)ce_RegOpenKeyExW },
+	{ "RegCreateKeyExW", 456, (void *)ce_RegCreateKeyExW },
+	{ "RegSetValueExW", 464, (void *)ce_RegSetValueExW },
+	{ "RegDeleteValueW", 458, (void *)ce_RegDeleteValueW },
+	{ "ImageList_DrawIndirect", 750, (void *)ce_ImageList_DrawIndirect },
+	{ "ImageList_SetBkColor", 763, (void *)ce_ImageList_SetBkColor },
+	{ "ImageList_AddMasked", 739, (void *)ce_ImageList_AddMasked },
+	{ "ImageList_Create", 742, (void *)ce_ImageList_Create },
+	{ "ImageList_Destroy", 743, (void *)ce_ImageList_Destroy },
+	{ "ImageList_GetImageCount", 756, (void *)ce_ImageList_GetImageCount },
+	{ "ImageList_GetIconSize", 755, (void *)ce_ImageList_GetIconSize },
+	{ "ImageList_Add", 738, (void *)ce_ImageList_Add },
+	{ "ImageList_GetBkColor", 752, (void *)ce_ImageList_GetBkColor },
+	{ "ImageList_Remove", 760, (void *)ce_ImageList_Remove },
+	{ "ImageList_Draw", 748, (void *)ce_ImageList_Draw },
+	{ "ImageList_DrawEx", 749, (void *)ce_ImageList_DrawEx },
+	{ "ImageList_SetImageCount", 769, (void *)ce_ImageList_SetImageCount },
+	{ "LoadBitmapW", 873, (void *)ce_LoadBitmapW },
+	{ "LoadStringW", 874, (void *)ce_LoadStringW },
+	{ "SetLayout", 1890, (void *)ce_SetLayout },
+	{ "GetLayout", 1891, (void *)ce_GetLayout },
+	{ "DrawEdge", 932, (void *)ce_DrawEdge },
+	{ "DrawFrameControl", 987, (void *)ce_DrawFrameControl },
+	{ "DrawFocusRect", 933, (void *)ce_DrawFocusRect },
+	{ "GetNearestColor", 952, (void *)ce_GetNearestColor },
+	{ "SetTextAlign", 1654, (void *)ce_SetTextAlign },
+	{ "GetTextAlign", 1655, (void *)ce_GetTextAlign },
+	{ "IntersectClipRect", 975, (void *)ce_IntersectClipRect },
+	{ "RedrawWindow", 1672, (void *)ce_RedrawWindow },
+	{ "StringCchCopyW", 1689, (void *)ce_StringCchCopyW },
+	{ "StringCchPrintfW", 1699, (void *)ce_StringCchPrintfW },
+	{ "StringCchPrintfExW", 1701, (void *)ce_StringCchPrintfExW },
+	{ "StringCchCopyExW", 1691, (void *)ce_StringCchCopyExW },
+	{ "ScrollWindowEx", 289, (void *)ce_ScrollWindowEx },
+	{ "SetBrushOrgEx", 943, (void *)ce_SetBrushOrgEx },
+	{ "SetViewportOrgEx", 983, (void *)ce_SetViewportOrgEx },
+	{ "ExcludeClipRect", 970, (void *)ce_ExcludeClipRect },
+	{ "GetClipRgn", 972, (void *)ce_GetClipRgn },
+	{ "GetScrollInfo", 282, (void *)ce_GetScrollInfo },
+	{ "SetScrollInfo", 279, (void *)ce_SetScrollInfo },
+	{ "SetScrollRange", 281, (void *)ce_SetScrollRange },
+	{ "SetScrollPos", 280, (void *)ce_SetScrollPos },
+	{ "GetDoubleClickTime", 888, (void *)ce_GetDoubleClickTime },
+	{ "CreatePatternBrush", 925, (void *)ce_CreatePatternBrush },
+	{ "CreateDIBPatternBrushPt", 929, (void *)ce_CreateDIBPatternBrushPt },
+	{ "GetUpdateRgn", 273, (void *)ce_GetUpdateRgn },
+	{ "GetUpdateRect", 274, (void *)ce_GetUpdateRect },
+	{ "GetKeyState", 860, (void *)ce_GetKeyState },
+	{ "GetAsyncKeyState", 826, (void *)ce_GetAsyncKeyState },
+	{ "LoadImageW", 730, (void *)ce_LoadImageW },
+	{ "GetLocaleInfoW", 200, (void *)ce_GetLocaleInfoW },
+	{ "GetNumberFormatW", 204, (void *)ce_GetNumberFormatW },
+	{ "LCMapStringW", 199, (void *)ce_LCMapStringW },
+	{ "GetDateFormatW", 203, (void *)ce_GetDateFormatW },
+	{ "EnumCalendarInfoW", 206, (void *)ce_EnumCalendarInfoW },
+	{ "GetStringTypeExW", 217, (void *)ce_GetStringTypeExW },
+	{ "GetUserDefaultLCID", 215, (void *)ce_GetUserDefaultLCID },
+	{ "GetSystemDefaultLCID", 213, (void *)ce_GetSystemDefaultLCID },
+	{ "GetSystemDefaultLangID", 211, (void *)ce_GetSystemDefaultLangID },
+	{ "DestroyMenu", 844, (void *)ce_DestroyMenu },
+	{ "GetTimeFormatW", 202, (void *)ce_GetTimeFormatW },
+	{ "CreatePenIndirect", 930, (void *)ce_CreatePenIndirect },
+	{ "ImmSIPanelState", 804, (void *)ce_ImmSIPanelState },
+	{ "TrackPopupMenuEx", 845, (void *)ce_TrackPopupMenuEx },
+	{ "CheckMenuRadioItem", 849, (void *)ce_CheckMenuRadioItem },
+	{ "AppendMenuW", 842, (void *)ce_AppendMenuW },
+	{ "CreatePopupMenu", 852, (void *)ce_CreatePopupMenu },
+	{ "IsChild", 277, (void *)ce_IsChild },
+	{ "GetMonitorInfo", 1525, (void *)ce_GetMonitorInfo },
+	{ "MonitorFromPoint", 1522, (void *)ce_MonitorFromPoint },
+	{ "WindowFromPoint", 252, (void *)ce_WindowFromPoint },
+	{ "GetNextDlgTabItem", 696, (void *)ce_GetNextDlgTabItem },
+	{ "DestroyIcon", 725, (void *)ce_DestroyIcon },
+	{ "GradientFill", 1763, (void *)ce_GradientFill },
+	{ "CreateIconIndirect", 723, (void *)ce_CreateIconIndirect },
+	{ "GetCurrentObject", 915, (void *)ce_GetCurrentObject },
+	{ "Polyline", 940, (void *)ce_Polyline },
+	{ "GetBkMode", 914, (void *)ce_GetBkMode },
+	{ "Polygon", 939, (void *)ce_Polygon },
+	{ "SHLoadDIBitmap", 487, (void *)ce_SHLoadDIBitmap },
+	{ "CreateMutexW", 555, (void *)ce_CreateMutexW },
+	{ "ReleaseMutex", 556, (void *)ce_ReleaseMutex },
+	{ "MapViewOfFile", 549, (void *)ce_MapViewOfFile },
+	{ "UnmapViewOfFile", 550, (void *)ce_UnmapViewOfFile },
+	{ "CreateFileMappingW", 548, (void *)ce_CreateFileMappingW },
+	{ "SendNotifyMessageW", 869, (void *)ce_SendNotifyMessageW },
+	{ "ShowCaret", 661, (void *)ce_ShowCaret },
+	{ "HideCaret", 660, (void *)ce_HideCaret },
+	{ "SetParent", 268, (void *)ce_SetParent },
+	{ "MsgWaitForMultipleObjectsEx", 871, (void *)ce_MsgWaitForMultipleObjectsEx },
+	{ "GetProp", 1498, (void *)ce_GetProp },
+	{ "SetProp", 1497, (void *)ce_SetProp },
+	{ "RemoveProp", 1499, (void *)ce_RemoveProp },
+	{ "GlobalAddAtomW", 1519, (void *)ce_GlobalAddAtomW },
+	{ "GlobalFindAtomW", 1521, (void *)ce_GlobalFindAtomW },
+	{ "GetWindowThreadProcessId", 292, (void *)ce_GetWindowThreadProcessId },
+	{ "WideCharToMultiByte", 197, (void *)ce_WideCharToMultiByte },
+	{ "MultiByteToWideChar", 196, (void *)ce_MultiByteToWideChar },
+	{ "ImmAssociateContext", 770, (void *)ce_ImmAssociateContext },
+	{ "ImmReleaseContext", 803, (void *)ce_ImmReleaseContext },
+	{ "ImmGetCompositionStringW", 781, (void *)ce_ImmGetCompositionStringW },
+	{ "ImmGetOpenStatus", 792, (void *)ce_ImmGetOpenStatus },
+	{ "ImmGetContext", 783, (void *)ce_ImmGetContext },
+	{ "ImmNotifyIME", 800, (void *)ce_ImmNotifyIME },
+	{ "OpenClipboard", 668, (void *)ce_OpenClipboard },
+	{ "CloseClipboard", 669, (void *)ce_CloseClipboard },
+	{ "GetClipboardData", 672, (void *)ce_GetClipboardData },
+	{ "EmptyClipboard", 677, (void *)ce_EmptyClipboard },
+	{ "IsClipboardFormatAvailable", 678, (void *)ce_IsClipboardFormatAvailable },
+	{ "SetAssociatedMenu", 299, (void *)ce_SetAssociatedMenu },
+	{ "DrawMenuBar", 856, (void *)ce_DrawMenuBar },
+	{ "LoadStringW", 874, (void *)ce_LoadStringW },
+	{ "__GetUserKData", 2528, (void *)ce___GetUserKData },
+	{ "GetOwnerProcess", 606, (void *)ce_GetOwnerProcess },
+	{ "GetClipCursor", 732, (void *)ce_GetClipCursor },
+	{ "GetGestureInfo", 2925, (void *)ce_GetGestureInfo },
+	{ "CloseGestureInfoHandle", 2924, (void *)ce_CloseGestureInfoHandle },
+	{ "SetWindowAutoGesture", 2870, (void *)ce_SetWindowAutoGesture },
+	{ "GetWindowAutoGesture", 2869, (void *)ce_GetWindowAutoGesture },
+	{ "GetAnimateMessageInfo", 2871, (void *)ce_GetAnimateMessageInfo },
+	{ "SetWindowPosOnRotate", 2706, (void *)ce_SetWindowPosOnRotate },
 };

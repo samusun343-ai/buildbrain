@@ -1,0 +1,20 @@
+{
+ "OutputDebugStringW": "0x11850",
+ "LoadLibraryW": "0x11860",
+ "GetProcAddressW": "0x11870",
+ "RegisterClassW": "0x11880",
+ "CreateWindowExW": "0x11890",
+ "ShowWindow": "0x118a0",
+ "SendMessageW": "0x118b0",
+ "GetFileAttributesW": "0x118c0",
+ "GetTickCount": "0x118d0",
+ "GetMessageW": "0x118e0",
+ "TranslateMessage": "0x118f0",
+ "DispatchMessageW": "0x11900",
+ "DestroyWindow": "0x11910",
+ "CreateFileW": "0x11920",
+ "WriteFile": "0x11930",
+ "CloseHandle": "0x11940",
+ "PostQuitMessage": "0x11950",
+ "DefWindowProcW": "0x11960"
+}
