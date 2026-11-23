@@ -1,0 +1,38 @@
+# coredll shim: implemented CE API names (one per line).
+# tools/gen_shim_table.py resolves each name to its ordinal in this
+# CE build's coredll via the QEMU-side census ordmap and emits
+# shim_table.h. 34 functions (DESIGN-wince-layer.md section 9.1 M1 set).
+CreateFileW
+ReadFile
+WriteFile
+SetFilePointer
+GetFileSize
+CloseHandle
+FlushFileBuffers
+DeleteFileW
+CreateDirectoryW
+GetFileAttributesW
+FindFirstFileW
+FindNextFileW
+FindClose
+LocalAlloc
+LocalFree
+LocalReAlloc
+VirtualAlloc
+VirtualFree
+GetTickCount
+Sleep
+GetLastError
+SetLastError
+OutputDebugStringW
+memcpy
+memset
+memmove
+memcmp
+strlen
+wcslen
+strcpy
+wcscpy
+wcscat
+strcmp
+wcscmp
