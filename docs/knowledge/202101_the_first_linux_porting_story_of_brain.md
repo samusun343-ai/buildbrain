@@ -1,9 +1,4 @@
 # Abstract
-
-> **このファイルの位置づけ**: 本ファイルは、作業の過程で積み上げ最中の観測・解析・実装の記録であり、確立した知識ではない。
-> 文中の「確定」「実証」等の断定表現は、記録時点での記録者の判断を示すにすぎず、内容が正確である保証はない（誤りを含む可能性がある）。
-> 参照する場合は、前提として扱わず、一次資料と照合して独立に検証すること。
-
 This document details the initial journey of porting embedded Linux to the SHARP Brain electronic dictionary. It covers the hardware teardown, circuit analysis, compiling U-Boot, overcoming DRAM and microSD recognition issues, and finally reverse-engineering the undocumented LCD panel to successfully achieve a functional Linux boot.
 
 # Page 01

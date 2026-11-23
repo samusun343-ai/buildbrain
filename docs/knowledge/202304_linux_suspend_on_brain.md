@@ -1,9 +1,4 @@
 # Abstract
-
-> **このファイルの位置づけ**: 本ファイルは、作業の過程で積み上げ最中の観測・解析・実装の記録であり、確立した知識ではない。
-> 文中の「確定」「実証」等の断定表現は、記録時点での記録者の判断を示すにすぎず、内容が正確である保証はない（誤りを含む可能性がある）。
-> 参照する場合は、前提として扱わず、一次資料と照合して独立に検証すること。
-
 This document provides a technical deep dive into Linux suspend mechanisms, focusing on the implementation of Suspend-to-RAM for the SHARP Brain electronic dictionary. It explains the transition and resume flows, the required power management and wakeup interrupt handler implementations, and the specific challenges faced, such as handling I2C-based key events and device tree configurations for power regulators.
 
 # Page 01

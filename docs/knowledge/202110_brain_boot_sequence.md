@@ -1,9 +1,4 @@
 # Abstract
-
-> **このファイルの位置づけ**: 本ファイルは、作業の過程で積み上げ最中の観測・解析・実装の記録であり、確立した知識ではない。
-> 文中の「確定」「実証」等の断定表現は、記録時点での記録者の判断を示すにすぎず、内容が正確である保証はない（誤りを含む可能性がある）。
-> 参照する場合は、前提として扱わず、一次資料と照合して独立に検証すること。
-
 This document provides a detailed technical breakdown of the SHARP Brain's boot sequence. It explains the process from the initial Boot ROM execution to the transition from the native Windows CE environment to Linux, detailing methods like using a custom application (BrainLILO) to chain-load U-Boot and exploring theoretical direct Boot ROM execution for deeper integration.
 
 # Page 01
