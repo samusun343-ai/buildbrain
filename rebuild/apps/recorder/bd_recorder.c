@@ -636,6 +636,11 @@ rec_app *rec_app_new(const char *data_root,
 
     app->winui = bd_app_winui(tk_theme_default());
 
+    /* int15 note: a 9px vertical gap in this column was tried
+     * (round-6 audit) and reverted - at 480x272 it crushed the
+     * recordings listview to 7-17px (matrix floor24).  The
+     * column's rows are unlike-kind stacks (tab row / split /
+     * record row), not a same-kind button stack. */
     tk_widget *top = tk_box_new(TK_DIR_VERTICAL, 4, 4);
     bd_page_pad_x(top);
     app->top = top;
@@ -710,6 +715,13 @@ rec_app *rec_app_new(const char *data_root,
     }
 
     tk_widget *det = tk_box_new(TK_DIR_VERTICAL, 3, 0);
+    /* int15 (blind round 6, photo 39): the detail pane's face
+     * starts at the scrollview's left edge and the placeholder
+     * glyph's ink sits 13px inside it (the fullwidth paren's
+     * bearing) - C7 origin 3 wants 18px.  A 5px box pad puts
+     * the glyph at exactly 18px, matching the panels that
+     * passed at 18px; the transport faces move 5px in with it. */
+    tk_box_set_pad_x(det, 5);
     /* the detail rows keep their full height inside a
      * scrollview instead of being crushed by the column
      * (both modes; in WinUI the pane was short of its own

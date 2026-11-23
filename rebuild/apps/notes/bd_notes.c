@@ -925,7 +925,14 @@ notes_app *notes_app_new(nm_store *store, int w, int h, bool with_osk)
          * pane = editor with its format bar on top. Selecting
          * a note loads it in place - no screen switching. */
         app->scr_panes = tk_box_new(TK_DIR_HORIZONTAL, 6, 8);
+        /* int15 (round 6 reference measurement, photo 32):
+         * the folder combo sat ~5px above the search row.
+         * Widening the whole column's gap to 9px cost the
+         * note list its 2-row floor at 850x368 (98px < 108),
+         * so only that one gap is widened (spacer below) and
+         * pad_y gives 2px back. */
         tk_widget *left = tk_box_new(TK_DIR_VERTICAL, 4, 6);
+        tk_box_set_pad_y(left, 4);
         tk_widget_set_min_size(left, 264, 0);
         /* the box gives non-flex children their DESIRED width,
          * and the note list's desired width is its longest row
@@ -966,6 +973,11 @@ notes_app *notes_app_new(nm_store *store, int w, int h, bool with_osk)
             tk_combobox_set_on_change(app->folder_combo,
                                       on_folder_combo_change, app);
             tk_add_child(left, app->folder_combo);
+            {   /* int15: combo<->search gap spacer (see above) */
+                tk_widget *sp = tk_box_new(TK_DIR_HORIZONTAL, 0, 0);
+                tk_widget_set_min_size(sp, 0, 5);
+                tk_add_child(left, sp);
+            }
 
             app->list_search_row = tk_box_new(TK_DIR_HORIZONTAL,
                                               9, 0); /* int14: field+button = C2-A 9px (round 5 flag: 5px) */

@@ -705,9 +705,14 @@ tasks_app *tasks_app_new(tm_store *store, const char *today, int w, int h)
         /* ============ WinUI: Microsoft To Do form ============
          * Left pane = smart lists + user lists; right = quick
          * add, task rows, actions, detail editor. */
-        top = tk_box_new(TK_DIR_HORIZONTAL, 6, 6);
+        top = tk_box_new(TK_DIR_HORIZONTAL, 9, 6); /* int15: column gap 9px */
 
-        tk_widget *left = tk_box_new(TK_DIR_VERTICAL, 4, 0);
+        /* int15 (blind round 6, photo 47 + reference
+         * measurements): this column stacks label / list /
+         * name-field row / list-action rows; its vertical gap
+         * is C2-A territory - 9px, not 4px (the name field sat
+         * ~4px above the action rows). */
+        tk_widget *left = tk_box_new(TK_DIR_VERTICAL, 9, 0);
         tk_set_flex(left, 1);
         app->sidebar = tk_listview_new();
         tk_listview_set_on_select(app->sidebar, on_sidebar_select,
@@ -734,7 +739,11 @@ tasks_app *tasks_app_new(tm_store *store, const char *today, int w, int h)
          * row they need ~230px, and in a 480px-wide window
          * the sidebar is ~154px, which arranged 削除 to
          * 0px wide (matrix floor check) */
-        tk_widget *lrow = tk_box_new(TK_DIR_VERTICAL, 4, 0);
+        /* int15 (blind round 6, photo 47, C2-A FAIL): the
+         * stacked command rows (作成/名前変更 over 削除) were
+         * 4px apart face-to-face; vertical stacks take the
+         * same 9px as horizontal command rows. */
+        tk_widget *lrow = tk_box_new(TK_DIR_VERTICAL, 9, 0);
         tk_widget *lrow1 = tk_box_new(TK_DIR_HORIZONTAL, 9, 0);
         tk_add_child(lrow1, btn("作成", on_new_list, app));
         tk_add_child(lrow1, btn("名前変更", on_rename_list, app));
@@ -753,7 +762,7 @@ tasks_app *tasks_app_new(tm_store *store, const char *today, int w, int h)
         tk_add_child(left, lrow);
         tk_add_child(top, left);
 
-        main_col = tk_box_new(TK_DIR_VERTICAL, 4, 0);
+        main_col = tk_box_new(TK_DIR_VERTICAL, 4, 0); /* int15: 9px here crushed the task list under the 24px floor at 480x272 (matrix floor24: 13px) - the 9px widening is kept only in the sidebar column, whose list has the slack */
         tk_set_flex(main_col, 2);
         tk_add_child(top, main_col);
     } else {
@@ -783,7 +792,7 @@ tasks_app *tasks_app_new(tm_store *store, const char *today, int w, int h)
         tk_add_child(hdr, btn("リスト管理", on_lists_open, app));
         tk_add_child(top, hdr);
 
-        main_col = tk_box_new(TK_DIR_VERTICAL, 4, 0);
+        main_col = tk_box_new(TK_DIR_VERTICAL, 4, 0); /* int15: 9px here crushed the task list under the 24px floor at 480x272 (matrix floor24: 13px) - the 9px widening is kept only in the sidebar column, whose list has the slack */
         tk_set_flex(main_col, 1);
         tk_add_child(top, main_col);
     }

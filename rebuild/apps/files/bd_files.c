@@ -1608,7 +1608,7 @@ files_app *files_app_new(const char *start_dir, const char *data_root,
          * the left with the places, command bar with back /
          * forward / up and breadcrumb segments on the right
          * column. No drill-down header. */
-        top = tk_box_new(TK_DIR_HORIZONTAL, 4, 6);
+        top = tk_box_new(TK_DIR_HORIZONTAL, 9, 6); /* int15: column gap 9px */
         tk_widget *pane = tk_box_new(TK_DIR_VERTICAL, 2, 4);
         tk_box_set_pad_x(pane, 11); /* int14 C7: nav face 18px from
                                      * the window content edge and
@@ -1643,7 +1643,7 @@ files_app *files_app_new(const char *start_dir, const char *data_root,
         tk_add_child(pane, app->nav_list);
         tk_add_child(top, pane);
 
-        tk_widget *right = tk_box_new(TK_DIR_VERTICAL, 4, 6);
+        tk_widget *right = tk_box_new(TK_DIR_VERTICAL, 9, 6); /* int15: stacked rows 9px */
         tk_box_set_pad_x(right, BD_PAGE_PAD_X);
         tk_set_flex(right, 1);
         tk_widget *cmdbar = tk_box_new(TK_DIR_HORIZONTAL, 9, 0);
@@ -1674,7 +1674,7 @@ files_app *files_app_new(const char *start_dir, const char *data_root,
         tk_add_child(right, status_row);
         tk_add_child(top, right);
     } else {
-        top = tk_box_new(TK_DIR_VERTICAL, 4, 6);
+        top = tk_box_new(TK_DIR_VERTICAL, 9, 6); /* int15: stacked rows 9px */
         bd_page_pad_x(top);
 
         /* Header (DESIGN-apps-envfit SS7.1): back icon, folder

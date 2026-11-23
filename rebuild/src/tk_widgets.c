@@ -1985,7 +1985,13 @@ static tk_color accent_button_face(tk_widget *w, tk_canvas *c,
         btn_face_fill(w, c, r, brad, t,
                       tk_face_brush(w, t, t->accent));
     } else {
-        btn_face_fill(w, c, r, brad, t, t->accent);
+        /* int15: an explicit face set with tk_button_set_face
+         * wins over the theme accent for the resting fill (the
+         * calc "=" key uses it to reach WCAG AA against its
+         * glyph - see apps/calc/bd_calc.c face_eq).  Widgets
+         * that set no face keep the accent exactly as before. */
+        btn_face_fill(w, c, r, brad, t,
+                      w->btn_has_face ? w->btn_face : t->accent);
     }
     if (w->has_fg_override) return w->fg_override;
     return t->on_accent;

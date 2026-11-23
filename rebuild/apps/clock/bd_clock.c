@@ -773,7 +773,7 @@ clock_app *clock_app_new(ck_store *store, int local_offset_min,
     tk_add_child(content, app->tabs);
 
     /* --- world clock page --- */
-    tk_widget *world = tk_box_new(TK_DIR_VERTICAL, 4, 0);
+    tk_widget *world = tk_box_new(TK_DIR_VERTICAL, 9, 0); /* int15: stacked rows 9px */
     app->city_list = tk_listview_new();
     tk_set_flex(app->city_list, 1);
     tk_add_child(world, app->city_list);
@@ -795,7 +795,7 @@ clock_app *clock_app_new(ck_store *store, int local_offset_min,
     app->pages[0] = world;
 
     /* --- alarms page --- */
-    tk_widget *al = tk_box_new(TK_DIR_VERTICAL, 4, 0);
+    tk_widget *al = tk_box_new(TK_DIR_VERTICAL, 9, 0); /* int15: stacked rows 9px */
     app->alarm_list = tk_listview_new();
     tk_listview_set_on_select(app->alarm_list, on_alarm_select, app);
     tk_listview_set_on_activate(app->alarm_list, on_alarm_activate, app);
@@ -839,7 +839,7 @@ clock_app *clock_app_new(ck_store *store, int local_offset_min,
     app->pages[1] = al;
 
     /* --- stopwatch page --- */
-    tk_widget *swp = tk_box_new(TK_DIR_VERTICAL, 4, 0);
+    tk_widget *swp = tk_box_new(TK_DIR_VERTICAL, 9, 0); /* int15: stacked rows 9px */
     app->sw_label = tk_label_new("00:00:00.0");
     tk_add_child(swp, app->sw_label);
     tk_widget *swrow = tk_box_new(TK_DIR_HORIZONTAL, 9, 0);
@@ -852,7 +852,7 @@ clock_app *clock_app_new(ck_store *store, int local_offset_min,
     app->pages[2] = swp;
 
     /* --- timers page --- */
-    tk_widget *tp = tk_box_new(TK_DIR_VERTICAL, 4, 0);
+    tk_widget *tp = tk_box_new(TK_DIR_VERTICAL, 9, 0); /* int15: stacked rows 9px */
     app->timer_list = tk_listview_new();
     tk_set_flex(app->timer_list, 1);
     tk_add_child(tp, app->timer_list);

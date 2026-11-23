@@ -481,6 +481,33 @@ static void face_op(ckey *k)
 {
     if (k) tk_button_set_face(k->btn, &tk_theme_default()->surface_alt);
 }
+/* int15 (blind round 6, photos 07-09): the pill (M3) themes'
+ * "=" measured 4.25:1 by the CHECKLIST sampling procedure -
+ * the glyph's bars are thin, so the lightest/darkest ink pixel
+ * is an AA blend (coverage ~0.73 of the core colour), not the
+ * core itself.  Nominal white on #6750A4 is 6.44:1, but the
+ * measured blend is what the checklist judges, so the pair is
+ * strengthened until the BLEND clears 4.5:1 with margin:
+ * light - fill deepened to (80,56,144) via an explicit face
+ * (predicted blend 5.52:1); dark - glyph deepened to
+ * (16,4,48) via a text-colour override (predicted blend
+ * 6.22:1).  The rectangular (WinUI) themes already measure
+ * 5.23-9.59:1 and are left untouched. */
+static void face_eq(ckey *k)
+{
+    if (!k) return;
+    tk_button_set_accent(k->btn, true);
+    const tk_theme *t = tk_theme_default();
+    if (t && t->style == 1) {
+        if (t->dark) {
+            tk_color fg = {16, 4, 48, 255};
+            tk_widget_set_text_color(k->btn, fg);
+        } else {
+            tk_color f = {80, 56, 144, 255};
+            tk_button_set_face(k->btn, &f);
+        }
+    }
+}
 static void face_clear(ckey *k)
 {
     if (k) tk_widget_set_text_color(k->btn, tk_theme_default()->danger);
@@ -524,7 +551,7 @@ static void build_std_pad(calc_app *app, tk_widget *page)
     add_key(app, g, "m+", "", KEY_ACT_MPLUS, 0, false);
     add_key(app, g, "mr", "", KEY_ACT_MR, 0, false);
     ckey *eq = add_key(app, g, "=", "", KEY_ACT_EVAL, 0, false);
-    if (eq) tk_button_set_accent(eq->btn, true);
+    face_eq(eq);
     /* the grid fills the page (M4): keys stretch with the window
      * instead of leaving the lower half blank */
     tk_set_flex(g, 1);
@@ -643,7 +670,7 @@ static void build_sci_pad(calc_app *app, tk_widget *page)
     add_key(app, g2, ".", ".", KEY_ACT_NONE, 1, false);
     add_key(app, g2, "M", "M", KEY_ACT_NONE, 1, false);
     ckey *eq2 = add_key(app, g2, "=", "", KEY_ACT_EVAL, 1, false);
-    if (eq2) tk_button_set_accent(eq2->btn, true);
+    face_eq(eq2);
     tk_set_flex(g2, 1);
     tk_add_child(digit_host, g2);
 }

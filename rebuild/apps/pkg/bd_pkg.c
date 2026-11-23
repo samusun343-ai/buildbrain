@@ -32,8 +32,9 @@ struct pkg_app {
     tk_widget *updates_label;
     tk_widget *search;
     tk_widget *list;
-    tk_widget *empty_label;      /* per-view empty guidance
-                                  * (eval F-14/F-22) */
+    tk_widget *empty_label;      /* per-view empty guidance box */
+    tk_widget *empty_e1, *empty_e2; /* its two lines
+                                     * (eval F-14/F-22) */
     /* Android page swap (proportion pass): the detail block
      * and the action row are a separate page - see
      * pkg_set_detail(). NULL in WinUI mode. */
@@ -136,13 +137,16 @@ static void rebuild_rows(pkg_app *app)
          * the narrowest forms too - at 480px wide and in the
          * WinUI pane it measured 507/624px and clipped
          * (C10, caught by the matrix labelclip check). */
-        tk_label_set_text(app->empty_label,
-            app->view == V_INST
-                ? "未インストールです。"
-                  "「カタログ」から追加できます"
-            : app->view == V_CAT
-                ? "カタログにパッケージがありません"
-                : "更新できるパッケージはありません");
+        /* int15: two lines (state / how-to), the form the
+         * other apps use - the single 384px sentence clipped
+         * at 640px wide once the WinUI column gap went to
+         * 9px (matrix labelclip, 379px column). */
+        tk_label_set_text(app->empty_e1,
+            app->view == V_INST ? "未インストールです"
+            : app->view == V_CAT ? "カタログにパッケージがありません"
+                                 : "更新できるパッケージはありません");
+        tk_label_set_text(app->empty_e2,
+            app->view == V_INST ? "「カタログ」から追加できます" : "");
         tk_set_visible(app->empty_label, app->n_rows == 0);
     }
     /* a rebuilt list is a fresh selection state: set_items
@@ -445,7 +449,10 @@ pkg_app *pkg_app_new(const char *catalog_dir,
      *  apps form). The same widgets exist in both forms. */
     tk_widget *top, *main_col;
     if (app->winui) {
-        top = tk_box_new(TK_DIR_HORIZONTAL, 4, 4);
+        /* int15 (round 6 reference measurement, photo 34):
+         * the nav column's face sat 5-6px from the main
+         * column's search field; column gap is now 9px. */
+        top = tk_box_new(TK_DIR_HORIZONTAL, 9, 4);
         app->top = top;
         bd_page_pad_x(top);
         /* int12: nav stack group spacing 9px (C2 tier A). */
@@ -532,8 +539,13 @@ pkg_app *pkg_app_new(const char *catalog_dir,
     tk_listview_set_on_select(app->list, on_select, app);
     tk_add_child(app->winui ? mid : app->list_page, app->list);
     tk_set_flex(app->list, 1);
-    app->empty_label = tk_label_new("");
-    tk_widget_set_text_style(app->empty_label, TK_TEXT_CAPTION);
+    app->empty_label = tk_box_new(TK_DIR_VERTICAL, 2, 0);
+    app->empty_e1 = tk_label_new("");
+    tk_widget_set_text_style(app->empty_e1, TK_TEXT_CAPTION);
+    tk_add_child(app->empty_label, app->empty_e1);
+    app->empty_e2 = tk_label_new("");
+    tk_widget_set_text_style(app->empty_e2, TK_TEXT_CAPTION);
+    tk_add_child(app->empty_label, app->empty_e2);
     tk_set_visible(app->empty_label, false);
     /* WinUI's mid is a horizontal split (list | detail), so
      * the guidance goes under it in the main column; the
@@ -541,8 +553,22 @@ pkg_app *pkg_app_new(const char *catalog_dir,
     tk_add_child(app->winui ? main_col : app->list_page,
                  app->empty_label);
     tk_widget *det = tk_box_new(TK_DIR_VERTICAL, 3, 0);
-    tk_add_child(app->winui ? mid : app->detail_page, det);
-    if (app->winui) tk_set_flex(det, 1);
+    {   /* int15: the detail placeholder's glyph ink sits
+         * 13px from the column start (same geometry as the
+         * recorder's pane, round 6 photo 39) - C7 wants 18px.
+         * A symmetric box pad also took 5px off the right and
+         * clipped the 384px status label at 640px wide
+         * (matrix labelclip), so the indent is a 5px spacer
+         * on the left only, via a wrapper row. */
+        tk_widget *detwrap = tk_box_new(TK_DIR_HORIZONTAL, 0, 0);
+        tk_widget *dsp = tk_box_new(TK_DIR_HORIZONTAL, 0, 0);
+        tk_widget_set_min_size(dsp, 5, 0);
+        tk_add_child(detwrap, dsp);
+        tk_add_child(detwrap, det);
+        tk_set_flex(det, 1);
+        tk_add_child(app->winui ? mid : app->detail_page, detwrap);
+        if (app->winui) tk_set_flex(detwrap, 1);
+    }
     app->d_name = lbl(det, "（未選択）");
     app->d_ver = lbl(det, "");
     app->d_meta = lbl(det, "");
