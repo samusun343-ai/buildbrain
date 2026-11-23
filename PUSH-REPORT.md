@@ -430,3 +430,31 @@ push した。これで u-boot-brain の push 未完は解消。
   値は記録しない）。同期は rsync --delete なし、実行バイナリ
   （ce-loader / cetest.exe）と *.o 等の生成物は収蔵対象外。
   master とサブモジュールポインタは無変更。
+
+## 第11弾（2026-11-23、WinCE 互換レイヤー M2（GWE 最小））
+
+- コミット: `e8e3b9226`（wince-layer M2 一式 21 ファイル＋
+  REPORT-wince-m2.md。push 後に本 PUSH-REPORT 更新コミットが続く）。
+- 内容: 設計 DESIGN-wince-layer.md §9.2 の M2。GWE 最小の実装:
+  ウィンドウ／メッセージ 65 件＋GDI／描画／フォント 56 件を中心に
+  新規 132 件（累計 166 件）。トップレベル CE ウィンドウは
+  braindesk WM の通常クライアントとして接続し（§8.2 第1段＝
+  分離レイヤー）、シャドウキャンバス＋損傷限定 commit で描画。
+  ビルドは M1 の静的リンクから Brainux ユーザーランドと同一の
+  動的リンク方式（armbin2＋sysroot）へ変更。
+- 合格証拠: ホスト（qemu-arm＋実 WM サーバ）HOST-TEST /
+  HOST-GUI PASS（画素 RGBA8888 精度で一致、guilog バイト一致）、
+  ゲスト（sd-v15-ce2.img、組立時 md5
+  `060b7715869892f8a2f50ebedcc2b831`、PARTUUID `8a548b6a-02`）
+  GUEST-TEST PASS。両環境ともスタブ呼び出し 0 件、M1 回帰 PASS。
+  資源実測（ゲストネイティブ）: GUI アプリ常駐時 VmRSS 3,200 kB /
+  PSS 669 kB。
+- eMMC: ベースライン emmc-int9.img は未アタッチで前後 md5
+  `612e8a0307436b59852bb39ede358fa8` 不変。作業コピー
+  emmc-int9-wince.img を snapshot=on でアタッチし、同ファイルも
+  前後 md5 `a17320d94cb1e4eebe8c02149a7c9479` 不変を確認。
+  詳細は REPORT-wince-m2.md。
+- 認証は第10弾と同一（保存済み PAT を credential helper 経由。
+  値は記録しない）。同期は rsync --delete なし、実行バイナリ
+  （ce-loader / *.exe）と *.o 等の生成物は収蔵対象外。
+  master とサブモジュールポインタは無変更。
