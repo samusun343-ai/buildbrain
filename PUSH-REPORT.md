@@ -458,3 +458,30 @@ push した。これで u-boot-brain の push 未完は解消。
   値は記録しない）。同期は rsync --delete なし、実行バイナリ
   （ce-loader / *.exe）と *.o 等の生成物は収蔵対象外。
   master とサブモジュールポインタは無変更。
+
+## 第12弾（2026-11-24、WinCE 互換レイヤー S0＋M3）
+
+- コミット: `1530d8696`（wince-layer S0+M3 一式 36 ファイル＋
+  REPORT-wince-s0.md / REPORT-wince-m3.md。push 後に本
+  PUSH-REPORT 更新コミットが続く）。
+- 内容: 設計 DESIGN-wince-layer.md §7.5（S0）と §9.2 の M3 行。
+  S0 は読み取り境界の確定（MBR＋隙間 FAT＋ROM スロット、
+  ハッシュ範囲は媒体全体）、読み取り専用 FAT ブリッジ、
+  §7.5 証明の初回実施（フルゲストセッション2回で証明イメージの
+  SHA-256 前後一致、pristine / ベースライン不変）。
+  M3 はモジュールシステム（ファイル PE＋ROM モジュールの
+  ネイティブベース配置）、ダイアログ管理＋組込みコントロール、
+  commctrl ホスト用バッチでシム実装は累計 381 件。
+- 合格証拠と未完了: ホスト回帰は M1 / M2 / M3 とも PASS
+  （edwgsp.dll の ROM ホストは両環境で確認）。ゲストでは
+  M1 / M2 回帰 PASS、TextMemoTool の起動・常駐（VmRSS
+  11,040 kB、スタブ 0）まで確認したが、commctrl.dll の
+  DllMain segfault（未特定）と TextMemoTool の窓の画面確認、
+  §7.5 の残りサイクルと CE 側チェックリストは、pw-aj2 QEMU
+  基盤の喪失（2026-11-24 の環境一掃と、その後のランタイム
+  ライブラリ喪失）により未完了。正直な状態は各 REPORT の
+  未解消項目に記録した。
+- 認証は第11弾と同一（保存済み PAT を credential helper 経由。
+  値は記録しない）。同期は rsync --delete なし、実行バイナリ
+  （ce-loader / *.exe）と *.o 等の生成物は収蔵対象外。
+  master とサブモジュールポインタは無変更。
